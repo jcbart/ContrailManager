@@ -1,16 +1,17 @@
 #ifndef VARIABLES
 #define VARIABLES
 
+#include <string>
 #include <vector>
 
 class Variable2D {
 private:
-    //float* data;
-    std::vector<float> data;
-    int ids, ide, jds, jde;
-    int i_size, j_size;
-    int num_elements;
-    bool isInitialised;
+    std::string name = "UNDEFINED";
+    float* data;
+    int ids, ide, jds, jde = 0;
+    int i_size, j_size = 0;
+    int num_elements = 0;
+    bool isInitialised = false;
 
 public:
     // Constructor
@@ -19,8 +20,12 @@ public:
     // Destructor
     ~Variable2D();
 
-    void init(int ids, int ide, int jds, int jde);
+    void init(std::string name, int ids, int ide, int jds, int jde);
 
+    int get_ids() {return ids;};
+    int get_ide() {return ide;};
+    int get_jds() {return jds;};
+    int get_jde() {return jde;};
     int get_i_size() {return i_size;};
     int get_j_size() {return j_size;};
 
@@ -31,12 +36,12 @@ public:
 
 class Variable3D {
 private:
-    //float* data;
-    std::vector<float> data;
-    int ids, ide, jds, jde, kds, kde;
-    int i_size, j_size, k_size;
-    int num_elements;
-    bool isInitialised;
+    std::string name = "UNDEFINED";
+    float* data;
+    int ids, ide, jds, jde, kds, kde = 0;
+    int i_size, j_size, k_size = 0;
+    int num_elements = 0;
+    bool isInitialised = false;
 
 public:
     // Constructor
@@ -45,8 +50,14 @@ public:
     // Destructor
     ~Variable3D();
 
-    void init(int ids, int ide, int jds, int jde, int kds, int kde);
+    void init(std::string name, int ids, int ide, int jds, int jde, int kds, int kde);
 
+    int get_ids() {return ids;};
+    int get_ide() {return ide;};
+    int get_jds() {return jds;};
+    int get_jde() {return jde;};
+    int get_kds() {return kds;};
+    int get_kde() {return kde;};
     int get_i_size() {return i_size;};
     int get_j_size() {return j_size;};
     int get_k_size() {return k_size;};

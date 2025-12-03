@@ -1,5 +1,6 @@
 // External interfaces
 
+#include <iostream>
 #include "ContrailManager.h"
 
 // Create and return reference to the contrail manager
@@ -11,10 +12,6 @@ extern "C" void ContrailManager_init_extern(ContrailManager* CMptr) {
     CMptr->init();
 }
 
-extern "C" void ContrailManager_setStartTime_extern(ContrailManager* CMptr, CMTime& startTime) {
-    CMptr->setStartTime(startTime);
-}
-
 extern "C" void ContrailManager_run_extern(ContrailManager* CMptr, CMTime_F startTime_F, CMTime_F stopTime_F) {
     CMTime startTime, stopTime;
     startTime.set(startTime_F);
@@ -23,18 +20,9 @@ extern "C" void ContrailManager_run_extern(ContrailManager* CMptr, CMTime_F star
 }
 
 
-// Variables inits
-
-extern "C" void init_XLAT_extern(ContrailManager* CMptr, int ids, int ide, int jds, int jde) {
-    CMptr->init_XLAT(ids, ide, jds, jde);
-}
-
-extern "C" void init_XLONG_extern(ContrailManager* CMptr, int ids, int ide, int jds, int jde) {
-    CMptr->init_XLONG(ids, ide, jds, jde);
-}
-
-extern "C" void init_Z_extern(ContrailManager* CMptr, int ids, int ide, int jds, int jde, int kds, int kde) {
-    CMptr->init_Z(ids, ide, jds, jde, kds, kde);
+// Variable initialisation
+extern "C" void init_vars_extern(ContrailManager* CMptr, int ids, int ide, int jds, int jde, int kds, int kde) {
+    CMptr->init_vars(ids, ide, jds, jde, kds, kde);
 }
 
 
@@ -53,4 +41,24 @@ extern "C" float* get_XLONG_element_extern(ContrailManager* CMptr, int i, int j)
 // Returns a reference to the Z value, so can be used to set and get
 extern "C" float* get_Z_element_extern(ContrailManager* CMptr, int i, int j, int k) {
     return CMptr->Z.get(i, j, k);
+}
+
+// Returns a reference to the U value, so can be used to set and get
+extern "C" float* get_U_element_extern(ContrailManager* CMptr, int i, int j, int k) {
+    return CMptr->U.get(i, j, k);
+}
+
+// Returns a reference to the V value, so can be used to set and get
+extern "C" float* get_V_element_extern(ContrailManager* CMptr, int i, int j, int k) {
+    return CMptr->V.get(i, j, k);
+}
+
+// Returns a reference to the W value, so can be used to set and get
+extern "C" float* get_W_element_extern(ContrailManager* CMptr, int i, int j, int k) {
+    return CMptr->W.get(i, j, k);
+}
+
+// Returns a reference to the QV value, so can be used to set and get
+extern "C" float* get_QV_element_extern(ContrailManager* CMptr, int i, int j, int k) {
+    return CMptr->QV.get(i, j, k);
 }

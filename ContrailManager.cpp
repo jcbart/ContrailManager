@@ -1,10 +1,13 @@
 #include <ESMC.h>
 #include <iostream>
 #include <string>
+#include <nanoflann.hpp>
 #include "ContrailManager.h"
 #include "timekeeping.h"
 #include "variables.h"
 #include "segment.h"
+#include "flight.h"
+#include "mapUtils.h"
 
 void ContrailManager::init() {
     int rc;
@@ -14,39 +17,27 @@ void ContrailManager::init() {
     timeStep.set(0, 0, 0, 0, 0, timeStep_s);
     msg = "Contrail Manager internal time step set to " + timeStep.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    // Read max_initial_seg_length from CM config
     // Read flight data etc
     rc = ESMC_LogWrite("Contrail Manager initialised", ESMC_LOGMSG_INFO);
 
     std::cerr << "timeStep in init: " << timeStep.asString()  << std::endl;
 }
 
-// Should be called before run() to set the start time
-// If not, checking startTime against currTime in run() will fail
-void ContrailManager::setStartTime(CMTime& startTime) {
-    int rc;
-    std::string msg;
-    currTime = startTime;
-    msg = "Contrail Manager internal time set to " + currTime.asString();
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-
-    std::cerr << "timeStep in setStartTime: " << timeStep.asString()  << std::endl;
+void ContrailManager::init_vars(int ids, int ide, int jds, int jde, int kds, int kde) {
+    XLAT.init("XLAT", ids, ide, jds, jde);
+    XLONG.init("XLONG", ids, ide, jds, jde);
+    Z.init("Z", ids, ide, jds, jde, kds, kde);
+    U.init("U", ids, ide, jds, jde, kds, kde);
+    V.init("V", ids, ide, jds, jde, kds, kde);
+    W.init("W", ids, ide, jds, jde, kds, kde);
+    QV.init("QV", ids, ide, jds, jde, kds, kde);
 }
 
 // Integrate between times
 void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
     int rc;
     std::string msg;
-    bool anyDummies = false;
-
-    if (dummy1 != 0) {std::cerr << "dummy1 = " << dummy1 << std::endl; anyDummies=true;}
-    if (dummy2 != 0) {std::cerr << "dummy2 = " << dummy2 << std::endl; anyDummies=true;}
-    if (dummy3 != 0) {std::cerr << "dummy3 = " << dummy3 << std::endl; anyDummies=true;}
-    if (dummy4 != 0) {std::cerr << "dummy4 = " << dummy4 << std::endl; anyDummies=true;}
-    if (dummy5 != 0) {std::cerr << "dummy5 = " << dummy5 << std::endl; anyDummies=true;}
-    if (dummy6 != 0) {std::cerr << "dummy6 = " << dummy6 << std::endl; anyDummies=true;}
-    if (dummy7 != 0) {std::cerr << "dummy7 = " << dummy7 << std::endl; anyDummies=true;}
-    if (dummy8 != 0) {std::cerr << "dummy8 = " << dummy8 << std::endl; anyDummies=true;}
-    if (anyDummies) {exit(EXIT_FAILURE);}
 
     std::cerr << "timeStep in run: " << timeStep.asString()  << std::endl;
     std::cerr << "firstRunCall = " << firstRunCall << std::endl;
@@ -57,9 +48,20 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
         // Take sizes from Z and hope they are all consistent
+        ids = Z.get_ids();
+        ide = Z.get_ide();
+        jds = Z.get_jds();
+        jde = Z.get_jde();
+        kds = Z.get_kds();
+        kde = Z.get_kde();
         latSize = Z.get_i_size();
         lonSize = Z.get_j_size();
         altSize = Z.get_k_size();
+
+        // Setup k-d tree
+        setup_kdtree();
+        msg = "k-d tree set up";
+        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     }
     firstRunCall = false;
     
@@ -69,9 +71,6 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
                 << "integration startTime (" << startTime.asString() << ")" << std::endl;
         exit(EXIT_FAILURE);
     }
-
-    // Temp
-    timeStep.set(0, 0, 0, 0, 0, 10);
 
     // Check there are a whole number of time steps between startTime and stopTime
     CMTimeInterval timeInterval = stopTime-startTime;
@@ -86,12 +85,34 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
           + stopTime.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
-    msg = "XLAT(1,1) = " + std::to_string(*XLAT.get(1, 1));
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-
     msg = "Z(100,200,10) = " + std::to_string(*Z.get(100, 200, 10));
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
+    msg = "U(100,200,10) = " + std::to_string(*U.get(100, 200, 10));
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+
+    msg = "V(100,200,10) = " + std::to_string(*V.get(100, 200, 10));
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+
+    msg = "W(100,200,10) = " + std::to_string(*W.get(100, 200, 10));
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+
+    /*
+    Geo2D my_point = {50.7, 1.25};
+    std::vector<uint32_t> out_indices(1);
+    std::vector<float>    out_dist_sqr(1);
+    geoIndexer.search(my_point, 1, out_indices, out_dist_sqr);
+    Cart3D nn = geoIndexer.cloud.points[out_indices[0]];
+    Geo2D nnGeo = Cart3D_to_Geo2D(nn);
+    msg = "Nearest neighbour is lat = " + std::to_string(nnGeo.lat) + ", lon = " + std::to_string(nnGeo.lon);
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    IDX2 closest_ij = PointCloud_idx_to_ij(out_indices[0]);
+    msg = "Closest point to (50.7, 1.25) is i = " + std::to_string(closest_ij.i) + ", j = " + std::to_string(closest_ij.j);
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    msg = "which is XLAT(i,j) = " + std::to_string(*XLAT.get(closest_ij.i, closest_ij.j)) + ", XLONG(i,j) = " + std::to_string(*XLONG.get(closest_ij.i, closest_ij.j));
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    */
+    
     currTime = startTime;
     while (currTime+timeStep <= stopTime) {
         currTime += timeStep;
@@ -101,59 +122,38 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
 
         /*
         1. Create new segments
-        2. Integrate all segments (aggregate vapour delta)
-        3. Dump old segments (aggregate leftover crystals)
-        4. Advect remaining segments
+        2. Integrate all segments (aggregate vapour delta); mark dead segments
+        3. Advect all segments
+        4. Dump dead segments (aggregate leftover crystals)
         */
     }
 }
 
-void ContrailManager::init_XLAT(int ids, int ide, int jds, int jde) {
-    XLAT.init(ids, ide, jds, jde);
-}
-
-void ContrailManager::init_XLONG(int ids, int ide, int jds, int jde) {
-    XLONG.init(ids, ide, jds, jde);
-}
-
-void ContrailManager::init_Z(int ids, int ide, int jds, int jde, int kds, int kde) {
-    Z.init(ids, ide, jds, jde, kds, kde);
-}
-
-IDX3 ContrailManager::find_corner_idxs(Location& loc) {
-    IDX2 ij;
-    IDX3 idxs;
-    idxs.i = -1;
-    idxs.j = -1;
-    idxs.k = -1;
-    ij = find_ij(loc);
-    idxs.i = ij.i;
-    idxs.j = ij.j;
-    // Search column for k - should really check all 4 corners?
-    idxs.k = find_k(loc, ij);
-    return idxs;
-}
-
-IDX2 ContrailManager::find_ij(Location& loc) {
-    IDX2 ij;
-    ij.i = -1;
-    ij.j = -1;
-    for (int i = 0; i < latSize; i++) {
-        for (int j = 0; j < lonSize; j++) {
-            if (loc.lat >= *XLAT.get(i, j) &&
-                loc.lon >= *XLONG.get(i, j) &&
-                loc.lat < *XLAT.get(i+1, j+1) &&
-                loc.lon < *XLONG.get(i+1, j+1)) {
-                    ij.i = i;
-                    ij.j = j;
-                    return ij;
-            }
+void ContrailManager::setup_kdtree() {
+    geoIndexer.cloud.points.resize(latSize*lonSize);
+    // Add all points to geoIndexer's PointCloud
+    uint32_t idx = 0;
+    for (int i = ids; i <= ide; i++) {
+        for (int j = jds; j <= jde; j++) {
+            Geo2D loc;
+            loc.lat = *XLAT.get(i, j);
+            loc.lon = *XLONG.get(i, j);
+            geoIndexer.cloud.points[idx++] = Geo2D_to_Cart3D(loc);
         }
     }
+
+    // Build the k-d tree
+    geoIndexer.buildIndex();
+}
+
+IDX2 ContrailManager::PointCloud_idx_to_ij(uint32_t idx) {
+    IDX2 ij;
+    ij.i = ids + idx / lonSize;
+    ij.j = jds + idx % lonSize;
     return ij;
 }
 
-int ContrailManager::find_k(Location& loc, IDX2& ij) {
+int ContrailManager::find_corner_k(Geo3D& loc, IDX2& ij) {
     for (int k = 0; k < altSize; k++) {
         if (loc.alt >= *Z.get(ij.i, ij.j, k) && loc.alt < *Z.get(ij.i, ij.j, k+1)) {
             return k;

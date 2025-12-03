@@ -13,11 +13,13 @@ TARGET=libcontrailmanager.a
 ################################################################################
 ################################################################################
 
+INCLUDE = include/nanoflann/include
+
 SRCS = $(wildcard *.cpp)
 OBJS = $(SRCS:.cpp=.o)
 
 %.o : %.cpp
-	$(ESMF_CXXCOMPILER) -c $(ESMF_CXXCOMPILEOPTS) $(ESMF_CXXCOMPILEPATHSLOCAL) $(ESMF_CXXCOMPILEPATHS) $(ESMF_CXXCOMPILECPPFLAGS) $<
+	$(ESMF_CXXCOMPILER) -c $(ESMF_CXXCOMPILEOPTS) $(ESMF_CXXCOMPILEPATHSLOCAL) $(ESMF_CXXCOMPILEPATHS) $(ESMF_CXXCOMPILECPPFLAGS) -I$(INCLUDE) $<
 
 $(TARGET): $(OBJS)
 	@echo "--- Archiving object files into $(TARGET) ---"

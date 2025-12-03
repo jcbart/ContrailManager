@@ -1,11 +1,12 @@
 #include <iostream>
+#include <string>
 #include "variables.h"
 
 // ---------- Variable2D ----------
 
 // Constructor
 Variable2D::Variable2D() {
-    //data = nullptr;
+    data = nullptr;
     ids = 0;
     ide = 0;
     jds = 0;
@@ -18,16 +19,17 @@ Variable2D::Variable2D() {
 
 // Destructor
 Variable2D::~Variable2D() {
-    //if (data != nullptr) {
-    //    delete[] data;
-    //}
+    if (data != nullptr) {
+        delete[] data;
+    }
 }
 
-void Variable2D::init(int ids, int ide, int jds, int jde) {
+void Variable2D::init(std::string name, int ids, int ide, int jds, int jde) {
     if (isInitialised) {
-        std::cerr << "Variable2D has already been initialised" << std::endl;
+        std::cerr << "Variable2D " << this->name << " has already been initialised" << std::endl;
         exit(EXIT_FAILURE);
     }
+    this->name = name;
     this->ids = ids;
     this->ide = ide;
     this->jds = jds;
@@ -36,11 +38,11 @@ void Variable2D::init(int ids, int ide, int jds, int jde) {
     j_size = jde-jds+1;
     num_elements = i_size*j_size;
     // Allocate a 1D block of memory
-    //data = new float[num_elements];
-    data.assign(num_elements, 0);
-    //for (int i = 0; i < num_elements; i++) {
-    //    data[i] = 0;
-    //}
+    data = new float[num_elements];
+    for (int i = 0; i < num_elements; i++) {
+        data[i] = 0;
+    }
+    std::cerr << "Variable2D " << this->name << " is now initialised" << std::endl;
     isInitialised = true;
 }
 
@@ -51,14 +53,13 @@ size_t Variable2D::get_1D_index_from_2D(int i, int j) {
 // Returns a reference to the value, so can be used to set and get
 float* Variable2D::get(int i, int j) {
     if (i < ids || i > ide || j < jds || j > jde) {
-        std::cerr << "Error: Index (i,j)=(" << i << "," << j << ") is out of range for array of size"
-                     "(ids:ide,jds:jde)=(" << ids << ":" << ide << "," << jds << ":" << jde << ")"
-                     << std::endl;
+        std::cerr << "Variable2D " << name << " error: Index (i,j)=(" << i << "," << j <<
+                     ") is out of range for array of size (ids:ide,jds:jde)=(" <<
+                     ids << ":" << ide << "," << jds << ":" << jde << ")" << std::endl;
         exit(EXIT_FAILURE);
         return &data[get_1D_index_from_2D(ids, jds)];
     }
     else {
-        //*rc = ESMF_SUCCESS;
         return &data[get_1D_index_from_2D(i, j)];
     }
 }
@@ -67,7 +68,7 @@ float* Variable2D::get(int i, int j) {
 
 // Constructor
 Variable3D::Variable3D() {
-    //data = nullptr;
+    data = nullptr;
     ids = 0;
     ide = 0;
     jds = 0;
@@ -83,16 +84,17 @@ Variable3D::Variable3D() {
 
 // Destructor
 Variable3D::~Variable3D() {
-    //if (data != nullptr) {
-    //    delete[] data;
-    //}
+    if (data != nullptr) {
+        delete[] data;
+    }
 }
 
-void Variable3D::init(int ids, int ide, int jds, int jde, int kds, int kde) {
+void Variable3D::init(std::string name, int ids, int ide, int jds, int jde, int kds, int kde) {
     if (isInitialised) {
-        std::cerr << "Variable2D has already been initialised" << std::endl;
+        std::cerr << "Variable3D " << this->name << " has already been initialised" << std::endl;
         exit(EXIT_FAILURE);
     }
+    this->name = name;
     this->ids = ids;
     this->ide = ide;
     this->jds = jds;
@@ -104,11 +106,11 @@ void Variable3D::init(int ids, int ide, int jds, int jde, int kds, int kde) {
     k_size = kde-kds+1;
     num_elements = i_size*j_size*k_size;
     // Allocate a 1D block of memory
-    //data = new float[num_elements];
-    data.assign(num_elements, 0);
-    //for (int i = 0; i < num_elements; i++) {
-    //    data[i] = 0;
-    //}
+    data = new float[num_elements];
+    for (int i = 0; i < num_elements; i++) {
+        data[i] = 0;
+    }
+    std::cerr << "Variable3D " << this->name << " is now initialised" << std::endl;
     isInitialised = true;
 }
 
@@ -119,15 +121,14 @@ size_t Variable3D::get_1D_index_from_3D(int i, int j, int k) {
 // Returns a reference to the value, so can be used to set and get
 float* Variable3D::get(int i, int j, int k) {
     if (i < ids || i > ide || j < jds || j > jde || k < kds || k > kde) {
-        std::cerr << "Error: Index (i,j,k)=(" << i << "," << j << "," << k << ") is out of range"
-                     " for array of size (ids:ide,jds:jde,kds:kde)=("
+        std::cerr << "Variable3D " << name << " error: Index (i,j,k)=(" << i << "," << j << "," << k <<
+                     ") is out of range for array of size (ids:ide,jds:jde,kds:kde)=("
                      << ids << ":" << ide << "," << jds << ":" << jde << "," << kds << ":" << kde << ")"
                      << std::endl;
         exit(EXIT_FAILURE);
         return &data[get_1D_index_from_3D(ids, jds, kds)];
     }
     else {
-        //*rc = ESMF_SUCCESS;
         return &data[get_1D_index_from_3D(i, j, k)];
     }
 }
