@@ -19,6 +19,11 @@ extern "C" void ContrailManager_run_extern(ContrailManager* CMptr, CMTime_F star
     CMptr->run(startTime, stopTime);
 }
 
+// Projection setup
+
+extern "C" void init_projection_extern(ContrailManager* CMptr, int proj_code, float lat1, float lon1, float knowni, float knownj, float dx, float stdlon, float truelat1, float truelat2) {
+    CMptr->proj.init(proj_code, lat1, lon1, knowni, knownj, dx, stdlon, truelat1, truelat2);
+}
 
 // Variable initialisation
 extern "C" void init_vars_extern(ContrailManager* CMptr, int ids, int ide, int jds, int jde, int kds, int kde) {
@@ -41,6 +46,11 @@ extern "C" float* get_XLONG_element_extern(ContrailManager* CMptr, int i, int j)
 // Returns a reference to the Z value, so can be used to set and get
 extern "C" float* get_Z_element_extern(ContrailManager* CMptr, int i, int j, int k) {
     return CMptr->Z.get(i, j, k);
+}
+
+// Returns a reference to the Z_AT_W value, so can be used to set and get
+extern "C" float* get_Z_AT_W_element_extern(ContrailManager* CMptr, int i, int j, int k) {
+    return CMptr->Z_AT_W.get(i, j, k);
 }
 
 // Returns a reference to the U value, so can be used to set and get

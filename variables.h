@@ -3,13 +3,14 @@
 
 #include <string>
 #include <vector>
+#include "mapUtils.h"
 
 class Variable2D {
 private:
     std::string name = "UNDEFINED";
     float* data;
-    int ids, ide, jds, jde = 0;
-    int i_size, j_size = 0;
+    int ids = 0, ide = 0, jds = 0, jde = 0;
+    int i_size = 0, j_size = 0;
     int num_elements = 0;
     bool isInitialised = false;
 
@@ -31,15 +32,16 @@ public:
 
     size_t get_1D_index_from_2D(int i, int j);
 
-    float* get(int i, int j);
+    float* get(const int i, const int j);
+    float* get(const IDX2& ij);
 };
 
 class Variable3D {
 private:
     std::string name = "UNDEFINED";
     float* data;
-    int ids, ide, jds, jde, kds, kde = 0;
-    int i_size, j_size, k_size = 0;
+    int ids = 0, ide = 0, jds = 0, jde = 0, kds = 0, kde = 0;
+    int i_size = 0, j_size = 0, k_size = 0;
     int num_elements = 0;
     bool isInitialised = false;
 
@@ -64,7 +66,8 @@ public:
 
     size_t get_1D_index_from_3D(int i, int j, int k);
 
-    float* get(int i, int j, int k);
+    float* get(const int i, const int j, const int k);
+    float* get(const IDX3& ijk);
 };
 
 #endif

@@ -1,16 +1,29 @@
 #ifndef SEGMENT
 #define SEGMENT
 
+#include <vector>
 #include "mapUtils.h"
+
+// Structure for holding points for interpolation plus their weights
+struct Interp {
+    std::vector<IDX3> points;
+    std::vector<float> weights;
+
+    Interp() {
+        points.resize(4);
+        weights.resize(4);
+    }
+};
 
 // Contrail segment structure
 struct Segment {
-    Geo3D back;
-    Geo3D front;
-    Geo3D centre;
+    Geo3D back; // Location of back (/rear/start) of segment
+    Geo3D front; // Location of front (/end) of segment
+    Geo3D centre; // Location of centre of segment; derived from back and front
 
     float length;
-    float age; // in seconds
+    CMTime birthTime;
+
 
     // Some kind of data
 };

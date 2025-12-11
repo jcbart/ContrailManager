@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include "variables.h"
+#include "mapUtils.h"
 
 // ---------- Variable2D ----------
 
@@ -42,7 +43,6 @@ void Variable2D::init(std::string name, int ids, int ide, int jds, int jde) {
     for (int i = 0; i < num_elements; i++) {
         data[i] = 0;
     }
-    std::cerr << "Variable2D " << this->name << " is now initialised" << std::endl;
     isInitialised = true;
 }
 
@@ -51,7 +51,7 @@ size_t Variable2D::get_1D_index_from_2D(int i, int j) {
 }
 
 // Returns a reference to the value, so can be used to set and get
-float* Variable2D::get(int i, int j) {
+float* Variable2D::get(const int i, const int j) {
     if (i < ids || i > ide || j < jds || j > jde) {
         std::cerr << "Variable2D " << name << " error: Index (i,j)=(" << i << "," << j <<
                      ") is out of range for array of size (ids:ide,jds:jde)=(" <<
@@ -62,6 +62,11 @@ float* Variable2D::get(int i, int j) {
     else {
         return &data[get_1D_index_from_2D(i, j)];
     }
+}
+
+// Returns a reference to the value, so can be used to set and get
+float* Variable2D::get(const IDX2& ij) {
+    return get(ij.i, ij.j);
 }
 
 // ---------- Variable3D ----------
@@ -110,7 +115,6 @@ void Variable3D::init(std::string name, int ids, int ide, int jds, int jde, int 
     for (int i = 0; i < num_elements; i++) {
         data[i] = 0;
     }
-    std::cerr << "Variable3D " << this->name << " is now initialised" << std::endl;
     isInitialised = true;
 }
 
@@ -119,7 +123,7 @@ size_t Variable3D::get_1D_index_from_3D(int i, int j, int k) {
 }
 
 // Returns a reference to the value, so can be used to set and get
-float* Variable3D::get(int i, int j, int k) {
+float* Variable3D::get(const int i, const int j, const int k) {
     if (i < ids || i > ide || j < jds || j > jde || k < kds || k > kde) {
         std::cerr << "Variable3D " << name << " error: Index (i,j,k)=(" << i << "," << j << "," << k <<
                      ") is out of range for array of size (ids:ide,jds:jde,kds:kde)=("
@@ -133,3 +137,7 @@ float* Variable3D::get(int i, int j, int k) {
     }
 }
 
+// Returns a reference to the value, so can be used to set and get
+float* Variable3D::get(const IDX3& ijk) {
+    return get(ijk.i, ijk.j, ijk.k);
+}

@@ -2,7 +2,6 @@
 #define TIMEKEEPING
 
 #include <string>
-#include <sstream>
 
 const int DAYS_IN_MONTH[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 const int DAYS_IN_MONTH_LEAP[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -14,21 +13,7 @@ const int DAYS_IN_MONTH_LEAP[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 
 // a CMTime
 struct CMTimeInterval {
 private:
-    // Adjust only seconds, minutes, and hours within their limits
-    void adjust() {
-        while (s >= 60) {
-            s -= 60;
-            m += 1;
-        }
-        while (m >= 60) {
-            m -= 60;
-            h += 1;
-        }
-        while (h >= 24) {
-            h -= 24;
-            dd += 1;
-        }
-    }
+    void adjust();
 
 public:
     int yy;
@@ -38,89 +23,27 @@ public:
     int m;
     int s;
 
-    // Sets the internal variables
-    void set(int yy, int mm, int dd, int h, int m, int s) {
-        this->yy = yy;
-        this->mm = mm;
-        this->dd = dd;
-        this->h = h;
-        this->m = m;
-        this->s = s;
-        adjust();
-    }
+    void set(int yy, int mm, int dd, int h, int m, int s);
 
-    bool operator==(const CMTimeInterval& other) const {
-        if (this->yy == other.yy &&
-            this->mm == other.mm &&
-            this->dd == other.dd &&
-            this->h == other.h &&
-            this->m == other.m &&
-            this->s == other.s) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
+    bool operator==(const CMTimeInterval& other) const;
 
-    bool operator!=(const CMTimeInterval& other) const {
-        return !(operator==(other));
-    }
+    bool operator!=(const CMTimeInterval& other) const;
 
-    CMTimeInterval operator+(const CMTimeInterval& other) const {
-        CMTimeInterval newTimeInt;
-        newTimeInt.set(this->yy + other.yy,
-                      this->mm + other.mm,
-                      this->dd + other.dd,
-                      this->h + other.h,
-                      this->m + other.m,
-                      this->s + other.s);
-        return newTimeInt;
-    }
+    CMTimeInterval operator+(const CMTimeInterval& other) const;
 
-    CMTimeInterval operator-(const CMTimeInterval& other) const {
-        CMTimeInterval newTimeInt;
-        newTimeInt.set(this->yy - other.yy,
-                      this->mm - other.mm,
-                      this->dd - other.dd,
-                      this->h - other.h,
-                      this->m - other.m,
-                      this->s - other.s);
-        return newTimeInt;
-    }
+    CMTimeInterval operator-(const CMTimeInterval& other) const;
 
-    CMTimeInterval& operator+=(const CMTimeInterval& other) {
-        this->set(this->yy + other.yy,
-                  this->mm + other.mm,
-                  this->dd + other.dd,
-                  this->h + other.h,
-                  this->m + other.m,
-                  this->s + other.s);
-        return *this;
-    }
+    CMTimeInterval& operator+=(const CMTimeInterval& other);
 
-    // Turns days, hours, minutes, and seconds into seconds
-    int dhms_to_s() {
-        return (dd*86400 + h*3600 + m*60 + s);
-    }
+    int dhms_to_s() const;
 
     // Return time as a string
-    std::string asString() {
-        std::stringstream ss;
-        ss << yy;
-        ss << "-";
-        (mm < 10) ? ss << "0" << mm : ss << mm;
-        ss << "-";
-        (dd < 10) ? ss << "0" << dd : ss << dd;
-        ss << " ";
-        (h < 10) ? ss << "0" << h : ss << h;
-        ss << ":";
-        (m < 10) ? ss << "0" << m : ss << m;
-        ss << ":";
-        (s < 10) ? ss << "0" << s : ss << s;
-        return ss.str();
-    }
+    std::string asString();
 };
+
+CMTimeInterval operator*(const CMTimeInterval& timeInt, float scalar);
+
+CMTimeInterval operator*(float scalar, const CMTimeInterval& timeInt);
 
 // Bare CMTime structure (only data members) to be compatible with Fortran type
 struct CMTime_F {
@@ -136,63 +59,7 @@ struct CMTime_F {
 // Times cannot have day or month equal to 0
 struct CMTime {
 private:
-    // Adjust the internal variables so they are within their limits
-    void adjust() {
-        while (s >= 60) {
-            s -= 60;
-            m += 1;
-        }
-        while (s < 0) {
-            s += 60;
-            m -= 1;
-        }
-        while (m >= 60) {
-            m -= 60;
-            h += 1;
-        }
-        while (m < 0) {
-            m += 60;
-            h -= 1;
-        }
-        while (h >= 24) {
-            h -= 24;
-            dd += 1;
-        }
-        while (h < 0) {
-            h += 24;
-            dd -= 1;
-        }
-        bool dmySatisfied = false;
-        while (!dmySatisfied) {
-            if (mm > 12) {
-                mm -= 12;
-                yy += 1;
-            }
-            else if (mm <= 0) {
-                mm += 12;
-                yy -= 1;
-            }
-            else if (isLeap() && dd > DAYS_IN_MONTH_LEAP[mm-1]) {
-                dd -= DAYS_IN_MONTH_LEAP[mm-1];
-                mm += 1;
-            }
-            else if (isLeap() && dd <= 0) {
-                dd += DAYS_IN_MONTH_LEAP[mm-1];
-                mm -= 1;
-            }
-            else if (!isLeap() && dd > DAYS_IN_MONTH[mm-1]) {
-                dd -= DAYS_IN_MONTH[mm-1];
-                mm += 1;
-            }
-            else if (!isLeap() && dd <= 0) {
-                dd += DAYS_IN_MONTH[mm-1];
-                mm -= 1;
-            }
-            else {
-                dmySatisfied = true;
-            }
-        }
-    }
+    void adjust();
 
 public:
     int yy;
@@ -202,156 +69,34 @@ public:
     int m;
     int s;
 
-    // Returns true if internal year is a leap year
-    bool isLeap() {
-        if (yy % 4 == 0) {
-            if (yy % 100 == 0) {
-                return (yy % 400 == 0);
-            }
-            return true;
-        }
-        return false;
-    }
+    bool isLeap();
 
-    // Sets the internal variables from separate inputs
-    void set(int yy, int mm, int dd, int h, int m, int s) {
-        this->yy = yy;
-        this->mm = mm;
-        this->dd = dd;
-        this->h = h;
-        this->m = m;
-        this->s = s;
-        adjust();
-    }
+    void set(int yy, int mm, int dd, int h, int m, int s);
 
-    // Sets the internal variables from CMTime_F input
-    void set(const CMTime_F& fortranTime) {
-        this->yy = fortranTime.yy;
-        this->mm = fortranTime.mm;
-        this->dd = fortranTime.dd;
-        this->h = fortranTime.h;
-        this->m = fortranTime.m;
-        this->s = fortranTime.s;
-        adjust();
-    }
+    void set(const CMTime_F& fortranTime);
 
-    bool operator==(const CMTime& other) const {
-        if (this->yy == other.yy &&
-            this->mm == other.mm &&
-            this->dd == other.dd &&
-            this->h == other.h &&
-            this->m == other.m &&
-            this->s == other.s) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
+    bool operator==(const CMTime& other) const;
 
-    bool operator!=(const CMTime& other) const {
-        return !(operator==(other));
-    }
+    bool operator!=(const CMTime& other) const;
 
-    // CMTime + CMTimeInterval = CMTime
-    CMTime operator+(const CMTimeInterval& other) const {
-        CMTime newTime;
-        newTime.set(this->yy + other.yy,
-                    this->mm + other.mm,
-                    this->dd + other.dd,
-                    this->h + other.h,
-                    this->m + other.m,
-                    this->s + other.s);
-        return newTime;
-    }
+    CMTime operator+(const CMTimeInterval& other) const;
 
-    // CMTime - CMTime = CMTimeInterval
-    CMTimeInterval operator-(const CMTime& other) const {
-        CMTimeInterval timeInt;
-        timeInt.set(this->yy - other.yy,
-                    this->mm - other.mm,
-                    this->dd - other.dd,
-                    this->h - other.h,
-                    this->m - other.m,
-                    this->s - other.s);
-        return timeInt;
-    }
+    CMTimeInterval operator-(const CMTime& other) const;
 
-    CMTime& operator+=(const CMTimeInterval& other) {
-        this->set(this->yy + other.yy,
-                  this->mm + other.mm,
-                  this->dd + other.dd,
-                  this->h + other.h,
-                  this->m + other.m,
-                  this->s + other.s);
-        return *this;
-    }
+    CMTime& operator+=(const CMTimeInterval& other);
 
-    bool operator<=(const CMTime& other) const {
-        if (this->yy < other.yy) {
-            return true;
-        }
-        else if (this->yy > other.yy) {
-            return false;
-        }
-        // else, years are same; must check next
-        else if (this->mm < other.mm) {
-            return true;
-        }
-        else if (this->mm > other.mm) {
-            return false;
-        }
-        // else, months are same; must check next
-        else if (this->dd < other.dd) {
-            return true;
-        }
-        else if (this->dd > other.dd) {
-            return false;
-        }
-        // else, days are same; must check next
-        else if (this->h < other.h) {
-            return true;
-        }
-        else if (this->h > other.h) {
-            return false;
-        }
-        // else, hours are same; must check next
-        else if (this->m < other.m) {
-            return true;
-        }
-        else if (this->m > other.m) {
-            return false;
-        }
-        // else, minutes are same; must check next
-        else if (this->s <= other.s) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
+    bool operator>(const CMTime& other) const;
 
-    // Turns days, hours, minutes, and seconds into seconds
-    int dhms_to_s() {
-        return (dd*86400 + h*3600 + m*60 + s);
-    }
+    bool operator<(const CMTime& other) const;
+
+    bool operator<=(const CMTime& other) const;
+
+    bool operator>=(const CMTime& other) const;
+
+    int dhms_to_s() const;
 
     // Return time as a string
-    std::string asString() {
-        std::stringstream ss;
-        ss << yy;
-        ss << "-";
-        (mm < 10) ? ss << "0" << mm : ss << mm;
-        ss << "-";
-        (dd < 10) ? ss << "0" << dd : ss << dd;
-        ss << " ";
-        (h < 10) ? ss << "0" << h : ss << h;
-        ss << ":";
-        (m < 10) ? ss << "0" << m : ss << m;
-        ss << ":";
-        (s < 10) ? ss << "0" << s : ss << s;
-        return ss.str();
-    }
+    std::string asString();
 };
 
 #endif

@@ -8,18 +8,28 @@ endif
 include $(ESMFMKFILE)
 
 # Define static library name
-TARGET=libcontrailmanager.a
+TARGET = libcontrailmanager.a
 
 ################################################################################
 ################################################################################
+
+.DEFAULT_GOAL := $(TARGET)
 
 INCLUDE = include/nanoflann/include
 
-SRCS = $(wildcard *.cpp)
-OBJS = $(SRCS:.cpp=.o)
+OBJDIR = obj
+DEPDIR = dep
 
-%.o : %.cpp
-	$(ESMF_CXXCOMPILER) -c $(ESMF_CXXCOMPILEOPTS) $(ESMF_CXXCOMPILEPATHSLOCAL) $(ESMF_CXXCOMPILEPATHS) $(ESMF_CXXCOMPILECPPFLAGS) -I$(INCLUDE) $<
+SRCS = $(wildcard *.cpp)
+OBJS = $(addprefix $(OBJDIR)/, $(SRCS:.cpp=.o))
+DEPS = $(addprefix $(DEPDIR)/, $(SRCS:.cpp=.d))
+
+-include $(DEPS)
+
+$(OBJDIR)/%.o : %.cpp
+	@mkdir -p $(OBJDIR) $(DEPDIR)
+	$(ESMF_CXXCOMPILER) -c $(ESMF_CXXCOMPILEOPTS) -MMD -MP -MF $(DEPDIR)/$*.d -MT $(OBJDIR)/$*.o \
+	$(ESMF_CXXCOMPILEPATHSLOCAL) $(ESMF_CXXCOMPILEPATHS) $(ESMF_CXXCOMPILECPPFLAGS) -I$(INCLUDE) $< -o $@
 
 $(TARGET): $(OBJS)
 	@echo "--- Archiving object files into $(TARGET) ---"
@@ -29,4 +39,4 @@ $(TARGET): $(OBJS)
 .PHONY: clean
 
 clean:
-	rm -f $(TARGET) $(OBJS)
+	rm -rf $(TARGET) $(OBJDIR) $(DEPDIR)
