@@ -15,7 +15,7 @@ TARGET = libcontrailmanager.a
 
 .DEFAULT_GOAL := $(TARGET)
 
-INCLUDE = include/nanoflann/include
+INCLUDE = include
 
 OBJDIR = obj
 DEPDIR = dep

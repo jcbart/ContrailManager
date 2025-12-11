@@ -1,6 +1,7 @@
 #include <ESMC.h>
 #include <iostream>
 #include <string>
+#include <cmath>
 #include "ContrailManager.h"
 #include "timekeeping.h"
 #include "variables.h"
