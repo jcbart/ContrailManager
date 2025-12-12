@@ -43,11 +43,32 @@ void ContrailManager::init_vars(int ids, int ide, int jds, int jde, int kds, int
     XLAT.init("XLAT", ids, ide, jds, jde);
     Z.init("Z", ids, ide, jds, jde, kds, kde);
     Z_AT_W.init("Z_AT_W", ids, ide, jds, jde, kds, kde+1);
+    DRYMASS.init("DRYMASS", ids, ide, jds, jde, kds, kde);
+    T_POT.init("T_POT", ids, ide, jds, jde, kds, kde);
+    P.init("P", ids, ide, jds, jde, kds, kde);
     U.init("U", ids, ide, jds, jde, kds, kde);
     V.init("V", ids, ide, jds, jde, kds, kde);
     W.init("W", ids, ide, jds, jde, kds, kde);
     QV.init("QV", ids, ide, jds, jde, kds, kde);
+    deltaQV.init("deltaQV", ids, ide, jds, jde, kds, kde);
+    //QI.init("QI", ids, ide, jds, jde, kds, kde);
+    deltaQI.init("deltaQI", ids, ide, jds, jde, kds, kde);
+    //NI.init("NI", ids, ide, jds, jde, kds, kde);
+    deltaNI.init("deltaNI", ids, ide, jds, jde, kds, kde);
+    QIcon.init("QIcon", ids, ide, jds, jde, kds, kde);
+    NIcon.init("NIcon", ids, ide, jds, jde, kds, kde);
     varsInitd = true;
+
+    // Take sizes from Z
+    this->ids = Z.get_ids();
+    this->ide = Z.get_ide();
+    this->jds = Z.get_jds();
+    this->jde = Z.get_jde();
+    this->kds = Z.get_kds();
+    this->kde = Z.get_kde();
+    lonSize = Z.get_i_size();
+    latSize = Z.get_j_size();
+    altSize = Z.get_k_size();
 
     msg = "Contrail Manager variables initialised with dimensions:";
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
@@ -89,6 +110,13 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
           + stopTime.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
+    msg = "DRYMASS(100,200,10) = " + std::to_string(*DRYMASS.get(100, 200, 10));
+
+    // Set all delta variables to zero
+    deltaQV.clear_all();
+    deltaQI.clear_all();
+    deltaNI.clear_all();
+
     currTime = startTime;
     while (currTime+timeStep <= stopTime) {
         CMTime timeStepStart = currTime;
@@ -111,6 +139,7 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         // 3. Dump old or dead segments in the same location they were integrated (check if timeStepEnd)
         for (int i = segments.size()-1; i >= 0; i--) {
             if ((timeStepEnd - segments[i].birthTime).dhms_to_s() > maxContrailAge_s) {
+                // or if dead...
                 // Dump, then
                 segments.erase(segments.begin() + i);
             }
@@ -122,6 +151,8 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         // 5. Increment currTime
         currTime = timeStepEnd;
         msg = "Current time: " + currTime.asString();
+        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+        msg = "Number of live contrail segments: " + std::to_string(segments.size());
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     }
 }
@@ -146,17 +177,6 @@ void ContrailManager::setup_on_first_run(CMTime& startTime) {
     currTime = startTime;
     msg = "Contrail Manager current time set to " + currTime.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-
-    // Take sizes from Z
-    ids = Z.get_ids();
-    ide = Z.get_ide();
-    jds = Z.get_jds();
-    jde = Z.get_jde();
-    kds = Z.get_kds();
-    kde = Z.get_kde();
-    lonSize = Z.get_i_size();
-    latSize = Z.get_j_size();
-    altSize = Z.get_k_size();
 }
 
 // Create new segments from flights
@@ -238,6 +258,8 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
                 float f_centre = (i+0.5)/numNewSegments;
                 newSeg.birthTime = legStartTime + f_centre * (legEndTime - legStartTime);
 
+                newSeg.parentID = flight.ID;
+
                 // Add emissions info
 
                 segments.push_back(newSeg);
@@ -280,8 +302,8 @@ void ContrailManager::advect_segments(const CMTime& timeStepStart, const CMTime&
         }
         bool inGridBack, inGridFront;
 
-        inGridBack = advect_loc(seg.back, duration_s);
-        inGridFront = advect_loc(seg.front, duration_s);
+        inGridBack = advect_loc_RK4(seg.back, duration_s);
+        inGridFront = advect_loc_RK4(seg.front, duration_s);
 
         // If either end of segment has drifted out of grid, remove segment 
         if (!(inGridBack && inGridFront)) {
@@ -344,26 +366,26 @@ Geo3D ContrailManager::ijk_to_loc(const IDX3& ijk) {
 // Finds the flight location at the given time with a great circle interpolation between
 // neighbouring waypoints
 // loc is given the location
-// lastWpIDX is given the index of the last waypoint passed (e.g. 0 for 0th waypoint)
+// lastWp is given the index of the last waypoint passed (e.g. 0 for 0th waypoint)
 // Returns false if flight is before first or after last waypoint at time
-bool ContrailManager::find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc, int lastWpIDX) {
+bool ContrailManager::find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc,
+                                      int lastWp) {
     if (time < flight.wpTimes[0] || time > flight.wpTimes[flight.numWps-1]) {
         // Flight is before first waypoint or after last waypoint
         return false;
     }
     // Else, flight is within waypoint route
     // Find last waypoint passed
-    lastWpIDX = 0;
+    lastWp = 0;
     for (int i = 0; i < flight.numWps-1; i++) {
         if (time >= flight.wpTimes[i] && time < flight.wpTimes[i+1]) {
-            lastWpIDX = i;
+            lastWp = i;
             break;
         }
     }
-    // Flight is between lastWpPassed and lastWpPassed+1
-    loc = great_circle_interp(time,
-                              flight.wpTimes[lastWpIDX], flight.wpLocs[lastWpIDX],
-                              flight.wpTimes[lastWpIDX+1], flight.wpLocs[lastWpIDX+1]);
+    // Flight is between lastWp and lastWp+1
+    loc = great_circle_interp(time, flight.wpTimes[lastWp], flight.wpLocs[lastWp],
+                              flight.wpTimes[lastWp+1], flight.wpLocs[lastWp+1]);
     return true;
 }
 
@@ -570,34 +592,149 @@ void ContrailManager::find_interp_weights(const Geo3D& loc, Interp& interp) {
 // Returns false if loc is outside or goes outside the grid
 bool ContrailManager::advect_loc(Geo3D& loc, const float duration_s) {
     bool inGrid;
-    // Find interp points
+
+    float u, v, w;
+
+    inGrid = wind_at_loc(loc, u, v, w);
+    if (!inGrid) {return inGrid;}
+
+    // Advect in longitude
+    loc.lon += u * duration_s / ((EARTH_RADIUS_M + loc.alt) * cos(loc.lat)) * DEG_PER_RAD;
+    // Wrap around the Earth
+    wrap_WE(loc.lon);
+
+    // Advect in latitude
+    loc.lat += v * duration_s / (EARTH_RADIUS_M + loc.alt) * DEG_PER_RAD;
+    // Reflect at poles
+    wrap_SN(loc.lon, loc.lat);
+
+    // Advect in altitude
+    loc.alt += w * duration_s;
+
+    // Check if still in grid
+    Interp interpTemp;
+    inGrid = find_interp(loc, interpTemp);
+    return inGrid;
+}
+
+// Option to advect a location (loc) with Runge-Kutta 4th order for duration in seconds
+// Updates loc
+// Returns false if loc is outside or goes outside the grid
+bool ContrailManager::advect_loc_RK4(Geo3D& loc, const float duration_s) {
+    bool inGrid;
+
+    float u1, v1, w1; // Values of k1
+    float u2, v2, w2; // Values of k2
+    float u3, v3, w3; // Values of k3
+    float u4, v4, w4; // Values of k4
+
+    Geo3D loc1; // Location after k1 step, used in k2 step
+    Geo3D loc2; // Location after k2 step, used in k3 step
+    Geo3D loc3; // Location after k3 step, used in k4 step
+
+    // k1
+
+    inGrid = wind_at_loc(loc, u1, u2, u3);
+    if (!inGrid) {return inGrid;}
+
+    // Advect in longitude
+    loc.lon = loc.lon + u1 * 0.5*duration_s / ((EARTH_RADIUS_M + loc.alt) * cos(loc.lat))
+                          * DEG_PER_RAD;
+    // Wrap around the Earth
+    wrap_WE(loc1.lon);
+
+    // Advect in latitude
+    loc1.lat = loc.lat + v1 * 0.5*duration_s / (EARTH_RADIUS_M + loc.alt) * DEG_PER_RAD;
+    // Reflect at poles
+    wrap_SN(loc1.lon, loc1.lat);
+
+    // Advect in altitude
+    loc1.alt = loc.alt + w1 * 0.5*duration_s;
+
+    // k2
+
+    inGrid = wind_at_loc(loc1, u2, v2, w2);
+    if (!inGrid) {return inGrid;}
+
+    // Advect in longitude
+    loc2.lon = loc.lon + u2 * 0.5*duration_s / ((EARTH_RADIUS_M + loc.alt) * cos(loc.lat))
+                          * DEG_PER_RAD;
+    // Wrap around the Earth
+    wrap_WE(loc2.lon);
+
+    // Advect in latitude
+    loc2.lat = loc.lat + v2 * 0.5*duration_s / (EARTH_RADIUS_M + loc.alt) * DEG_PER_RAD;
+    // Reflect at poles
+    wrap_SN(loc2.lon, loc2.lat);
+
+    // Advect in altitude
+    loc2.alt = loc.alt + w2 * 0.5*duration_s;
+
+    // k3
+
+    inGrid = wind_at_loc(loc2, u3, v3, w3);
+    if (!inGrid) {return inGrid;}
+
+    // Advect in longitude
+    loc3.lon = loc.lon + u3 * duration_s / ((EARTH_RADIUS_M + loc.alt) * cos(loc.lat))
+                          * DEG_PER_RAD;
+    // Wrap around the Earth
+    wrap_WE(loc3.lon);
+
+    // Advect in latitude
+    loc3.lat = loc.lat + v3 * duration_s / (EARTH_RADIUS_M + loc.alt) * DEG_PER_RAD;
+    // Reflect at poles
+    wrap_SN(loc3.lon, loc3.lat);
+
+    // Advect in altitude
+    loc3.alt = loc.alt + w3 * duration_s;
+
+    // k4
+
+    inGrid = wind_at_loc(loc3, u4, v4, w4);
+    if (!inGrid) {return inGrid;}
+
+    // Update loc
+
+    // Advect in longitude
+    loc.lon += (u1 + 2*u2 + 2*u3 + u4) * duration_s/6. 
+               / ((EARTH_RADIUS_M + loc.alt) * cos(loc.lat)) * DEG_PER_RAD;
+    // Wrap around the Earth
+    wrap_WE(loc.lon);
+
+    // Advect in latitude
+    loc.lat += (v1 + 2*v2 + 2*v3 + v4) * duration_s/6. / (EARTH_RADIUS_M + loc.alt) * DEG_PER_RAD;
+    // Reflect at poles
+    wrap_SN(loc.lon, loc.lat);
+
+    // Advect in altitude
+    loc.alt += (w1 + 2*w2 + 2*w3 + w4) * duration_s/6.;
+
+    // Check if still in grid
+    Interp interpTemp;
+    inGrid = find_interp(loc, interpTemp);
+    return inGrid;
+}
+
+// Finds the wind speed at location by interpolating between neighbouring grid cells
+// Updates u, v, and w
+// Returns false if location is not in grid
+bool ContrailManager::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) {
+    bool inGrid;
     Interp interp;
     inGrid = find_interp(loc, interp);
     if (!inGrid) {return inGrid;}
 
     int numInterpPoints = interp.points.size();
     // Values at loc
-    float u_loc, v_loc, w_loc = 0;
+    u = 0;
+    v = 0;
+    w = 0;
     // Find values at loc
     for (int i = 0; i < numInterpPoints; i++) {
-        u_loc += *U.get(interp.points[i]) * interp.weights[i];
-        v_loc += *V.get(interp.points[i]) * interp.weights[i];
-        w_loc += *W.get(interp.points[i]) * interp.weights[i];
+        u += *U.get(interp.points[i]) * interp.weights[i];
+        v += *V.get(interp.points[i]) * interp.weights[i];
+        w += *W.get(interp.points[i]) * interp.weights[i];
     }
-    // Advect in longitude
-    loc.lon += u_loc * duration_s / ((EARTH_RADIUS_M + loc.alt) * cos(loc.lat)) * DEG_PER_RAD;
-    // Wrap around the Earth
-    wrap_WE(loc.lon);
-
-    // Advect in latitude
-    loc.lat += v_loc * duration_s / (EARTH_RADIUS_M + loc.alt) * DEG_PER_RAD;
-    // Reflect at poles
-    wrap_SN(loc.lon, loc.lat);
-
-    // Advect in altitude
-    loc.alt += w_loc * duration_s;
-
-    // Check if still in grid
-    inGrid = find_interp(loc, interp);
     return inGrid;
 }

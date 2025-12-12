@@ -34,6 +34,8 @@ public:
 
     float* get(const int i, const int j);
     float* get(const IDX2& ij);
+
+    void clear_all();
 };
 
 class Variable3D {
@@ -68,6 +70,8 @@ public:
 
     float* get(const int i, const int j, const int k);
     float* get(const IDX3& ijk);
+
+    void clear_all();
 };
 
 #endif

@@ -51,7 +51,7 @@ private:
 
     Geo3D ijk_to_loc(const IDX3& ijk);
 
-    bool find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc, int lastWpIDX);
+    bool find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc, int lastWp);
 
     void find_dependent_locs(Segment& seg);
 
@@ -71,6 +71,9 @@ private:
     void find_interp_weights(const Geo3D& loc, Interp& interp);
 
     bool advect_loc(Geo3D& loc, const float duration_s);
+    bool advect_loc_RK4(Geo3D& loc, const float duration_s);
+
+    bool wind_at_loc(const Geo3D& loc, float& u, float& v, float& w);
 
 public:
     // Meteorological variables (accessible externally)
@@ -78,19 +81,20 @@ public:
     Variable2D XLAT; // Latitude (degrees, South is negative)
     Variable3D Z; // Height above sea level at cell centre (m)
     Variable3D Z_AT_W; // Height above sea level at cell interfaces (staggered in z-direction; m)
-    Variable3D T; // Temperature (K)
-    Variable3D P; // Pressure (Pa)
+    Variable3D DRYMASS; // Dry mass in grid cell (kg)
+    Variable3D T_POT; // Potential temperature (K)
+    Variable3D P; // Total air pressure (Pa)
     Variable3D U; // Wind speed in lon direction (m s-1)
     Variable3D V; // Wind speed in lat direction (m s-1)
     Variable3D W; // Wind speed in vertical direction (m s-1)
     Variable3D QV; // Water vapour mass mixing ratio (kg kg-1)
     Variable3D deltaQV; // Change in water vapour mass mixing ratio (kg kg-1)
-    Variable3D QI; // Ice mass mixing ratio excl. live contrails (kg kg-1)
+    //Variable3D QI; // Ice mass mixing ratio excl. live contrails (kg kg-1)
     Variable3D deltaQI; // Change in ice mass mixing ratio excl. live contrails (kg kg-1)
-    Variable3D NI; // Ice number mixing ratio excl. live contrails (kg kg-1)
-    Variable3D deltaNI; // Change in ice number mixing ratio excl. live contrails (kg kg-1)
+    //Variable3D NI; // Ice number mixing ratio excl. live contrails (# kg-1)
+    Variable3D deltaNI; // Change in ice number mixing ratio excl. live contrails (# kg-1)
     Variable3D QIcon; // Contrail ice mass mixing ratio (kg kg-1)
-    Variable3D NIcon; // Contrail ice number mixing ratio (kg kg-1)
+    Variable3D NIcon; // Contrail ice number mixing ratio (# kg-1)
 
     // Projection
     Projection proj;

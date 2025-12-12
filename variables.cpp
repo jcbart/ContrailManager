@@ -40,9 +40,7 @@ void Variable2D::init(std::string name, int ids, int ide, int jds, int jde) {
     num_elements = i_size*j_size;
     // Allocate a 1D block of memory
     data = new float[num_elements];
-    for (int i = 0; i < num_elements; i++) {
-        data[i] = 0;
-    }
+    clear_all();
     isInitialised = true;
 }
 
@@ -67,6 +65,15 @@ float* Variable2D::get(const int i, const int j) {
 // Returns a reference to the value, so can be used to set and get
 float* Variable2D::get(const IDX2& ij) {
     return get(ij.i, ij.j);
+}
+
+// Set all values to zero; only works if initialised
+void Variable2D::clear_all() {
+    if (isInitialised) {
+        for (size_t i = 0; i < num_elements; i++) {
+            data[i] = 0;
+        }
+    }
 }
 
 // ---------- Variable3D ----------
@@ -112,9 +119,7 @@ void Variable3D::init(std::string name, int ids, int ide, int jds, int jde, int 
     num_elements = i_size*j_size*k_size;
     // Allocate a 1D block of memory
     data = new float[num_elements];
-    for (int i = 0; i < num_elements; i++) {
-        data[i] = 0;
-    }
+    clear_all();
     isInitialised = true;
 }
 
@@ -140,4 +145,13 @@ float* Variable3D::get(const int i, const int j, const int k) {
 // Returns a reference to the value, so can be used to set and get
 float* Variable3D::get(const IDX3& ijk) {
     return get(ijk.i, ijk.j, ijk.k);
+}
+
+// Set all values to zero; only works if initialised
+void Variable3D::clear_all() {
+    if (isInitialised) {
+        for (size_t i = 0; i < num_elements; i++) {
+            data[i] = 0;
+        }
+    }
 }

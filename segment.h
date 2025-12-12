@@ -17,13 +17,13 @@ struct Interp {
 
 // Contrail segment structure
 struct Segment {
+    int parentID = -1; // ID of the flight object which created the segment
+    CMTime birthTime;
     Geo3D back; // Location of back (/rear/start) of segment
     Geo3D front; // Location of front (/end) of segment
     Geo3D centre; // Location of centre of segment; derived from back and front
 
     float length;
-    CMTime birthTime;
-
 
     // Some kind of data
 };
