@@ -51,7 +51,7 @@ private:
 
     Geo3D ijk_to_loc(const IDX3& ijk);
 
-    bool find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc, int lastWp);
+    bool find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc, int& lastWp);
 
     void find_dependent_locs(Segment& seg);
 
@@ -87,14 +87,14 @@ public:
     Variable3D U; // Wind speed in lon direction (m s-1)
     Variable3D V; // Wind speed in lat direction (m s-1)
     Variable3D W; // Wind speed in vertical direction (m s-1)
-    Variable3D QV; // Water vapour mass mixing ratio (kg kg-1)
-    Variable3D deltaQV; // Change in water vapour mass mixing ratio (kg kg-1)
-    //Variable3D QI; // Ice mass mixing ratio excl. live contrails (kg kg-1)
-    Variable3D deltaQI; // Change in ice mass mixing ratio excl. live contrails (kg kg-1)
-    //Variable3D NI; // Ice number mixing ratio excl. live contrails (# kg-1)
-    Variable3D deltaNI; // Change in ice number mixing ratio excl. live contrails (# kg-1)
-    Variable3D QIcon; // Contrail ice mass mixing ratio (kg kg-1)
-    Variable3D NIcon; // Contrail ice number mixing ratio (# kg-1)
+    Variable3D QV; // Water vapour mass mixing ratio (kg (kg dry air-1))
+    Variable3D deltaQV; // Change in water vapour mass mixing ratio (kg (kg dry air-1))
+    //Variable3D QI; // Ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
+    Variable3D deltaQI; // Change in ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
+    //Variable3D NI; // Ice number mixing ratio excl. live contrails (# (kg dry air-1))
+    Variable3D deltaNI; // Change in ice number mixing ratio excl. live contrails (# (kg dry air-1))
+    Variable3D QIcon; // Contrail ice mass mixing ratio (kg (kg dry air-1))
+    Variable3D NIcon; // Contrail ice number mixing ratio (# (kg dry air-1))
 
     // Projection
     Projection proj;

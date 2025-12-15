@@ -90,8 +90,7 @@ Cart3D Geo3D_to_Cart3D(const Geo3D& pointIn) {
 // Converts a Cartesian point to a geodetic point
 Geo3D Cart3D_to_Geo3D(const Cart3D& pointIn) {
     Geo3D pointOut;
-    float rho = sqrt(std::pow(pointIn.x, 2) + std::pow(pointIn.y, 2)
-                     + std::pow(pointIn.z, 2));
+    float rho = vector_mag(pointIn);
     float theta = acos(pointIn.z/rho);
     float phi = atan2(pointIn.y, pointIn.x);
     pointOut.lat = 90. - theta/RAD_PER_DEG;

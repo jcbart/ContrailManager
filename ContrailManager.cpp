@@ -190,7 +190,7 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
         // Find start and end locations of flight in time step
         Geo3D flStartLoc, flEndLoc;
-        bool lastWpStart, lastWpEnd;
+        int lastWpStart, lastWpEnd;
         bool startFound = find_flight_loc(flight, timeStepStart, flStartLoc, lastWpStart);
         if (!startFound) continue;
         bool endFound = find_flight_loc(flight, timeStepEnd, flEndLoc, lastWpEnd);
@@ -369,7 +369,7 @@ Geo3D ContrailManager::ijk_to_loc(const IDX3& ijk) {
 // lastWp is given the index of the last waypoint passed (e.g. 0 for 0th waypoint)
 // Returns false if flight is before first or after last waypoint at time
 bool ContrailManager::find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc,
-                                      int lastWp) {
+                                      int& lastWp) {
     if (time < flight.wpTimes[0] || time > flight.wpTimes[flight.numWps-1]) {
         // Flight is before first waypoint or after last waypoint
         return false;
