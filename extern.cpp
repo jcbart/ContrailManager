@@ -112,12 +112,7 @@ extern "C" float* get_deltaNI_element_extern(ContrailManager* CMptr, int i, int 
     return CMptr->deltaNI.get(i, j, k);
 }
 
-// Returns a reference to the QIcon value, so can be used to set and get
-extern "C" float* get_QIcon_element_extern(ContrailManager* CMptr, int i, int j, int k) {
-    return CMptr->QIcon.get(i, j, k);
-}
-
-// Returns a reference to the NIcon value, so can be used to set and get
-extern "C" float* get_NIcon_element_extern(ContrailManager* CMptr, int i, int j, int k) {
-    return CMptr->NIcon.get(i, j, k);
+// Returns a reference to the QIcontrail value, so can be used to set and get
+extern "C" float* get_QIcontrail_element_extern(ContrailManager* CMptr, int i, int j, int k) {
+    return CMptr->QIcontrail.get(i, j, k);
 }

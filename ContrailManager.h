@@ -93,8 +93,7 @@ public:
     Variable3D deltaQI; // Change in ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
     //Variable3D NI; // Ice number mixing ratio excl. live contrails (# (kg dry air-1))
     Variable3D deltaNI; // Change in ice number mixing ratio excl. live contrails (# (kg dry air-1))
-    Variable3D QIcon; // Contrail ice mass mixing ratio (kg (kg dry air-1))
-    Variable3D NIcon; // Contrail ice number mixing ratio (# (kg dry air-1))
+    Variable3D QIcontrail; // Contrail ice mass mixing ratio (kg (kg dry air-1))
 
     // Projection
     Projection proj;

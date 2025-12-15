@@ -55,8 +55,7 @@ void ContrailManager::init_vars(int ids, int ide, int jds, int jde, int kds, int
     deltaQI.init("deltaQI", ids, ide, jds, jde, kds, kde);
     //NI.init("NI", ids, ide, jds, jde, kds, kde);
     deltaNI.init("deltaNI", ids, ide, jds, jde, kds, kde);
-    QIcon.init("QIcon", ids, ide, jds, jde, kds, kde);
-    NIcon.init("NIcon", ids, ide, jds, jde, kds, kde);
+    QIcontrail.init("QIcontrail", ids, ide, jds, jde, kds, kde);
     varsInitd = true;
 
     // Take sizes from Z
