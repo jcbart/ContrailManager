@@ -21,6 +21,6 @@ float r_to_e(float r, float P) {
 // Returns the Schumann (1996) estimate of temperature (K) at which the liquid saturation curve is
 // tangent to the plume mixing line (Pa K-1)
 float SAC_T_LM(float G) {
-    float logval = log(G-0.053);
+    float logval = std::log(G-0.053);
     return -ABS_ZERO - 46.46 + 9.43*logval + 0.720*logval*logval;
 }

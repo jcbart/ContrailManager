@@ -404,7 +404,7 @@ Geo3D ContrailManager::great_circle_interp(const float f,
     Cart3D loc1_Cart = Geo2D_to_Cart3D(loc1);
     Cart3D loc2_Cart = Geo2D_to_Cart3D(loc2);
     // Dot product is clamped in range [-1, 1] to prevent precision errors
-    float delta = acos(std::max(-1.F, std::min(1.F, dot_prod(loc1_Cart, loc2_Cart))));
+    float delta = std::acos(std::max(-1.F, std::min(1.F, dot_prod(loc1_Cart, loc2_Cart))));
     Cart3D slerpResult;
     // If delta is tiny, resort to LERP
     if (delta < 1e-9) {
@@ -413,8 +413,8 @@ Geo3D ContrailManager::great_circle_interp(const float f,
         slerpResult.z = (1-f)*loc1_Cart.z + f*loc2_Cart.z;
     }
     else {
-        float slerp1 = sin((1-f) * delta) / sin(delta);
-        float slerp2 = sin(f * delta) / sin(delta);
+        float slerp1 = std::sin((1-f) * delta) / std::sin(delta);
+        float slerp2 = std::sin(f * delta) / std::sin(delta);
         slerpResult.x = slerp1*loc1_Cart.x + slerp2*loc2_Cart.x;
         slerpResult.y = slerp1*loc1_Cart.y + slerp2*loc2_Cart.y;
         slerpResult.z = slerp1*loc1_Cart.z + slerp2*loc2_Cart.z;
@@ -599,7 +599,7 @@ bool ContrailManager::advect_loc(Geo3D& loc, const float duration_s) {
     if (!inGrid) {return inGrid;}
 
     // Advect in longitude
-    loc.lon += u * duration_s / ((EARTH_RADIUS_M + loc.alt) * cos(loc.lat)) * DEG_PER_RAD;
+    loc.lon += u * duration_s / ((EARTH_RADIUS_M + loc.alt) * std::cos(loc.lat)) * DEG_PER_RAD;
     // Wrap around the Earth
     wrap_WE(loc.lon);
 
@@ -638,7 +638,7 @@ bool ContrailManager::advect_loc_RK4(Geo3D& loc, const float duration_s) {
     if (!inGrid) {return inGrid;}
 
     // Advect in longitude
-    loc.lon = loc.lon + u1 * 0.5*duration_s / ((EARTH_RADIUS_M + loc.alt) * cos(loc.lat))
+    loc.lon = loc.lon + u1 * 0.5*duration_s / ((EARTH_RADIUS_M + loc.alt) * std::cos(loc.lat))
                           * DEG_PER_RAD;
     // Wrap around the Earth
     wrap_WE(loc1.lon);
@@ -657,7 +657,7 @@ bool ContrailManager::advect_loc_RK4(Geo3D& loc, const float duration_s) {
     if (!inGrid) {return inGrid;}
 
     // Advect in longitude
-    loc2.lon = loc.lon + u2 * 0.5*duration_s / ((EARTH_RADIUS_M + loc.alt) * cos(loc.lat))
+    loc2.lon = loc.lon + u2 * 0.5*duration_s / ((EARTH_RADIUS_M + loc.alt) * std::cos(loc.lat))
                           * DEG_PER_RAD;
     // Wrap around the Earth
     wrap_WE(loc2.lon);
@@ -676,7 +676,7 @@ bool ContrailManager::advect_loc_RK4(Geo3D& loc, const float duration_s) {
     if (!inGrid) {return inGrid;}
 
     // Advect in longitude
-    loc3.lon = loc.lon + u3 * duration_s / ((EARTH_RADIUS_M + loc.alt) * cos(loc.lat))
+    loc3.lon = loc.lon + u3 * duration_s / ((EARTH_RADIUS_M + loc.alt) * std::cos(loc.lat))
                           * DEG_PER_RAD;
     // Wrap around the Earth
     wrap_WE(loc3.lon);
@@ -698,7 +698,7 @@ bool ContrailManager::advect_loc_RK4(Geo3D& loc, const float duration_s) {
 
     // Advect in longitude
     loc.lon += (u1 + 2*u2 + 2*u3 + u4) * duration_s/6. 
-               / ((EARTH_RADIUS_M + loc.alt) * cos(loc.lat)) * DEG_PER_RAD;
+               / ((EARTH_RADIUS_M + loc.alt) * std::cos(loc.lat)) * DEG_PER_RAD;
     // Wrap around the Earth
     wrap_WE(loc.lon);
 

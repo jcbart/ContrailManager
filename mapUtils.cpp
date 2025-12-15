@@ -54,9 +54,9 @@ Cart3D Geo2D_to_Cart3D(const Geo2D& pointIn) {
     Cart3D pointOut;
     float theta = RAD_PER_DEG * (90. - pointIn.lat);
     float phi = RAD_PER_DEG * pointIn.lon;
-    pointOut.x = sin(theta) * cos(phi);
-    pointOut.y = sin(theta) * sin(phi);
-    pointOut.z = cos(theta);
+    pointOut.x = std::sin(theta) * std::cos(phi);
+    pointOut.y = std::sin(theta) * std::sin(phi);
+    pointOut.z = std::cos(theta);
     // Rescale to reduce precision errors
     float rho = vector_mag(pointOut);
     pointOut.x /= rho;
@@ -68,8 +68,8 @@ Cart3D Geo2D_to_Cart3D(const Geo2D& pointIn) {
 // Converts a Cartesian point on a unit circle to a geographic point
 Geo2D Cart3D_to_Geo2D(const Cart3D& pointIn) {
     Geo2D pointOut;
-    float theta = acos(pointIn.z);
-    float phi = atan2(pointIn.y, pointIn.x);
+    float theta = std::acos(pointIn.z);
+    float phi = std::atan2(pointIn.y, pointIn.x);
     pointOut.lat = 90. - theta/RAD_PER_DEG;
     pointOut.lon = phi/RAD_PER_DEG;
     return pointOut;
@@ -81,9 +81,9 @@ Cart3D Geo3D_to_Cart3D(const Geo3D& pointIn) {
     float theta = RAD_PER_DEG * (90. - pointIn.lat);
     float phi = RAD_PER_DEG * pointIn.lon;
     float rho = EARTH_RADIUS_M + pointIn.alt;
-    pointOut.x = rho * sin(theta) * cos(phi);
-    pointOut.y = rho * sin(theta) * sin(phi);
-    pointOut.z = rho * cos(theta);
+    pointOut.x = rho * std::sin(theta) * std::cos(phi);
+    pointOut.y = rho * std::sin(theta) * std::sin(phi);
+    pointOut.z = rho * std::cos(theta);
     return pointOut;
 }
 
@@ -91,8 +91,8 @@ Cart3D Geo3D_to_Cart3D(const Geo3D& pointIn) {
 Geo3D Cart3D_to_Geo3D(const Cart3D& pointIn) {
     Geo3D pointOut;
     float rho = vector_mag(pointIn);
-    float theta = acos(pointIn.z/rho);
-    float phi = atan2(pointIn.y, pointIn.x);
+    float theta = std::acos(pointIn.z/rho);
+    float phi = std::atan2(pointIn.y, pointIn.x);
     pointOut.lat = 90. - theta/RAD_PER_DEG;
     pointOut.lon = phi/RAD_PER_DEG;
     pointOut.alt = rho - EARTH_RADIUS_M;
@@ -101,7 +101,7 @@ Geo3D Cart3D_to_Geo3D(const Cart3D& pointIn) {
 
 // Finds the length of a vector (or distance of a point from the origin)
 float vector_mag(const Cart3D& vec) {
-    return sqrt(vec.x*vec.x + vec.y*vec.y + vec.z*vec.z);
+    return std::sqrt(vec.x*vec.x + vec.y*vec.y + vec.z*vec.z);
 }
 
 // Calculates distance between two Cartesian points
@@ -119,11 +119,11 @@ float cart_dist(const Geo3D& pointA, const Geo3D& pointB) {
 float great_circle_dist(const Geo3D& pointA, const Geo3D& pointB) {
     float alt_avg = 0.5 * (pointA.alt + pointB.alt);
     return (EARTH_RADIUS_M + alt_avg)
-           * acos(cos(pointA.lat*RAD_PER_DEG)
-                  * cos(pointB.lat*RAD_PER_DEG)
-                  * cos((pointA.lon - pointB.lon)*RAD_PER_DEG)
-                  + sin(pointA.lat*RAD_PER_DEG)
-                  * sin(pointB.lat*RAD_PER_DEG));
+           * std::acos(std::cos(pointA.lat*RAD_PER_DEG)
+                       * std::cos(pointB.lat*RAD_PER_DEG)
+                       * std::cos((pointA.lon - pointB.lon)*RAD_PER_DEG)
+                       + std::sin(pointA.lat*RAD_PER_DEG)
+                       * std::sin(pointB.lat*RAD_PER_DEG));
 }
 
 // Wraps longitude to be in range (-180, 180]

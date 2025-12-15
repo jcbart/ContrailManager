@@ -15,7 +15,7 @@ void Projection::init(int proj_code, float lat1, float lon1, float knowni, float
                   << std::endl;
         exit(EXIT_FAILURE);
     }
-    if (abs(lat1) > 90) {
+    if (std::abs(lat1) > 90) {
         std::cerr << "CM Projection error: lat1 = " << lat1 << " not in range (-90,90]."
                   << std::endl;
         exit(EXIT_FAILURE);
@@ -38,7 +38,7 @@ void Projection::init(int proj_code, float lat1, float lon1, float knowni, float
         hemi = 1;
     }
     rebydx = EARTH_RADIUS_M / dx;
-    if (abs(this->truelat2) > 90) {
+    if (std::abs(this->truelat2) > 90) {
         msg = "CM Projection: truelat2 > 90; assuming a tangent.";
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
         this->truelat2 = this->truelat1;
@@ -54,26 +54,27 @@ void Projection::set_lc() {
     float deltalon1 = lon1 - stdlon;
     wrap_WE(deltalon1);
 
-    ctl1r = cos(truelat1 * RAD_PER_DEG);
+    ctl1r = std::cos(truelat1 * RAD_PER_DEG);
 
     rsw = rebydx * ctl1r/cone
-          * std::pow((tan((90.*hemi - lat1)*RAD_PER_DEG/2.) /
-                      tan((90.*hemi - truelat1)*RAD_PER_DEG/2.)), cone);
+          * std::pow((std::tan((90.*hemi - lat1)*RAD_PER_DEG/2.) /
+                      std::tan((90.*hemi - truelat1)*RAD_PER_DEG/2.)), cone);
 
     float arg = cone * deltalon1 * RAD_PER_DEG;
-    polei = 1. - hemi * rsw * sin(arg);
-    polej = 1. + rsw * cos(arg);
+    polei = 1. - hemi * rsw * std::sin(arg);
+    polej = 1. + rsw * std::cos(arg);
 }
 
 float Projection::lc_cone(float truelat1, float truelat2) {
     float cone;
-    if (abs(truelat1-truelat2) > 0.01) {
-        cone = std::log10(cos(truelat1*RAD_PER_DEG)) - std::log10(cos(truelat2*RAD_PER_DEG));
-        cone /= (std::log10(tan((45. - abs(truelat1)/2.)*RAD_PER_DEG))
-                 - std::log10(tan((45. - abs(truelat2)/2.)*RAD_PER_DEG)));
+    if (std::abs(truelat1-truelat2) > 0.01) {
+        cone = std::log10(std::cos(truelat1*RAD_PER_DEG))
+               - std::log10(std::cos(truelat2*RAD_PER_DEG));
+        cone /= (std::log10(std::tan((45. - std::abs(truelat1)/2.)*RAD_PER_DEG))
+                 - std::log10(std::tan((45. - std::abs(truelat2)/2.)*RAD_PER_DEG)));
     }
     else {
-        cone = sin(abs(truelat1*RAD_PER_DEG));
+        cone = std::sin(std::abs(truelat1*RAD_PER_DEG));
     }
     return cone;
 }
@@ -84,7 +85,8 @@ IDX2 Projection::loc_to_ij(const Geo2D& loc) {
     if (code == PROJ_LC) {
         return loc_to_ij_lc(loc);
     }
-    std::cerr << "CM Projection error: code not recognised in Projection::loc_to_ij. Stopping." << std::endl;
+    std::cerr << "CM Projection error: code not recognised in Projection::loc_to_ij. Stopping."
+              << std::endl;
     exit(EXIT_FAILURE);
     return IDX2{0,0};
 }
@@ -96,11 +98,11 @@ IDX2 Projection::loc_to_ij_lc(const Geo2D& loc) {
     wrap_WE(deltalon);
 
     float rm = rebydx * ctl1r/cone
-               * std::pow((tan((90.*hemi - loc.lat)*RAD_PER_DEG/2.) /
-                           tan((90.*hemi - truelat1)*RAD_PER_DEG/2.)), cone);
+               * std::pow((std::tan((90.*hemi - loc.lat)*RAD_PER_DEG/2.) /
+                           std::tan((90.*hemi - truelat1)*RAD_PER_DEG/2.)), cone);
 
     float arg = cone * deltalon * RAD_PER_DEG;
-    ij.i = hemi * (polei + hemi * rm * sin(arg));
-    ij.j = hemi * (polej - rm * cos(arg));
+    ij.i = hemi * (polei + hemi * rm * std::sin(arg));
+    ij.j = hemi * (polej - rm * std::cos(arg));
     return ij;
 }
