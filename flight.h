@@ -2,12 +2,13 @@
 #define FLIGHT
 
 #include <vector>
+#include <string>
 #include "timekeeping.h"
 #include "mapUtils.h"
 
 // Flight structure
 struct Flight {
-    int ID = -1;
+    std::string ID = "none";
     std::vector<Geo3D> wpLocs; // Waypoints locations
     std::vector<CMTime> wpTimes; // Time at each waypoint
     int numWps = 0;

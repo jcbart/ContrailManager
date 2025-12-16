@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
-#include "variables.h"
+#include <ESMC.h>
+#include "domain.h"
 #include "mapUtils.h"
 
 // ---------- Variable2D ----------
@@ -154,4 +155,57 @@ void Variable3D::clear_all() {
             data[i] = 0;
         }
     }
+}
+
+// ---------- Domain ----------
+
+void Domain::init_vars(int ids, int ide, int jds, int jde, int kds, int kde) {
+    int rc;
+    std::string msg;
+
+    if (varsInitd) {
+        std::cerr << "Contrail Manager domain error: init_vars() called when variables already "
+                  << "initialised. Stopping." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    XLONG.init("XLONG", ids, ide, jds, jde);
+    XLAT.init("XLAT", ids, ide, jds, jde);
+    Z.init("Z", ids, ide, jds, jde, kds, kde);
+    Z_AT_W.init("Z_AT_W", ids, ide, jds, jde, kds, kde+1);
+    DRYMASS.init("DRYMASS", ids, ide, jds, jde, kds, kde);
+    T_POT.init("T_POT", ids, ide, jds, jde, kds, kde);
+    P.init("P", ids, ide, jds, jde, kds, kde);
+    U.init("U", ids, ide, jds, jde, kds, kde);
+    V.init("V", ids, ide, jds, jde, kds, kde);
+    W.init("W", ids, ide, jds, jde, kds, kde);
+    QV.init("QV", ids, ide, jds, jde, kds, kde);
+    deltaQV.init("deltaQV", ids, ide, jds, jde, kds, kde);
+    //QI.init("QI", ids, ide, jds, jde, kds, kde);
+    deltaQI.init("deltaQI", ids, ide, jds, jde, kds, kde);
+    //NI.init("NI", ids, ide, jds, jde, kds, kde);
+    deltaNI.init("deltaNI", ids, ide, jds, jde, kds, kde);
+    QIcontrail.init("QIcontrail", ids, ide, jds, jde, kds, kde);
+    
+    varsInitd = true;
+
+    // Take sizes from Z
+    this->ids = Z.get_ids();
+    this->ide = Z.get_ide();
+    this->jds = Z.get_jds();
+    this->jde = Z.get_jde();
+    this->kds = Z.get_kds();
+    this->kde = Z.get_kde();
+    lonSize = Z.get_i_size();
+    latSize = Z.get_j_size();
+    altSize = Z.get_k_size();
+
+    msg = "Contrail Manager variables initialised with dimensions:";
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    msg = "ids = " + std::to_string(ids) + ", jds = " + std::to_string(jds) + ", kds = " + std::to_string(kds);
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    msg = "ide = " + std::to_string(ide) + ", jde = " + std::to_string(jde) + ", kde = " + std::to_string(kde);
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    msg = "Note: Contrail Manager does not use a staggered grid except for Z_AT_W where kde += 1.";
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 }

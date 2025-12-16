@@ -2,6 +2,7 @@
 #define SEGMENT
 
 #include <vector>
+#include <string>
 #include "mapUtils.h"
 
 // Structure for holding points for interpolation plus their weights
@@ -12,7 +13,7 @@ struct Interp {
 
 // Contrail segment structure
 struct Segment {
-    int parentID = -1; // ID of the flight object which created the segment
+    std::string parentID = "none"; // ID of the flight object which created the segment
     CMTime birthTime;
     Geo3D back; // Location of back (/rear/start) of segment
     Geo3D front; // Location of front (/end) of segment

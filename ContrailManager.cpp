@@ -4,11 +4,12 @@
 #include <cmath>
 #include "ContrailManager.h"
 #include "timekeeping.h"
-#include "variables.h"
+#include "domain.h"
 #include "segment.h"
 #include "flight.h"
 #include "projection.h"
 #include "mapUtils.h"
+#include "plumeModels.h"
 
 void ContrailManager::init() {
     int rc;
@@ -19,9 +20,24 @@ void ContrailManager::init() {
     msg = "Contrail Manager internal time step set to " + timeStep.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     // Read maxInitialSegLen and maxContrailAge_s from CM config
+
+    // Determine plume model
+    plumeModel = 1;
+    std::string plumeModel_str;
+    switch (plumeModel) {
+        case MODEL_ID_BASIC_PLUME:
+            plumeModel_str = MODEL_STR_BASIC_PLUME;
+            break;
+        default:
+            std::cerr << "Plume model " << plumeModel << " not recognised. Stopping.";
+            exit(EXIT_FAILURE);
+    }
+    msg = "Plume model: " + plumeModel_str;
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+
     // Read flight data etc
     Flight test_flight;
-    test_flight.ID = 1;
+    test_flight.ID = "1";
     CMTime time1 = {2025, 4, 1, 0, 0, 10};
     CMTime time2 = {2025, 4, 1, 0, 2, 0};
     test_flight.wpTimes.push_back(time1);
@@ -33,50 +49,6 @@ void ContrailManager::init() {
     test_flight.numWps = 2;
     flights.push_back(test_flight);
     rc = ESMC_LogWrite("Contrail Manager initialised", ESMC_LOGMSG_INFO);
-}
-
-void ContrailManager::init_vars(int ids, int ide, int jds, int jde, int kds, int kde) {
-    int rc;
-    std::string msg;
-
-    XLONG.init("XLONG", ids, ide, jds, jde);
-    XLAT.init("XLAT", ids, ide, jds, jde);
-    Z.init("Z", ids, ide, jds, jde, kds, kde);
-    Z_AT_W.init("Z_AT_W", ids, ide, jds, jde, kds, kde+1);
-    DRYMASS.init("DRYMASS", ids, ide, jds, jde, kds, kde);
-    T_POT.init("T_POT", ids, ide, jds, jde, kds, kde);
-    P.init("P", ids, ide, jds, jde, kds, kde);
-    U.init("U", ids, ide, jds, jde, kds, kde);
-    V.init("V", ids, ide, jds, jde, kds, kde);
-    W.init("W", ids, ide, jds, jde, kds, kde);
-    QV.init("QV", ids, ide, jds, jde, kds, kde);
-    deltaQV.init("deltaQV", ids, ide, jds, jde, kds, kde);
-    //QI.init("QI", ids, ide, jds, jde, kds, kde);
-    deltaQI.init("deltaQI", ids, ide, jds, jde, kds, kde);
-    //NI.init("NI", ids, ide, jds, jde, kds, kde);
-    deltaNI.init("deltaNI", ids, ide, jds, jde, kds, kde);
-    QIcontrail.init("QIcontrail", ids, ide, jds, jde, kds, kde);
-    varsInitd = true;
-
-    // Take sizes from Z
-    this->ids = Z.get_ids();
-    this->ide = Z.get_ide();
-    this->jds = Z.get_jds();
-    this->jde = Z.get_jde();
-    this->kds = Z.get_kds();
-    this->kde = Z.get_kde();
-    lonSize = Z.get_i_size();
-    latSize = Z.get_j_size();
-    altSize = Z.get_k_size();
-
-    msg = "Contrail Manager variables initialised with dimensions:";
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-    msg = "ids = " + std::to_string(ids) + ", jds = " + std::to_string(jds) + ", kds = " + std::to_string(kds);
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-    msg = "ide = " + std::to_string(ide) + ", jde = " + std::to_string(jde) + ", kde = " + std::to_string(kde);
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-    msg = "Note: Contrail Manager does not use a staggered grid except for Z_AT_W where kde += 1.";
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 }
 
 // Integrate between times
@@ -109,12 +81,12 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
           + stopTime.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
-    msg = "DRYMASS(100,200,10) = " + std::to_string(*DRYMASS.get(100, 200, 10));
+    msg = "DRYMASS(100,200,10) = " + std::to_string(*domain.DRYMASS.get(100, 200, 10));
 
     // Set all delta variables to zero
-    deltaQV.clear_all();
-    deltaQI.clear_all();
-    deltaNI.clear_all();
+    domain.deltaQV.clear_all();
+    domain.deltaQI.clear_all();
+    domain.deltaNI.clear_all();
 
     currTime = startTime;
     while (currTime+timeStep <= stopTime) {
@@ -162,7 +134,7 @@ void ContrailManager::setup_on_first_run(CMTime& startTime) {
     int rc;
     std::string msg;
 
-    if (!varsInitd) {
+    if (!domain.get_varsInitd()) {
         std::cerr << "ContrailManager run called before vars have been initialised. Stopping."
                   << std::endl;
         exit(EXIT_FAILURE);
@@ -185,7 +157,7 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
 
     int num_created = 0;
     for (const Flight& flight : flights) {
-        msg = "Creating segments for flight: " + std::to_string(flight.ID);
+        msg = "Creating segments for flight: " + flight.ID;
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
         // Find start and end locations of flight in time step
         Geo3D flStartLoc, flEndLoc;
@@ -278,12 +250,15 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
 
 // Integrate each segment plume using plume model
 void ContrailManager::integrate_plumes(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
-    for (Segment& seg : segments) {
-        // Integrate
-        // If birthTime > timeStepStart, integrate from birthTime to timeStepEnd
-        // Aggregate
-        // Mark dead segments
-        continue;
+    // Integrate
+    // If birthTime > timeStepStart, integrate from birthTime to timeStepEnd
+    // Aggregate
+    // Mark dead segments
+    if (plumeModel == MODEL_ID_BASIC_PLUME) {
+        for (Segment& seg : segments) {
+            //integ_basic_plume(seg);
+            continue;
+        }
     }
 }
 
@@ -309,8 +284,9 @@ void ContrailManager::advect_segments(const CMTime& timeStepStart, const CMTime&
             segments.erase(segments.begin() + i);
             continue;
         }
-        seg.length = great_circle_dist(seg.back, seg.front);
-        // width too
+        float newLength = great_circle_dist(seg.back, seg.front);
+        // width *= seg.length/newLength
+        seg.length = newLength;
         find_dependent_locs(seg);
     }
 }
@@ -322,9 +298,10 @@ bool ContrailManager::loc_to_ij(const Geo2D& loc, IDX2& ij) {
     bool inGrid = false;
     ij = proj.loc_to_ij(loc);
     // Correct assumption that i and j start at 1
-    ij.i += ids - 1;
-    ij.j += jds - 1;
-    if (ij.i >= ids && ij.i <= ide && ij.j >= jds && ij.j <= jde) {
+    ij.i += domain.get_ids() - 1;
+    ij.j += domain.get_jds() - 1;
+    if (ij.i >= domain.get_ids() && ij.i <= domain.get_ide()
+        && ij.j >= domain.get_jds() && ij.j <= domain.get_jde()) {
         inGrid = true;
     }
     return inGrid;
@@ -348,17 +325,17 @@ bool ContrailManager::loc_to_ijk(const Geo3D& loc, IDX3& ijk) {
 // Returns the lon/lat grid values at indices ij
 Geo2D ContrailManager::ij_to_loc(const IDX2& ij) {
     Geo2D loc;
-    loc.lon = *XLONG.get(ij.i, ij.j);
-    loc.lat = *XLAT.get(ij.i, ij.j);
+    loc.lon = *domain.XLONG.get(ij.i, ij.j);
+    loc.lat = *domain.XLAT.get(ij.i, ij.j);
     return loc;
 }
 
 // Returns the grid values at indices ijk
 Geo3D ContrailManager::ijk_to_loc(const IDX3& ijk) {
     Geo3D loc;
-    loc.lon = *XLONG.get(ijk.i, ijk.j);
-    loc.lat = *XLAT.get(ijk.i, ijk.j);
-    loc.alt = *Z.get(ijk);
+    loc.lon = *domain.XLONG.get(ijk.i, ijk.j);
+    loc.lat = *domain.XLAT.get(ijk.i, ijk.j);
+    loc.alt = *domain.Z.get(ijk);
     return loc;
 }
 
@@ -461,10 +438,10 @@ bool ContrailManager::find_interp_points(const Geo3D& loc, Interp& interp) {
     
     // Determine existence of neighbouring quadrilaterals
     bool doLeft = true, doRight = true, doLower = true, doUpper = true;
-    if (ijCentre.i == ids) {doLeft = false;}
-    if (ijCentre.i == ide) {doRight = false;}
-    if (ijCentre.j == jds) {doLower = false;}
-    if (ijCentre.j == jde) {doUpper = false;}
+    if (ijCentre.i == domain.get_ids()) {doLeft = false;}
+    if (ijCentre.i == domain.get_ide()) {doRight = false;}
+    if (ijCentre.j == domain.get_jds()) {doLower = false;}
+    if (ijCentre.j == domain.get_jde()) {doUpper = false;}
     IDX2 ij1, ij2, ij3, ij4;
     // Set to true if loc is inside a quad (also to avoid excess computation)
     bool inQuad = false;
@@ -527,9 +504,9 @@ bool ContrailManager::find_interp_points(const Geo3D& loc, Interp& interp) {
 // Updates k in argument
 // Returns false if no valid k found
 bool ContrailManager::find_k_inside(const Geo3D& loc, const IDX2& ij, int& k) {
-    for (int kTrial = kds; kTrial < kde+1; kTrial++) {
-        if (loc.alt >= *Z_AT_W.get(ij.i, ij.j, kTrial)
-            && loc.alt < *Z_AT_W.get(ij.i, ij.j, kTrial+1)) {
+    for (int kTrial = domain.get_kds(); kTrial < domain.get_kde()+1; kTrial++) {
+        if (loc.alt >= *domain.Z_AT_W.get(ij.i, ij.j, kTrial)
+            && loc.alt < *domain.Z_AT_W.get(ij.i, ij.j, kTrial+1)) {
             k = kTrial;
             return true;
         }
@@ -543,9 +520,9 @@ bool ContrailManager::find_k_inside(const Geo3D& loc, const IDX2& ij, int& k) {
 // Updates k in argument
 // Returns false if no valid k found
 bool ContrailManager::find_k_below(const Geo3D& loc, const IDX2& ij, int& k) {
-    for (int kTrial = kds; kTrial < kde; kTrial++) {
-        if (loc.alt >= *Z.get(ij.i, ij.j, kTrial)
-            && loc.alt < *Z.get(ij.i, ij.j, kTrial+1)) {
+    for (int kTrial = domain.get_kds(); kTrial < domain.get_kde(); kTrial++) {
+        if (loc.alt >= *domain.Z.get(ij.i, ij.j, kTrial)
+            && loc.alt < *domain.Z.get(ij.i, ij.j, kTrial+1)) {
             k = kTrial;
             return true;
         }
@@ -563,7 +540,7 @@ void ContrailManager::find_interp_weights(const Geo3D& loc, Interp& interp) {
     bool anyZero = false;
     for (int i = 0; i < numInterpPoints; i++) {
         dists[i] = cart_dist(loc, ijk_to_loc(interp.points[i]));
-        if (dists[i] == 0) anyZero = true;
+        if (dists[i] == 0) {anyZero = true;}
     }
     
     // Find weights
@@ -731,9 +708,9 @@ bool ContrailManager::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w
     w = 0;
     // Find values at loc
     for (int i = 0; i < numInterpPoints; i++) {
-        u += *U.get(interp.points[i]) * interp.weights[i];
-        v += *V.get(interp.points[i]) * interp.weights[i];
-        w += *W.get(interp.points[i]) * interp.weights[i];
+        u += *domain.U.get(interp.points[i]) * interp.weights[i];
+        v += *domain.V.get(interp.points[i]) * interp.weights[i];
+        w += *domain.W.get(interp.points[i]) * interp.weights[i];
     }
     return inGrid;
 }
