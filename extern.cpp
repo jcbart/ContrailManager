@@ -21,7 +21,7 @@ extern "C" void ContrailManager_run_extern(ContrailManager* CMptr, CMTime_F star
 // Projection setup
 
 extern "C" void init_projection_extern(ContrailManager* CMptr, int proj_code, float lat1, float lon1, float knowni, float knownj, float dx, float stdlon, float truelat1, float truelat2) {
-    CMptr->proj.init(proj_code, lat1, lon1, knowni, knownj, dx, stdlon, truelat1, truelat2);
+    CMptr->domain.proj.init(proj_code, lat1, lon1, knowni, knownj, dx, stdlon, truelat1, truelat2);
 }
 
 // Variable initialisation

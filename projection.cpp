@@ -81,7 +81,7 @@ float Projection::lc_cone(float truelat1, float truelat2) {
 
 // Returns the grid cell ij which loc lies within
 // Assumes i and j start at 1
-IDX2 Projection::loc_to_ij(const Geo2D& loc) {
+IDX2 Projection::loc_to_ij(const Geo2D& loc) const {
     if (code == PROJ_LC) {
         return loc_to_ij_lc(loc);
     }
@@ -91,7 +91,7 @@ IDX2 Projection::loc_to_ij(const Geo2D& loc) {
     return IDX2{0,0};
 }
 
-IDX2 Projection::loc_to_ij_lc(const Geo2D& loc) {
+IDX2 Projection::loc_to_ij_lc(const Geo2D& loc) const {
     IDX2 ij;
 
     float deltalon = loc.lon - stdlon;

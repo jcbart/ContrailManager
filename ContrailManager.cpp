@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <cmath>
+#include <memory>
 #include "ContrailManager.h"
 #include "timekeeping.h"
 #include "domain.h"
@@ -22,18 +23,25 @@ void ContrailManager::init() {
     // Read maxInitialSegLen and maxContrailAge_s from CM config
 
     // Determine plume model
-    plumeModel = 1;
-    std::string plumeModel_str;
-    switch (plumeModel) {
-        case MODEL_ID_BASIC_PLUME:
-            plumeModel_str = MODEL_STR_BASIC_PLUME;
+    plumeModelID = 1;
+    std::string plumeModelStr;
+    switch (plumeModelID) {
+        case MODEL_ID_BASIC_PLUME: {
+            // Set pointer to specialised segment container
+            segments = std::unique_ptr<SegmentContainer<SegmentBasicPlume>>(
+                new SegmentContainer<SegmentBasicPlume>());
+            plumeModelStr = MODEL_STR_BASIC_PLUME;
             break;
-        default:
-            std::cerr << "Plume model " << plumeModel << " not recognised. Stopping.";
+        }
+        default: {
+            std::cerr << "Plume model " << plumeModelID << " not recognised. Stopping.";
             exit(EXIT_FAILURE);
+        }
     }
-    msg = "Plume model: " + plumeModel_str;
+    msg = "Plume model: " + plumeModelStr;
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+
+    segments->maxContrailAge_s = maxContrailAge_s;
 
     // Read flight data etc
     Flight test_flight;
@@ -105,25 +113,19 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         create_segments(timeStepStart, timeStepEnd);
 
         // 2. Integrate plumes
-        integrate_plumes(timeStepStart, timeStepEnd);
+        segments->integratePlumes(timeStepStart, timeStepEnd);
 
         // 3. Dump old or dead segments in the same location they were integrated (check if timeStepEnd)
-        for (int i = segments.size()-1; i >= 0; i--) {
-            if ((timeStepEnd - segments[i].birthTime).dhms_to_s() > maxContrailAge_s) {
-                // or if dead...
-                // Dump, then
-                segments.erase(segments.begin() + i);
-            }
-        }
+        segments->dump(timeStepEnd);
 
         // 4. Advect segments
-        advect_segments(timeStepStart, timeStepEnd);
+        segments->advectSegments(timeStepStart, timeStepEnd);
 
         // 5. Increment currTime
         currTime = timeStepEnd;
         msg = "Current time: " + currTime.asString();
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-        msg = "Number of live contrail segments: " + std::to_string(segments.size());
+        msg = "Number of live contrail segments: " + std::to_string(segments->getSize());
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     }
 }
@@ -139,7 +141,7 @@ void ContrailManager::setup_on_first_run(CMTime& startTime) {
                   << std::endl;
         exit(EXIT_FAILURE);
     }
-    if (!proj.isInitd) {
+    if (!domain.proj.isInitd) {
         std::cerr << "ContrailManager run called before projection has been initialised. Stopping."
                   << std::endl;
         exit(EXIT_FAILURE);
@@ -196,147 +198,44 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
             int numNewSegments = ceil(distInLeg / maxInitialSegLen);
             float segLen = distInLeg / numNewSegments;
             Geo3D backLoc = legStartloc;
+            Geo3D frontLoc;
             for (int i = 0; i < numNewSegments; i++) {
                 msg = "Segment " + std::to_string(i) + ":";
                 rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
-                Segment newSeg;
-                newSeg.back = backLoc;
                 // Find new front loc
                 // Fraction of the total distance where the front of the segment is
                 float f_front = (i+1.)/numNewSegments;
-                newSeg.front = great_circle_interp(f_front, legStartloc, legEndLoc);
-
-                // Set back loc for next segment
-                backLoc = newSeg.front;
+                frontLoc = great_circle_interp(f_front, legStartloc, legEndLoc);
 
                 // Use find_interp to find if in grid
                 // If any segment location is not in the grid, don't add the segment
                 bool inGrid;
-                Interp interpTemp;
-                inGrid = find_interp(newSeg.back, interpTemp);
+                std::vector<IDX3> interpTemp;
+                inGrid = domain.find_interp_points(backLoc, interpTemp);
                 if (!inGrid) {continue;}
-                inGrid = find_interp(newSeg.front, interpTemp);
-                if (!inGrid) {continue;}
-
-                // Give segment its centre location
-                find_dependent_locs(newSeg);
-
-                newSeg.length = segLen;
+                inGrid = domain.find_interp_points(frontLoc, interpTemp);
+                if (!inGrid) {continue;}       
 
                 // Find birth time
                 // Fraction of leg duration passed at centre of segment
                 float f_centre = (i+0.5)/numNewSegments;
-                newSeg.birthTime = legStartTime + f_centre * (legEndTime - legStartTime);
-
-                newSeg.parentID = flight.ID;
+                CMTime birthTime = legStartTime + f_centre * (legEndTime - legStartTime);
 
                 // Add emissions info
 
-                segments.push_back(newSeg);
-                msg = "Segment created with birth time: " + newSeg.birthTime.asString();
-                rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-                msg = "Centre location: (" + std::to_string(newSeg.centre.lon) + ", " + std::to_string(newSeg.centre.lat) + ", " + std::to_string(newSeg.centre.alt) + ")";
-                rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-                msg = "Length: " + std::to_string(newSeg.length);
-                rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+                // Add segment to container
+                segments->addItem(flight.ID, backLoc, frontLoc, segLen, birthTime, domain);
+
+                // Set back loc for next segment
+                backLoc = frontLoc;
+
                 num_created++;
             }
         }
     }
     msg = "Number of segments created: " + std::to_string(num_created);
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-}
-
-// Integrate each segment plume using plume model
-void ContrailManager::integrate_plumes(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
-    // Integrate
-    // If birthTime > timeStepStart, integrate from birthTime to timeStepEnd
-    // Aggregate
-    // Mark dead segments
-    if (plumeModel == MODEL_ID_BASIC_PLUME) {
-        for (Segment& seg : segments) {
-            //integ_basic_plume(seg);
-            continue;
-        }
-    }
-}
-
-// Advect front and back locations of all segments, find new length, width, and dependent locs
-void ContrailManager::advect_segments(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
-    for (int i = segments.size()-1; i >= 0; i--) {
-        Segment& seg = segments[i];
-        float duration_s;
-        // If birthTime > timeStepStart, integrate from birthTime to timeStepEnd
-        if (seg.birthTime > timeStepStart) {
-            duration_s = (timeStepStart - seg.birthTime).dhms_to_s();
-        }
-        else {
-            duration_s = timeStep_s;
-        }
-        bool inGridBack, inGridFront;
-
-        inGridBack = advect_loc_RK4(seg.back, duration_s);
-        inGridFront = advect_loc_RK4(seg.front, duration_s);
-
-        // If either end of segment has drifted out of grid, remove segment 
-        if (!(inGridBack && inGridFront)) {
-            segments.erase(segments.begin() + i);
-            continue;
-        }
-        float newLength = great_circle_dist(seg.back, seg.front);
-        // width *= seg.length/newLength
-        seg.length = newLength;
-        find_dependent_locs(seg);
-    }
-}
-
-// Updates ij with the lon/lat grid cell indices loc lies within
-// Calls the method in ContrailManager::proj and removes ids = jds = 1 assumption
-// Returns false if loc is not in grid
-bool ContrailManager::loc_to_ij(const Geo2D& loc, IDX2& ij) {
-    bool inGrid = false;
-    ij = proj.loc_to_ij(loc);
-    // Correct assumption that i and j start at 1
-    ij.i += domain.get_ids() - 1;
-    ij.j += domain.get_jds() - 1;
-    if (ij.i >= domain.get_ids() && ij.i <= domain.get_ide()
-        && ij.j >= domain.get_jds() && ij.j <= domain.get_jde()) {
-        inGrid = true;
-    }
-    return inGrid;
-}
-
-// Updates ijk with the lon/lat/alt grid cell indices loc lies within
-// Returns false if loc is not in grid
-bool ContrailManager::loc_to_ijk(const Geo3D& loc, IDX3& ijk) {
-    bool inGrid;
-    // Get ij
-    IDX2 ij;
-    inGrid = loc_to_ij(loc, ij);
-    if (!inGrid) return inGrid;
-    // Turn IDX2 object into IDX3
-    ijk = ij;
-    // Get k
-    inGrid = find_k_inside(loc, ijk, ijk.k);
-    return inGrid;
-}
-
-// Returns the lon/lat grid values at indices ij
-Geo2D ContrailManager::ij_to_loc(const IDX2& ij) {
-    Geo2D loc;
-    loc.lon = *domain.XLONG.get(ij.i, ij.j);
-    loc.lat = *domain.XLAT.get(ij.i, ij.j);
-    return loc;
-}
-
-// Returns the grid values at indices ijk
-Geo3D ContrailManager::ijk_to_loc(const IDX3& ijk) {
-    Geo3D loc;
-    loc.lon = *domain.XLONG.get(ijk.i, ijk.j);
-    loc.lat = *domain.XLAT.get(ijk.i, ijk.j);
-    loc.alt = *domain.Z.get(ijk);
-    return loc;
 }
 
 // Finds the flight location at the given time with a great circle interpolation between
@@ -363,354 +262,4 @@ bool ContrailManager::find_flight_loc(const Flight& flight, const CMTime& time, 
     loc = great_circle_interp(time, flight.wpTimes[lastWp], flight.wpLocs[lastWp],
                               flight.wpTimes[lastWp+1], flight.wpLocs[lastWp+1]);
     return true;
-}
-
-// Determines the dependent segment locations (everything except front and back) based on front and back
-void ContrailManager::find_dependent_locs(Segment& seg) {
-    seg.centre = great_circle_interp(0.5, seg.back, seg.front);
-}
-
-// Returns location at a fraction f [0,1] along a great circle by interpolating
-// between two waypoints
-// If f = 0, the returned location will be loc1 and vice versa for f = 1
-Geo3D ContrailManager::great_circle_interp(const float f,
-                                           const Geo3D& loc1, const Geo3D& loc2) {
-    // Lat/lon interpolation
-    // Pass Geo2D version of Geo3D objects to function
-    Cart3D loc1_Cart = Geo2D_to_Cart3D(loc1);
-    Cart3D loc2_Cart = Geo2D_to_Cart3D(loc2);
-    // Dot product is clamped in range [-1, 1] to prevent precision errors
-    float delta = std::acos(std::max(-1.F, std::min(1.F, dot_prod(loc1_Cart, loc2_Cart))));
-    Cart3D slerpResult;
-    // If delta is tiny, resort to LERP
-    if (delta < 1e-9) {
-        slerpResult.x = (1-f)*loc1_Cart.x + f*loc2_Cart.x;
-        slerpResult.y = (1-f)*loc1_Cart.y + f*loc2_Cart.y;
-        slerpResult.z = (1-f)*loc1_Cart.z + f*loc2_Cart.z;
-    }
-    else {
-        float slerp1 = std::sin((1-f) * delta) / std::sin(delta);
-        float slerp2 = std::sin(f * delta) / std::sin(delta);
-        slerpResult.x = slerp1*loc1_Cart.x + slerp2*loc2_Cart.x;
-        slerpResult.y = slerp1*loc1_Cart.y + slerp2*loc2_Cart.y;
-        slerpResult.z = slerp1*loc1_Cart.z + slerp2*loc2_Cart.z;
-    }
-    // Pass Geo2D into Geo3D object
-    Geo3D result = Cart3D_to_Geo2D(slerpResult);
-
-    // Altitude interpolation
-    result.alt = (1-f) * loc1.alt + f * loc2.alt;
-    return result;
-}
-
-// Returns location at time by interpolating between two waypoints given times
-// If time = time1, the returned location will be loc1 and vice versa
-Geo3D ContrailManager::great_circle_interp(const CMTime& time,
-                                           const CMTime& time1, const Geo3D& loc1,
-                                           const CMTime& time2, const Geo3D& loc2) {
-    float time_s = time.dhms_to_s();
-    float time1_s = time1.dhms_to_s();
-    float time2_s = time2.dhms_to_s();
-    float f = (time_s - time1_s)/(time2_s - time1_s);
-    return great_circle_interp(f, loc1, loc2);
-}
-
-// Fills an Interp object with indices and weights of grid points to interpolate for a given loc
-// Returns false if interpolation points cannot be found (loc outside grid)
-bool ContrailManager::find_interp(const Geo3D& loc, Interp& interp) {
-    bool inGrid = find_interp_points(loc, interp);
-    if (!inGrid) {return inGrid;}
-    find_interp_weights(loc, interp);
-    return inGrid;
-}
-
-// Finds interpolation points for a location and updates interp
-// Leaves weights untouched; use find_interp_weights to update them
-// Returns true if location is in grid
-// If false, interp contains garbage
-bool ContrailManager::find_interp_points(const Geo3D& loc, Interp& interp) {
-    bool inGrid = false;
-    IDX2 ijCentre;
-    inGrid = loc_to_ij(loc, ijCentre);
-
-    // If inGrid is still false, loc is not inside a grid cell
-    if (!inGrid) {return inGrid;}
-    
-    // Determine existence of neighbouring quadrilaterals
-    bool doLeft = true, doRight = true, doLower = true, doUpper = true;
-    if (ijCentre.i == domain.get_ids()) {doLeft = false;}
-    if (ijCentre.i == domain.get_ide()) {doRight = false;}
-    if (ijCentre.j == domain.get_jds()) {doLower = false;}
-    if (ijCentre.j == domain.get_jde()) {doUpper = false;}
-    IDX2 ij1, ij2, ij3, ij4;
-    // Set to true if loc is inside a quad (also to avoid excess computation)
-    bool inQuad = false;
-    if (!inQuad && doLeft && doLower) {
-        ij1 = ijCentre;
-        ij2 = {ijCentre.i-1, ijCentre.j};
-        ij3 = {ijCentre.i-1, ijCentre.j-1};
-        ij4 = {ijCentre.i, ijCentre.j-1};
-        inQuad = loc_in_quad(loc, ij_to_loc(ij1), ij_to_loc(ij2), ij_to_loc(ij3), ij_to_loc(ij4));
-    }
-    if (!inQuad && doLeft && doUpper) {
-        ij1 = ijCentre;
-        ij2 = {ijCentre.i, ijCentre.j+1};
-        ij3 = {ijCentre.i-1, ijCentre.j+1};
-        ij4 = {ijCentre.i-1, ijCentre.j};
-        inQuad = loc_in_quad(loc, ij_to_loc(ij1), ij_to_loc(ij2), ij_to_loc(ij3), ij_to_loc(ij4));
-    }
-    if (!inQuad && doRight && doUpper) {
-        ij1 = ijCentre;
-        ij2 = {ijCentre.i+1, ijCentre.j};
-        ij3 = {ijCentre.i+1, ijCentre.j+1};
-        ij4 = {ijCentre.i, ijCentre.j+1};
-        inQuad = loc_in_quad(loc, ij_to_loc(ij1), ij_to_loc(ij2), ij_to_loc(ij3), ij_to_loc(ij4));
-    }
-    if (!inQuad && doRight && doLower) {
-        ij1 = ijCentre;
-        ij2 = {ijCentre.i, ijCentre.j-1};
-        ij3 = {ijCentre.i+1, ijCentre.j-1};
-        ij4 = {ijCentre.i+1, ijCentre.j};
-        inQuad = loc_in_quad(loc, ij_to_loc(ij1), ij_to_loc(ij2), ij_to_loc(ij3), ij_to_loc(ij4));
-    }
-    // If inQuad is still false, no quad has been found with loc inside
-    if (!inQuad) {
-        return inQuad;
-    }
-    // Find k for each of the four grid points
-    // Return false if no k found; else, update interp point
-    int k;
-    // Point 1
-    inQuad = find_k_below(loc, ij1, k);
-    if (!inQuad) {return inQuad;}
-    else interp.points[0] = {ij1.i, ij1.j, k};
-    // Point 2
-    inQuad = find_k_below(loc, ij2, k);
-    if (!inQuad) {return inQuad;}
-    else interp.points[1] = {ij2.i, ij2.j, k};
-    // Point 3
-    inQuad = find_k_below(loc, ij3, k);
-    if (!inQuad) {return inQuad;}
-    else interp.points[2] = {ij3.i, ij3.j, k};
-    // Point 4
-    inQuad = find_k_below(loc, ij4, k);
-    if (!inQuad) {return inQuad;}
-    else interp.points[3] = {ij4.i, ij4.j, k};
-    // All points found, return true
-    return inQuad;
-}
-
-// Finds the index k such that loc.alt is inside grid cell ijk
-// Updates k in argument
-// Returns false if no valid k found
-bool ContrailManager::find_k_inside(const Geo3D& loc, const IDX2& ij, int& k) {
-    for (int kTrial = domain.get_kds(); kTrial < domain.get_kde()+1; kTrial++) {
-        if (loc.alt >= *domain.Z_AT_W.get(ij.i, ij.j, kTrial)
-            && loc.alt < *domain.Z_AT_W.get(ij.i, ij.j, kTrial+1)) {
-            k = kTrial;
-            return true;
-        }
-    }
-    // Else, no valid k found
-    return false;
-}
-
-// Finds the index k such that grid centre altitude at k is less than loc.alt and grid centre
-// altitude at k+1 is greater than loc.alt
-// Updates k in argument
-// Returns false if no valid k found
-bool ContrailManager::find_k_below(const Geo3D& loc, const IDX2& ij, int& k) {
-    for (int kTrial = domain.get_kds(); kTrial < domain.get_kde(); kTrial++) {
-        if (loc.alt >= *domain.Z.get(ij.i, ij.j, kTrial)
-            && loc.alt < *domain.Z.get(ij.i, ij.j, kTrial+1)) {
-            k = kTrial;
-            return true;
-        }
-    }
-    // Else, no valid k found
-    return false;
-}
-
-// Finds inverse-distance weights for the Interp::points and updates interp
-void ContrailManager::find_interp_weights(const Geo3D& loc, Interp& interp) {
-    int numInterpPoints = interp.points.size();
-    std::vector<float> dists(numInterpPoints);
-
-    // Find distances
-    bool anyZero = false;
-    for (int i = 0; i < numInterpPoints; i++) {
-        dists[i] = cart_dist(loc, ijk_to_loc(interp.points[i]));
-        if (dists[i] == 0) {anyZero = true;}
-    }
-    
-    // Find weights
-    float totalWeight = 0;
-    if (anyZero) {
-        for (int i = 0; i < numInterpPoints; i++) {
-            interp.weights[i] = (dists[i] == 0) ? 1 : 0;
-            totalWeight += interp.weights[i];
-        }
-    }
-    else {
-        for (int i = 0; i < numInterpPoints; i++) {
-            interp.weights[i] = 1/dists[i];
-            totalWeight += interp.weights[i];
-        }
-    }
-    // Scale weights
-    for (int i = 0; i < numInterpPoints; i++) {
-        interp.weights[i] /= totalWeight;
-    }
-}
-
-// Advect a location (loc) for duration in seconds
-// Updates loc
-// Returns false if loc is outside or goes outside the grid
-bool ContrailManager::advect_loc(Geo3D& loc, const float duration_s) {
-    bool inGrid;
-
-    float u, v, w;
-
-    inGrid = wind_at_loc(loc, u, v, w);
-    if (!inGrid) {return inGrid;}
-
-    // Advect in longitude
-    loc.lon += u * duration_s / ((EARTH_RADIUS_M + loc.alt) * std::cos(loc.lat)) * DEG_PER_RAD;
-    // Wrap around the Earth
-    wrap_WE(loc.lon);
-
-    // Advect in latitude
-    loc.lat += v * duration_s / (EARTH_RADIUS_M + loc.alt) * DEG_PER_RAD;
-    // Reflect at poles
-    wrap_SN(loc.lon, loc.lat);
-
-    // Advect in altitude
-    loc.alt += w * duration_s;
-
-    // Check if still in grid
-    Interp interpTemp;
-    inGrid = find_interp(loc, interpTemp);
-    return inGrid;
-}
-
-// Option to advect a location (loc) with Runge-Kutta 4th order for duration in seconds
-// Updates loc
-// Returns false if loc is outside or goes outside the grid
-bool ContrailManager::advect_loc_RK4(Geo3D& loc, const float duration_s) {
-    bool inGrid;
-
-    float u1, v1, w1; // Values of k1
-    float u2, v2, w2; // Values of k2
-    float u3, v3, w3; // Values of k3
-    float u4, v4, w4; // Values of k4
-
-    Geo3D loc1; // Location after k1 step, used in k2 step
-    Geo3D loc2; // Location after k2 step, used in k3 step
-    Geo3D loc3; // Location after k3 step, used in k4 step
-
-    // k1
-
-    inGrid = wind_at_loc(loc, u1, u2, u3);
-    if (!inGrid) {return inGrid;}
-
-    // Advect in longitude
-    loc.lon = loc.lon + u1 * 0.5*duration_s / ((EARTH_RADIUS_M + loc.alt) * std::cos(loc.lat))
-                          * DEG_PER_RAD;
-    // Wrap around the Earth
-    wrap_WE(loc1.lon);
-
-    // Advect in latitude
-    loc1.lat = loc.lat + v1 * 0.5*duration_s / (EARTH_RADIUS_M + loc.alt) * DEG_PER_RAD;
-    // Reflect at poles
-    wrap_SN(loc1.lon, loc1.lat);
-
-    // Advect in altitude
-    loc1.alt = loc.alt + w1 * 0.5*duration_s;
-
-    // k2
-
-    inGrid = wind_at_loc(loc1, u2, v2, w2);
-    if (!inGrid) {return inGrid;}
-
-    // Advect in longitude
-    loc2.lon = loc.lon + u2 * 0.5*duration_s / ((EARTH_RADIUS_M + loc.alt) * std::cos(loc.lat))
-                          * DEG_PER_RAD;
-    // Wrap around the Earth
-    wrap_WE(loc2.lon);
-
-    // Advect in latitude
-    loc2.lat = loc.lat + v2 * 0.5*duration_s / (EARTH_RADIUS_M + loc.alt) * DEG_PER_RAD;
-    // Reflect at poles
-    wrap_SN(loc2.lon, loc2.lat);
-
-    // Advect in altitude
-    loc2.alt = loc.alt + w2 * 0.5*duration_s;
-
-    // k3
-
-    inGrid = wind_at_loc(loc2, u3, v3, w3);
-    if (!inGrid) {return inGrid;}
-
-    // Advect in longitude
-    loc3.lon = loc.lon + u3 * duration_s / ((EARTH_RADIUS_M + loc.alt) * std::cos(loc.lat))
-                          * DEG_PER_RAD;
-    // Wrap around the Earth
-    wrap_WE(loc3.lon);
-
-    // Advect in latitude
-    loc3.lat = loc.lat + v3 * duration_s / (EARTH_RADIUS_M + loc.alt) * DEG_PER_RAD;
-    // Reflect at poles
-    wrap_SN(loc3.lon, loc3.lat);
-
-    // Advect in altitude
-    loc3.alt = loc.alt + w3 * duration_s;
-
-    // k4
-
-    inGrid = wind_at_loc(loc3, u4, v4, w4);
-    if (!inGrid) {return inGrid;}
-
-    // Update loc
-
-    // Advect in longitude
-    loc.lon += (u1 + 2*u2 + 2*u3 + u4) * duration_s/6. 
-               / ((EARTH_RADIUS_M + loc.alt) * std::cos(loc.lat)) * DEG_PER_RAD;
-    // Wrap around the Earth
-    wrap_WE(loc.lon);
-
-    // Advect in latitude
-    loc.lat += (v1 + 2*v2 + 2*v3 + v4) * duration_s/6. / (EARTH_RADIUS_M + loc.alt) * DEG_PER_RAD;
-    // Reflect at poles
-    wrap_SN(loc.lon, loc.lat);
-
-    // Advect in altitude
-    loc.alt += (w1 + 2*w2 + 2*w3 + w4) * duration_s/6.;
-
-    // Check if still in grid
-    Interp interpTemp;
-    inGrid = find_interp(loc, interpTemp);
-    return inGrid;
-}
-
-// Finds the wind speed at location by interpolating between neighbouring grid cells
-// Updates u, v, and w
-// Returns false if location is not in grid
-bool ContrailManager::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) {
-    bool inGrid;
-    Interp interp;
-    inGrid = find_interp(loc, interp);
-    if (!inGrid) {return inGrid;}
-
-    int numInterpPoints = interp.points.size();
-    // Values at loc
-    u = 0;
-    v = 0;
-    w = 0;
-    // Find values at loc
-    for (int i = 0; i < numInterpPoints; i++) {
-        u += *domain.U.get(interp.points[i]) * interp.weights[i];
-        v += *domain.V.get(interp.points[i]) * interp.weights[i];
-        w += *domain.W.get(interp.points[i]) * interp.weights[i];
-    }
-    return inGrid;
 }

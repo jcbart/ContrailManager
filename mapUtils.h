@@ -3,6 +3,10 @@
 
 #include <string>
 
+// Forward declaration
+struct CMTime;
+class Domain;
+
 const double PI = 3.14159265358979323846264338327950288419716939937510582;
 const double RAD_PER_DEG = PI/180;
 const double DEG_PER_RAD = 1/RAD_PER_DEG;
@@ -89,6 +93,11 @@ float cart_dist(const Geo3D& pointA, const Geo3D& pointB);
 
 float great_circle_dist(const Geo3D& pointA, const Geo3D& pointB);
 
+Geo3D great_circle_interp(const float f, const Geo3D& loc1, const Geo3D& loc2);
+
+Geo3D great_circle_interp(const CMTime& time, const CMTime& time1, const Geo3D& loc1,
+                          const CMTime& time2, const Geo3D& loc2);
+
 void wrap_WE(float& lon);
 
 void wrap_SN(float& lon, float& lat);
@@ -98,5 +107,9 @@ float dot_prod(const Cart3D& vecA, const Cart3D& vecB);
 Cart3D cross_prod(const Cart3D& vecA, const Cart3D& vecB);
 
 bool loc_in_quad(const Geo2D& loc, const Geo2D& point1, const Geo2D& point2, const Geo2D& point3, const Geo2D& point4);
+
+bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom);
+
+bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom);
 
 #endif

@@ -36,9 +36,9 @@ public:
 
     float lc_cone(float truelat1, float truelat2);
 
-    IDX2 loc_to_ij(const Geo2D& loc);
+    IDX2 loc_to_ij(const Geo2D& loc) const;
 
-    IDX2 loc_to_ij_lc(const Geo2D& loc);
+    IDX2 loc_to_ij_lc(const Geo2D& loc) const;
 };
 
 #endif

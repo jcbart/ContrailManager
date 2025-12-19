@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "mapUtils.h"
+#include "projection.h"
 
 class Variable2D {
 private:
@@ -14,6 +15,8 @@ private:
     int num_elements = 0;
     bool isInitialised = false;
 
+    const float* get_element_ptr(const int i, const int j) const;
+
 public:
     // Constructor
     Variable2D();
@@ -23,17 +26,20 @@ public:
 
     void init(std::string name, int ids, int ide, int jds, int jde);
 
-    int get_ids() {return ids;};
-    int get_ide() {return ide;};
-    int get_jds() {return jds;};
-    int get_jde() {return jde;};
-    int get_i_size() {return i_size;};
-    int get_j_size() {return j_size;};
+    int get_ids() const {return ids;};
+    int get_ide() const {return ide;};
+    int get_jds() const {return jds;};
+    int get_jde() const {return jde;};
+    int get_i_size() const {return i_size;};
+    int get_j_size() const {return j_size;};
 
-    size_t get_1D_index_from_2D(int i, int j);
+    size_t get_1D_index_from_2D(const int i, const int j) const;
 
     float* get(const int i, const int j);
     float* get(const IDX2& ij);
+
+    float get_value(const int i, const int j) const;
+    float get_value(const IDX2& ij) const;
 
     void clear_all();
 };
@@ -47,6 +53,8 @@ private:
     int num_elements = 0;
     bool isInitialised = false;
 
+    const float* get_element_ptr(const int i, const int j, const int k) const;
+
 public:
     // Constructor
     Variable3D();
@@ -56,20 +64,23 @@ public:
 
     void init(std::string name, int ids, int ide, int jds, int jde, int kds, int kde);
 
-    int get_ids() {return ids;};
-    int get_ide() {return ide;};
-    int get_jds() {return jds;};
-    int get_jde() {return jde;};
-    int get_kds() {return kds;};
-    int get_kde() {return kde;};
-    int get_i_size() {return i_size;};
-    int get_j_size() {return j_size;};
-    int get_k_size() {return k_size;};
+    int get_ids() const {return ids;};
+    int get_ide() const {return ide;};
+    int get_jds() const {return jds;};
+    int get_jde() const {return jde;};
+    int get_kds() const {return kds;};
+    int get_kde() const {return kde;};
+    int get_i_size() const {return i_size;};
+    int get_j_size() const {return j_size;};
+    int get_k_size() const {return k_size;};
 
-    size_t get_1D_index_from_3D(int i, int j, int k);
+    size_t get_1D_index_from_3D(const int i, const int j, const int k) const;
 
     float* get(const int i, const int j, const int k);
     float* get(const IDX3& ijk);
+
+    float get_value(const int i, const int j, const int k) const;
+    float get_value(const IDX3& ijk) const;
 
     void clear_all();
 };
@@ -104,18 +115,40 @@ public:
     Variable3D deltaNI; // Change in ice number mixing ratio excl. live contrails (# (kg dry air-1))
     Variable3D QIcontrail; // Contrail ice mass mixing ratio (kg (kg dry air-1))
 
-    int get_ids() {return ids;}
-    int get_ide() {return ide;}
-    int get_jds() {return jds;}
-    int get_jde() {return jde;}
-    int get_kds() {return kds;}
-    int get_kde() {return kde;}
-    int get_lonSize() {return lonSize;};
-    int get_latSize() {return latSize;};
-    int get_altSize() {return altSize;};
-    bool get_varsInitd() {return varsInitd;}
+    // Projection
+    Projection proj;
+
+    int get_ids() const {return ids;}
+    int get_ide() const {return ide;}
+    int get_jds() const {return jds;}
+    int get_jde() const {return jde;}
+    int get_kds() const {return kds;}
+    int get_kde() const {return kde;}
+    int get_lonSize() const {return lonSize;};
+    int get_latSize() const {return latSize;};
+    int get_altSize() const {return altSize;};
+    bool get_varsInitd() const {return varsInitd;}
 
     void init_vars(int ids, int ide, int jds, int jde, int kds, int kde);
+
+    bool loc_to_ij(const Geo2D& loc, IDX2& ij) const;
+
+    bool loc_to_ijk(const Geo3D& loc, IDX3& ijk) const;
+
+    Geo2D ij_to_loc(const IDX2& ij) const;
+
+    Geo3D ijk_to_loc(const IDX3& ijk) const;
+
+    bool find_k_inside(const Geo3D& loc, const IDX2& ij, int& k) const;
+
+    bool find_k_below(const Geo3D& loc, const IDX2& ij, int& k) const;
+
+    bool find_interp_points(const Geo3D& loc, std::vector<IDX3>& interpPoints) const;
+
+    void find_interp_weights(const Geo3D& loc, const std::vector<IDX3>& interpPoints,
+                             std::vector<float>& interpWeights) const;
+
+    bool wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const;
 };
 
 #endif
