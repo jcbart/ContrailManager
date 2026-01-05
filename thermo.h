@@ -1,5 +1,5 @@
-#ifndef THERMOUTILS
-#define THERMOUTILS
+#ifndef THERMO
+#define THERMO
 
 namespace thermo {
 
