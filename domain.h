@@ -6,21 +6,19 @@
 #include "mapUtils.h"
 #include "projection.h"
 
+template <typename T>
 class Variable2D {
 private:
     std::string name = "UNDEFINED";
-    float* data;
+    T* data = nullptr;
     int ids = 0, ide = 0, jds = 0, jde = 0;
     int i_size = 0, j_size = 0;
     int num_elements = 0;
     bool isInitialised = false;
 
-    const float* get_element_ptr(const int i, const int j) const;
+    const T* get_element_ptr(const int i, const int j) const;
 
 public:
-    // Constructor
-    Variable2D();
-
     // Destructor
     ~Variable2D();
 
@@ -35,30 +33,28 @@ public:
 
     size_t get_1D_index_from_2D(const int i, const int j) const;
 
-    float* get(const int i, const int j);
-    float* get(const IDX2& ij);
+    T* get(const int i, const int j);
+    T* get(const IDX2& ij);
 
-    float get_value(const int i, const int j) const;
-    float get_value(const IDX2& ij) const;
+    T get_value(const int i, const int j) const;
+    T get_value(const IDX2& ij) const;
 
     void clear_all();
 };
 
+template <typename T>
 class Variable3D {
 private:
     std::string name = "UNDEFINED";
-    float* data;
+    T* data = nullptr;
     int ids = 0, ide = 0, jds = 0, jde = 0, kds = 0, kde = 0;
     int i_size = 0, j_size = 0, k_size = 0;
     int num_elements = 0;
     bool isInitialised = false;
 
-    const float* get_element_ptr(const int i, const int j, const int k) const;
+    const T* get_element_ptr(const int i, const int j, const int k) const;
 
 public:
-    // Constructor
-    Variable3D();
-
     // Destructor
     ~Variable3D();
 
@@ -76,11 +72,11 @@ public:
 
     size_t get_1D_index_from_3D(const int i, const int j, const int k) const;
 
-    float* get(const int i, const int j, const int k);
-    float* get(const IDX3& ijk);
+    T* get(const int i, const int j, const int k);
+    T* get(const IDX3& ijk);
 
-    float get_value(const int i, const int j, const int k) const;
-    float get_value(const IDX3& ijk) const;
+    T get_value(const int i, const int j, const int k) const;
+    T get_value(const IDX3& ijk) const;
 
     void clear_all();
 };
@@ -97,23 +93,23 @@ private:
 
 public:
     // Meteorological variables (accessible externally)
-    Variable2D XLONG; // Longitude (degrees, West is negative)
-    Variable2D XLAT; // Latitude (degrees, South is negative)
-    Variable3D Z; // Height above sea level at cell centre (m)
-    Variable3D Z_AT_W; // Height above sea level at cell interfaces (staggered in z-direction; m)
-    Variable3D DRYMASS; // Dry mass in grid cell (kg)
-    Variable3D T_POT; // Potential temperature (K)
-    Variable3D P; // Total air pressure (Pa)
-    Variable3D U; // Wind speed in Eastward direction (m s-1)
-    Variable3D V; // Wind speed in Northward direction (m s-1)
-    Variable3D W; // Wind speed in vertical direction (m s-1)
-    Variable3D QV; // Water vapour mass mixing ratio (kg (kg dry air-1))
-    Variable3D deltaQV; // Change in water vapour mass mixing ratio (kg (kg dry air-1))
-    //Variable3D QI; // Ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
-    Variable3D deltaQI; // Change in ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
-    //Variable3D NI; // Ice number mixing ratio excl. live contrails (# (kg dry air-1))
-    Variable3D deltaNI; // Change in ice number mixing ratio excl. live contrails (# (kg dry air-1))
-    Variable3D QIcontrail; // Contrail ice mass mixing ratio (kg (kg dry air-1))
+    Variable2D<float> XLONG; // Longitude (degrees, West is negative)
+    Variable2D<float> XLAT; // Latitude (degrees, South is negative)
+    Variable3D<float> Z; // Height above sea level at cell centre (m)
+    Variable3D<float> Z_AT_W; // Height above sea level at cell interfaces (staggered in z-direction; m)
+    Variable3D<float> DRYMASS; // Dry mass in grid cell (kg)
+    Variable3D<float> T_POT; // Potential temperature (K)
+    Variable3D<float> P; // Total air pressure (Pa)
+    Variable3D<float> U; // Wind speed in Eastward direction (m s-1)
+    Variable3D<float> V; // Wind speed in Northward direction (m s-1)
+    Variable3D<float> W; // Wind speed in vertical direction (m s-1)
+    Variable3D<float> QV; // Water vapour mass mixing ratio (kg (kg dry air-1))
+    Variable3D<float> deltaQV; // Change in water vapour mass mixing ratio (kg (kg dry air-1))
+    //Variable3D<float> QI; // Ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
+    Variable3D<float> deltaQI; // Change in ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
+    //Variable3D<float> NI; // Ice number mixing ratio excl. live contrails (# (kg dry air-1))
+    Variable3D<float> deltaNI; // Change in ice number mixing ratio excl. live contrails (# (kg dry air-1))
+    Variable3D<float> QIcontrail; // Contrail ice mass mixing ratio (kg (kg dry air-1))
 
     // Projection
     Projection proj;

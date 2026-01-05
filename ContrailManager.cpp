@@ -91,10 +91,11 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
 
     msg = "DRYMASS(100,200,10) = " + std::to_string(*domain.DRYMASS.get(100, 200, 10));
 
-    // Set all delta variables to zero
+    // Set all delta variables and contrail ice mass to zero (will be built up again)
     domain.deltaQV.clear_all();
     domain.deltaQI.clear_all();
     domain.deltaNI.clear_all();
+    domain.QIcontrail.clear_all();
 
     currTime = startTime;
     while (currTime+timeStep <= stopTime) {
@@ -128,6 +129,9 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         msg = "Number of live contrail segments: " + std::to_string(segments->getSize());
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     }
+
+    // Construct QIcontrail field from the live contrail ice mass before ending run
+    segments->constructQIcontrail();
 }
 
 

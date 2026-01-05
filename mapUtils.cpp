@@ -282,7 +282,7 @@ bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
 
     // k1
 
-    inGrid = dom.wind_at_loc(loc, u1, u2, u3);
+    inGrid = dom.wind_at_loc(loc, u1, v1, w1);
     if (!inGrid) {return inGrid;}
 
     // Advect in longitude

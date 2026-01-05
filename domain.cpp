@@ -5,29 +5,22 @@
 #include "domain.h"
 #include "mapUtils.h"
 
+// List of types to compile
+template class Variable2D<float>;
+template class Variable3D<float>;
+
 // ---------- Variable2D ----------
 
-// Constructor
-Variable2D::Variable2D() {
-    data = nullptr;
-    ids = 0;
-    ide = 0;
-    jds = 0;
-    jde = 0;
-    i_size = 0;
-    j_size = 0;
-    num_elements = 0;
-    isInitialised = false;
-}
-
 // Destructor
-Variable2D::~Variable2D() {
+template <typename T>
+Variable2D<T>::~Variable2D() {
     if (data != nullptr) {
         delete[] data;
     }
 }
 
-void Variable2D::init(std::string name, int ids, int ide, int jds, int jde) {
+template <typename T>
+void Variable2D<T>::init(std::string name, int ids, int ide, int jds, int jde) {
     if (isInitialised) {
         std::cerr << "Variable2D " << this->name << " has already been initialised" << std::endl;
         exit(EXIT_FAILURE);
@@ -41,16 +34,18 @@ void Variable2D::init(std::string name, int ids, int ide, int jds, int jde) {
     j_size = jde-jds+1;
     num_elements = i_size*j_size;
     // Allocate a 1D block of memory
-    data = new float[num_elements];
+    data = new T[num_elements];
     clear_all();
     isInitialised = true;
 }
 
-size_t Variable2D::get_1D_index_from_2D(int i, int j) const {
+template <typename T>
+size_t Variable2D<T>::get_1D_index_from_2D(int i, int j) const {
     return static_cast<size_t>((i-ids)*j_size + (j-jds));
 }
 
-const float* Variable2D::get_element_ptr(const int i, const int j) const {
+template <typename T>
+const T* Variable2D<T>::get_element_ptr(const int i, const int j) const {
     if (i < ids || i > ide || j < jds || j > jde) {
         std::cerr << "Variable2D " << name << " error: Index (i,j)=(" << i << "," << j <<
                      ") is out of range for array of size (ids:ide,jds:jde)=(" <<
@@ -64,27 +59,32 @@ const float* Variable2D::get_element_ptr(const int i, const int j) const {
 }
 
 // Returns a reference to the value, so can be used to set and get
-float* Variable2D::get(const int i, const int j) {
-    return const_cast<float*>(get_element_ptr(i, j));
+template <typename T>
+T* Variable2D<T>::get(const int i, const int j) {
+    return const_cast<T*>(get_element_ptr(i, j));
 }
 
 // Returns a reference to the value, so can be used to set and get
-float* Variable2D::get(const IDX2& ij) {
+template <typename T>
+T* Variable2D<T>::get(const IDX2& ij) {
     return get(ij.i, ij.j);
 }
 
 // Returns the value at indices
-float Variable2D::get_value(const int i, const int j) const {
+template <typename T>
+T Variable2D<T>::get_value(const int i, const int j) const {
     return *get_element_ptr(i, j);
 }
 
 // Returns the value at indices
-float Variable2D::get_value(const IDX2& ij) const {
+template <typename T>
+T Variable2D<T>::get_value(const IDX2& ij) const {
     return get_value(ij.i, ij.j);
 }
 
 // Set all values to zero; only works if initialised
-void Variable2D::clear_all() {
+template <typename T>
+void Variable2D<T>::clear_all() {
     if (isInitialised) {
         for (size_t i = 0; i < num_elements; i++) {
             data[i] = 0;
@@ -94,30 +94,16 @@ void Variable2D::clear_all() {
 
 // ---------- Variable3D ----------
 
-// Constructor
-Variable3D::Variable3D() {
-    data = nullptr;
-    ids = 0;
-    ide = 0;
-    jds = 0;
-    jde = 0;
-    kds = 0;
-    kde = 0;
-    i_size = 0;
-    j_size = 0;
-    k_size = 0;
-    num_elements = 0;
-    isInitialised = false;
-}
-
 // Destructor
-Variable3D::~Variable3D() {
+template <typename T>
+Variable3D<T>::~Variable3D() {
     if (data != nullptr) {
         delete[] data;
     }
 }
 
-void Variable3D::init(std::string name, int ids, int ide, int jds, int jde, int kds, int kde) {
+template <typename T>
+void Variable3D<T>::init(std::string name, int ids, int ide, int jds, int jde, int kds, int kde) {
     if (isInitialised) {
         std::cerr << "Variable3D " << this->name << " has already been initialised" << std::endl;
         exit(EXIT_FAILURE);
@@ -134,16 +120,18 @@ void Variable3D::init(std::string name, int ids, int ide, int jds, int jde, int 
     k_size = kde-kds+1;
     num_elements = i_size*j_size*k_size;
     // Allocate a 1D block of memory
-    data = new float[num_elements];
+    data = new T[num_elements];
     clear_all();
     isInitialised = true;
 }
 
-size_t Variable3D::get_1D_index_from_3D(int i, int j, int k) const {
+template <typename T>
+size_t Variable3D<T>::get_1D_index_from_3D(int i, int j, int k) const {
     return static_cast<size_t>((i-ids)*j_size*k_size + (j-jds)*k_size + (k-kds));
 }
 
-const float* Variable3D::get_element_ptr(const int i, const int j, const int k) const {
+template <typename T>
+const T* Variable3D<T>::get_element_ptr(const int i, const int j, const int k) const {
     if (i < ids || i > ide || j < jds || j > jde || k < kds || k > kde) {
         std::cerr << "Variable3D " << name << " error: Index (i,j,k)=(" << i << "," << j << "," << k <<
                      ") is out of range for array of size (ids:ide,jds:jde,kds:kde)=("
@@ -158,27 +146,32 @@ const float* Variable3D::get_element_ptr(const int i, const int j, const int k) 
 }
 
 // Returns a reference to the value, so can be used to set and get
-float* Variable3D::get(const int i, const int j, const int k) {
-    return const_cast<float*>(get_element_ptr(i, j, k));
+template <typename T>
+T* Variable3D<T>::get(const int i, const int j, const int k) {
+    return const_cast<T*>(get_element_ptr(i, j, k));
 }
 
 // Returns a reference to the value, so can be used to set and get
-float* Variable3D::get(const IDX3& ijk) {
+template <typename T>
+T* Variable3D<T>::get(const IDX3& ijk) {
     return get(ijk.i, ijk.j, ijk.k);
 }
 
 // Returns the value at indices
-float Variable3D::get_value(const int i, const int j, const int k) const {
+template <typename T>
+T Variable3D<T>::get_value(const int i, const int j, const int k) const {
     return *get_element_ptr(i, j, k);
 }
 
 // Returns the value at indices
-float Variable3D::get_value(const IDX3& ijk) const {
+template <typename T>
+T Variable3D<T>::get_value(const IDX3& ijk) const {
     return get_value(ijk.i, ijk.j, ijk.k);
 }
 
 // Set all values to zero; only works if initialised
-void Variable3D::clear_all() {
+template <typename T>
+void Variable3D<T>::clear_all() {
     if (isInitialised) {
         for (size_t i = 0; i < num_elements; i++) {
             data[i] = 0;

@@ -12,13 +12,25 @@ void CMTimeInterval::adjust() {
         s -= 60;
         m += 1;
     }
+    while (m > 0 && s < 0) {
+        s += 60;
+        m -= 1;
+    }
     while (m >= 60) {
         m -= 60;
         h += 1;
     }
+    while (h > 0 && m < 0) {
+        m += 60;
+        h -= 1;
+    }
     while (h >= 24) {
         h -= 24;
         dd += 1;
+    }
+    while (dd > 0 && h < 0) {
+        h += 24;
+        dd -= 1;
     }
 }
 

@@ -17,21 +17,25 @@ struct Segment {
 
     float length; // Segment length (m)
 
-    // Reference to the Contrail Manager's domain; reference_wrapper allows reference to be
-    // transferred
-    std::reference_wrapper<Domain> domain;
+    // Pointer to the Contrail Manager's domain
+    Domain* domPtr;
 
     bool outOfBounds = false;
     bool isOld = false;
     bool isDead = false;
-
-    Segment(Domain& dom) : domain(dom) {}
 
     // Virtual destructor
     virtual ~Segment() = default;
 
     // Virtual integration method; must be overridden by plume model-specific method
     virtual void integrate(const CMTime& timeStepStart, const CMTime& timeStepEnd) = 0;
+
+    // Virtual method to add the "contents" of the segment into the NWP's native fields
+    // before it is destroyed
+    virtual void dump() = 0;
+
+    // Virtual method to add the contrail ice mass in the segment to the QIcontrail field
+    virtual void addToQIcontrail() = 0;
 
     void find_dependent_locs() {
         centre = great_circle_interp(0.5, back, front);
@@ -48,8 +52,8 @@ struct Segment {
         }
         bool inGridBack, inGridFront;
 
-        inGridBack = advect_loc_RK4(back, duration_s, domain);
-        inGridFront = advect_loc_RK4(front, duration_s, domain);
+        inGridBack = advect_loc_RK4(back, duration_s, *domPtr);
+        inGridFront = advect_loc_RK4(front, duration_s, *domPtr);
 
         // If either end of segment has drifted out of grid, remove segment 
         if (!(inGridBack && inGridFront)) {
