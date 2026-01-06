@@ -4,13 +4,12 @@ if(NOT DEFINED ENV{ESMFMKFILE})
     message(FATAL_ERROR "Environment variable ESMFMKFILE was not set.")
 endif()
 
-# Helper function to parse esmf.mk
+# Function to parse esmf.mk
 function(get_esmf_var VAR_NAME OUTPUT_VAR)
     execute_process(
         COMMAND grep "^${VAR_NAME}=" $ENV{ESMFMKFILE}
         COMMAND cut -d= -f2-
         OUTPUT_VARIABLE RESULT
-        #OUTPUT_STRIP_TRAILING_WHITESPACE
     )
     string(STRIP "${RESULT}" STRIPPED_RESULT)
     set(${OUTPUT_VAR} "${STRIPPED_RESULT}" PARENT_SCOPE)
