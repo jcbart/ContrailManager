@@ -46,4 +46,4 @@ Contrail ice mass in segments which are still alive (i.e. have not reached an ag
 
 For examples of Fortran interfaces for the **Contrail Manager** functions, see [WRF-Contrail-Coupler](https://github.com/jcbart/WRF-Contrail-Coupler).
 
-Runtime configuration options are set in `CM-config.yaml`.
+Runtime configuration options are set in `CM-config.yaml` which must be located in the same directory as the final executable.
