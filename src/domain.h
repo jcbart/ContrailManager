@@ -1,5 +1,5 @@
-#ifndef VARIABLES
-#define VARIABLES
+#ifndef DOMAIN_H
+#define DOMAIN_H
 
 #include <string>
 #include <vector>

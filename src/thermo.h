@@ -1,5 +1,5 @@
-#ifndef THERMO
-#define THERMO
+#ifndef THERMO_H
+#define THERMO_H
 
 namespace thermo {
 

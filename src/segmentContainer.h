@@ -1,5 +1,5 @@
-#ifndef SEGMENTCONTAINER
-#define SEGMENTCONTAINER
+#ifndef SEGMENTCONTAINER_H
+#define SEGMENTCONTAINER_H
 
 #include <string>
 #include <vector>

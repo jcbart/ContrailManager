@@ -1,5 +1,5 @@
-#ifndef CONTRAILMANAGER
-#define CONTRAILMANAGER
+#ifndef CONTRAILMANAGER_H
+#define CONTRAILMANAGER_H
 
 #include <vector>
 #include <memory>

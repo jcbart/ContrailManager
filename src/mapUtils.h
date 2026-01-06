@@ -1,5 +1,5 @@
-#ifndef MAPUTILS
-#define MAPUTILS
+#ifndef MAPUTILS_H
+#define MAPUTILS_H
 
 #include <string>
 

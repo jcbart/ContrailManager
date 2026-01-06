@@ -1,5 +1,5 @@
-#ifndef PLUMEMODELS
-#define PLUMEMODELS
+#ifndef PLUMEMODELS_H
+#define PLUMEMODELS_H
 
 #include <string>
 #include "segment.h"

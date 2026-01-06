@@ -1,5 +1,5 @@
-#ifndef SEGMENT
-#define SEGMENT
+#ifndef SEGMENT_H
+#define SEGMENT_H
 
 #include <vector>
 #include <string>

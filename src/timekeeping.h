@@ -1,5 +1,5 @@
-#ifndef TIMEKEEPING
-#define TIMEKEEPING
+#ifndef TIMEKEEPING_H
+#define TIMEKEEPING_H
 
 #include <string>
 

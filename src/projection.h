@@ -1,5 +1,5 @@
-#ifndef PROJECTION
-#define PROJECTION
+#ifndef PROJECTION_H
+#define PROJECTION_H
 
 #include "mapUtils.h"
 
