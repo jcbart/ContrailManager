@@ -15,12 +15,11 @@
 class ContrailManager {
 private:
     CMTimeInterval timeStep;
-    int timeStep_s;
     CMTime currTime;
     bool firstRunCall = true;
-    int plumeModelID = 1;
+    int plumeModelID = 0;
     float maxInitialSegLen = 2500; // Maximum length of a new segment (m)
-    int maxContrailAge_s = 12*3600;
+    float maxContrailAge_s = 12*3600;
 
     // Flight vector
     std::vector<Flight> flights;
@@ -28,6 +27,8 @@ private:
     // Pointer to the contrail segment container (is given a pointer to a
     // SegmentContainer<SegmentType> during initialisation)
     std::unique_ptr<ISegmentContainer> segments;
+
+    void read_config();
 
     void setup_on_first_run(CMTime& startTime);
 

@@ -1,3 +1,4 @@
+#include <ESMC.h>
 #include "plumeModels.h"
 #include "domain.h"
 #include "timekeeping.h"
@@ -48,6 +49,10 @@ void SegmentBasicPlume::formation() {
     float T_LM = thermo::calc_T_LM(G);
 
     bool contrailForms = thermo::formation_condition_met(T_exhaust, e_exhaust, T_LM, G);
+    int rc;
+    std::string msg;
+    msg = "Formation threshold reached: " + std::to_string(contrailForms);
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
     if (contrailForms) {
         m_ice = 1000;

@@ -3,6 +3,7 @@
 #include <string>
 #include <cmath>
 #include <memory>
+#include <yaml-cpp/yaml.h>
 #include "ContrailManager.h"
 #include "timekeeping.h"
 #include "domain.h"
@@ -16,14 +17,11 @@ void ContrailManager::init() {
     int rc;
     std::string msg;
     rc = ESMC_LogWrite("Initialising Contrail Manager:", ESMC_LOGMSG_INFO);
-    timeStep_s = 10; // Read from CM config
-    timeStep.set(0, 0, 0, 0, 0, timeStep_s);
+    read_config();
     msg = "Contrail Manager internal time step set to " + timeStep.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-    // Read maxInitialSegLen and maxContrailAge_s from CM config
 
     // Determine plume model
-    plumeModelID = 1;
     std::string plumeModelStr;
     switch (plumeModelID) {
         case MODEL_ID_BASIC_PLUME: {
@@ -57,6 +55,38 @@ void ContrailManager::init() {
     test_flight.numWps = 2;
     flights.push_back(test_flight);
     rc = ESMC_LogWrite("Contrail Manager initialised", ESMC_LOGMSG_INFO);
+}
+
+// Read config file
+void ContrailManager::read_config() {
+    YAML::Node config = YAML::LoadFile("CM-config.yaml");
+
+    int timeStep_s = config["Time step (s)"].as<int>();
+    if (timeStep_s <= 0) {
+        std::cerr << "Config error: Read time step of " << timeStep_s << " s." << std::endl;
+        std::cerr << "Time step must be positive. Stopping." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    timeStep.set(0, 0, 0, 0, 0, timeStep_s);
+
+    plumeModelID = config["Plume model"].as<int>();
+
+    maxInitialSegLen = config["Max initial segment length (m)"].as<float>();
+    if (maxInitialSegLen <= 0) {
+        std::cerr << "Config error: Read maximum initial segment length of " << maxInitialSegLen
+                  << " m." << std::endl;
+        std::cerr << "Maximum initial segment length must be positive. Stopping." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    float maxContrailAge_h = config["Max contrail age (h)"].as<float>();
+    if (maxContrailAge_h <= 0) {
+        std::cerr << "Config error: Read maximum contrail age of " << maxContrailAge_h
+                  << " h." << std::endl;
+        std::cerr << "Maximum contrail age must be positive. Stopping." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    maxContrailAge_s = 3600 * maxContrailAge_h;
 }
 
 // Integrate between times

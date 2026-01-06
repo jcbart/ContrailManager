@@ -1,0 +1,14 @@
+# Contrail Manager config
+
+# Time step
+Time step (s): 10
+
+# Plume model. Options are:
+# 1 - Basic plume model
+Plume model: 1
+
+# Maximum length a contrail segment can be initialised with
+Max initial segment length (m): 2500
+
+# Age at which a contrail segment, if it still exists, will be dumped into the NWP's native grid
+Max contrail age (h): 2
