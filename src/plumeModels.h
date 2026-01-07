@@ -19,13 +19,10 @@ struct SegmentBasicPlume : public Segment {
     bool doneFormation = false;
     float m_ice = 0; // kg
 
-    // Plume model-specific integration method
     void integrate(const CMTime& timeStepStart, const CMTime& timeStepEnd) override;
 
-    // Plume model-specific dump method
     void dump() override;
 
-    // Plume model-specific method to add contrail ice mass to QIcontrail field
     void addToQIcontrail() override;
 
     void formation();

@@ -43,12 +43,26 @@ IDX2::operator IDX3() const {
     return as3D;
 }
 
+// Return location (i, j) as string
+std::string IDX2::asString() {
+    std::stringstream ss;
+    ss << "(" << i << ", " << j << ")";
+    return ss.str();
+}
+
 // Return a IDX2 version of an IDX3 object (k stripped)
 IDX3::operator IDX2() const {
     IDX2 as2D;
     as2D.i = this->i;
     as2D.j = this->j;
     return as2D;
+}
+
+// Return location (i, j, k) as string
+std::string IDX3::asString() {
+    std::stringstream ss;
+    ss << "(" << i << ", " << j << ", " << k << ")";
+    return ss.str();
 }
 
 // Converts a geographic point to a Cartesian point on a unit circle

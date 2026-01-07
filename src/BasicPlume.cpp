@@ -26,6 +26,10 @@ void SegmentBasicPlume::addToQIcontrail() {
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
     float grid_dry_mass = domPtr->DRYMASS.get_value(ijkCurr);
     *domPtr->QIcontrail.get(ijkCurr) += m_ice/grid_dry_mass;
+    int rc;
+    std::string msg;
+    msg = "QIcontrail at " + ijkCurr.asString() + " set to " + std::to_string(*domPtr->QIcontrail.get(ijkCurr));
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 }
 
 void SegmentBasicPlume::formation() {

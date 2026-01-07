@@ -67,6 +67,7 @@ struct IDX2 {
     int i;
     int j;
     operator IDX3() const;
+    std::string asString();
 };
 
 // A structure to store 3 integer indices
@@ -75,6 +76,7 @@ struct IDX3 {
     int j;
     int k;
     operator IDX2() const;
+    std::string asString();
 };
 
 Cart3D Geo2D_to_Cart3D(const Geo2D& pointIn);

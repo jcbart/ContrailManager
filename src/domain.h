@@ -10,7 +10,6 @@ template <typename T>
 class Variable2D {
 private:
     std::string name = "UNDEFINED";
-    T* data = nullptr;
     int ids = 0, ide = 0, jds = 0, jde = 0;
     int i_size = 0, j_size = 0;
     int num_elements = 0;
@@ -19,6 +18,8 @@ private:
     const T* get_element_ptr(const int i, const int j) const;
 
 public:
+    T* data = nullptr;
+
     // Destructor
     ~Variable2D();
 
@@ -46,7 +47,6 @@ template <typename T>
 class Variable3D {
 private:
     std::string name = "UNDEFINED";
-    T* data = nullptr;
     int ids = 0, ide = 0, jds = 0, jde = 0, kds = 0, kde = 0;
     int i_size = 0, j_size = 0, k_size = 0;
     int num_elements = 0;
@@ -55,6 +55,8 @@ private:
     const T* get_element_ptr(const int i, const int j, const int k) const;
 
 public:
+    T* data = nullptr;
+    
     // Destructor
     ~Variable3D();
 

@@ -51,11 +51,8 @@ const T* Variable2D<T>::get_element_ptr(const int i, const int j) const {
                      ") is out of range for array of size (ids:ide,jds:jde)=(" <<
                      ids << ":" << ide << "," << jds << ":" << jde << ")" << std::endl;
         exit(EXIT_FAILURE);
-        return &data[get_1D_index_from_2D(ids, jds)];
     }
-    else {
-        return &data[get_1D_index_from_2D(i, j)];
-    }
+    return &data[get_1D_index_from_2D(i, j)];
 }
 
 // Returns a reference to the value, so can be used to set and get
@@ -138,11 +135,8 @@ const T* Variable3D<T>::get_element_ptr(const int i, const int j, const int k) c
                      << ids << ":" << ide << "," << jds << ":" << jde << "," << kds << ":" << kde << ")"
                      << std::endl;
         exit(EXIT_FAILURE);
-        return &data[get_1D_index_from_3D(ids, jds, kds)];
     }
-    else {
-        return &data[get_1D_index_from_3D(i, j, k)];
-    }
+    return &data[get_1D_index_from_3D(i, j, k)];
 }
 
 // Returns a reference to the value, so can be used to set and get
