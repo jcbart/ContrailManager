@@ -25,6 +25,8 @@ struct SegmentBasicPlume : public Segment {
 
     void addToQIcontrail() override;
 
+    void scaleWidthAfterAdvection(float lengthRatio) override;
+
     void formation();
 };
 

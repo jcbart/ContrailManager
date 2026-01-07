@@ -32,6 +32,10 @@ void SegmentBasicPlume::addToQIcontrail() {
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 }
 
+void SegmentBasicPlume::scaleWidthAfterAdvection(float lengthRatio) {
+    // Has no width so do nothing
+}
+
 void SegmentBasicPlume::formation() {
     IDX3 ijkCurr;
     // Should be safe to ignore return value

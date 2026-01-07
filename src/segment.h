@@ -38,6 +38,10 @@ struct Segment {
     // Virtual method to add the contrail ice mass in the segment to the QIcontrail field
     virtual void addToQIcontrail() = 0;
 
+    // Virtual method to scale the segment width after advection
+    // lengthRatio is the length after advection divided by the length before
+    virtual void scaleWidthAfterAdvection(float lengthRatio) = 0;
+
     void find_dependent_locs() {
         centre = great_circle_interp(0.5, back, front);
     }
@@ -60,9 +64,14 @@ struct Segment {
         if (!(inGridBack && inGridFront)) {
             outOfBounds = true;
         }
+
+        // Find new length
         float newLength = great_circle_dist(back, front);
-        // width *= length/newLength
+        // Call plume model-specific method to scale width
+        scaleWidthAfterAdvection(newLength/length);
+        // Set new length
         length = newLength;
+        // Update dependent locs
         find_dependent_locs();
     }
 };
