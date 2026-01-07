@@ -11,6 +11,7 @@
 
 // Virtual contrail segment container structure
 struct ISegmentContainer {
+    bool onlineCoupling = true;
     int maxContrailAge_s;
 
     virtual ~ISegmentContainer() = default;
@@ -51,6 +52,7 @@ public:
         newSeg.length = length;
         newSeg.birthTime = birthTime;
         newSeg.domPtr = &domain; // Pass address to pointer
+        newSeg.onlineCoupling = onlineCoupling;
         newSeg.find_dependent_locs();
         vec.push_back(newSeg);
         
@@ -74,27 +76,35 @@ public:
         int rc;
         std::string msg;
         rc = ESMC_LogWrite("Dumping old and dead segments", ESMC_LOGMSG_INFO);
-        int numOldOrDead = 0;
+        
+        // Mark old segments
         for (SegmentType& seg : vec) {
-            // Mark if old
             if (((timeStepEnd - seg.birthTime).dhms_to_s() > maxContrailAge_s)) {
                 seg.isOld = true;
             }
+        }
+
+        if (onlineCoupling) {
             // Dump if old or dead
-            if (seg.isOld || seg.isDead) {
-                numOldOrDead += 1;
-                seg.dump();
+            for (Segment& seg : vec) {
+                if (seg.isOld || seg.isDead) {
+                    seg.dump();
+                }
             }
         }
 
-        msg = "Number of old/dead: " + std::to_string(numOldOrDead);
-        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+        size_t numBefore = vec.size();
 
         // Remove old or dead
         vec.erase(std::remove_if(vec.begin(), vec.end(),
                                  [](const SegmentType& seg) {
                                     return (seg.isOld || seg.isDead);
                                  }), vec.end());
+        
+        size_t numAfter = vec.size();
+        
+        msg = "Number of old/dead: " + std::to_string(numBefore-numAfter);
+        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     }
 
     void advectSegments(const CMTime& timeStepStart, const CMTime& timeStepEnd) override {

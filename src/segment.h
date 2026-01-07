@@ -23,6 +23,7 @@ struct Segment {
     bool outOfBounds = false;
     bool isOld = false;
     bool isDead = false;
+    bool onlineCoupling = true; // For use in plume model-specific integration method
 
     // Virtual destructor
     virtual ~Segment() = default;

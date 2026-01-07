@@ -17,8 +17,13 @@ void ContrailManager::init() {
     int rc;
     std::string msg;
     rc = ESMC_LogWrite("Initialising Contrail Manager:", ESMC_LOGMSG_INFO);
+    
     read_config();
+    
     msg = "Contrail Manager internal time step set to " + timeStep.asString();
+    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+
+    msg = "Online coupling: " + std::string(onlineCoupling ? "true" : "false");
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
     // Determine plume model
@@ -39,6 +44,8 @@ void ContrailManager::init() {
     msg = "Plume model: " + plumeModelStr;
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
+    // After the segments pointer has been set
+    segments->onlineCoupling = onlineCoupling;
     segments->maxContrailAge_s = maxContrailAge_s;
 
     // Read flight data etc
@@ -68,6 +75,8 @@ void ContrailManager::read_config() {
         exit(EXIT_FAILURE);
     }
     timeStep.set(0, 0, 0, 0, 0, timeStep_s);
+
+    onlineCoupling = config["Online coupling"].as<bool>();
 
     plumeModelID = config["Plume model"].as<int>();
 
@@ -119,15 +128,14 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
           + stopTime.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
-    msg = "DRYMASS(100,200,10) = " + std::to_string(*domain.DRYMASS.get(100, 200, 10));
+    if (onlineCoupling) {
+        // Set all delta variables and contrail ice mass to zero (will be built up again)
+        domain.deltaQV.clear_all();
+        domain.deltaQI.clear_all();
+        domain.deltaNI.clear_all();
+        domain.QIcontrail.clear_all();
+    }
 
-    // Set all delta variables and contrail ice mass to zero (will be built up again)
-    domain.deltaQV.clear_all();
-    domain.deltaQI.clear_all();
-    domain.deltaNI.clear_all();
-    domain.QIcontrail.clear_all();
-
-    currTime = startTime;
     while (currTime+timeStep <= stopTime) {
         CMTime timeStepStart = currTime;
         CMTime timeStepEnd = currTime + timeStep;
@@ -160,8 +168,10 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     }
 
-    // Construct QIcontrail field from the live contrail ice mass before ending run
-    segments->constructQIcontrail();
+    if (onlineCoupling) {
+        // Construct QIcontrail field from the live contrail ice mass before ending run
+        segments->constructQIcontrail();
+    }
 }
 
 

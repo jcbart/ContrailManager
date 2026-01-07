@@ -16,10 +16,11 @@ class ContrailManager {
 private:
     CMTimeInterval timeStep;
     CMTime currTime;
-    bool firstRunCall = true;
+    bool firstRunCall = true; // Determines whether to call setup_on_first_run
+    bool onlineCoupling = true; // True for online coupling (feedback to NWP)
     int plumeModelID = 0;
     float maxInitialSegLen = 2500; // Maximum length of a new segment (m)
-    float maxContrailAge_s = 12*3600;
+    float maxContrailAge_s = 12*3600; // Maximum age of a contrail segment (s)
 
     // Flight vector
     std::vector<Flight> flights;
