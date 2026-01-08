@@ -2,7 +2,10 @@
 #include <cmath>
 #include <ESMC.h>
 #include "projection.h"
+#include "mathUtils.h"
 #include "mapUtils.h"
+
+using namespace mathUtils;
 
 void Projection::init(int proj_code, float lat1, float lon1, float knowni, float knownj, float dx,
                       float stdlon, float truelat1, float truelat2) {

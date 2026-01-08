@@ -7,9 +7,6 @@
 struct CMTime;
 class Domain;
 
-const double PI = 3.14159265358979323846264338327950288419716939937510582;
-const double RAD_PER_DEG = PI/180;
-const double DEG_PER_RAD = 1/RAD_PER_DEG;
 const double EARTH_RADIUS_M = 6.37e6; // Earth radius (m); consistent with WRF
 
 // Forward declarations

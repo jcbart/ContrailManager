@@ -1,9 +1,12 @@
 #include <cmath>
 #include <string>
 #include <sstream>
+#include "mathUtils.h"
 #include "mapUtils.h"
 #include "domain.h"
 #include "timekeeping.h"
+
+using namespace mathUtils;
 
 // Return a Geo3D version of a Geo2D object (alt not set)
 Geo2D::operator Geo3D() const {

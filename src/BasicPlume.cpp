@@ -4,6 +4,9 @@
 #include "domain.h"
 #include "timekeeping.h"
 #include "thermo.h"
+#include "mathUtils.h"
+
+using namespace mathUtils;
 
 // Constants
 const double BOLTZMANN_CONSTANT = 1.380649e-23; // (J K-1)
@@ -15,16 +18,6 @@ const double H2O_VOL_ICE = H2O_MOLECULAR_MASS / ICE_DENSITY; // (m3)
 
 // Parameters
 const float MIN_M_ICE_PER_M = 0.01; // kg m-1
-
-template <typename T>
-T r_to_v(const T r) {
-    return (4./3. * PI * r*r*r);
-}
-
-template <typename T>
-T v_to_r(const T v) {
-    return std::pow(3.*v / (4.*PI), 1./3.);
-}
 
 void SegmentBasicPlume::integrate(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
     if (!doneFormation) {
