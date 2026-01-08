@@ -197,9 +197,7 @@ void Domain::init_vars(int ids, int ide, int jds, int jde, int kds, int kde) {
     W.init("W", ids, ide, jds, jde, kds, kde);
     QV.init("QV", ids, ide, jds, jde, kds, kde);
     deltaQV.init("deltaQV", ids, ide, jds, jde, kds, kde);
-    //QI.init("QI", ids, ide, jds, jde, kds, kde);
     deltaQI.init("deltaQI", ids, ide, jds, jde, kds, kde);
-    //NI.init("NI", ids, ide, jds, jde, kds, kde);
     deltaNI.init("deltaNI", ids, ide, jds, jde, kds, kde);
     QIcontrail.init("QIcontrail", ids, ide, jds, jde, kds, kde);
     

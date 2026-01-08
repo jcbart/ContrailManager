@@ -94,6 +94,7 @@ private:
     bool varsInitd = false;
 
 public:
+    bool onlineCoupling; // True for online coupling (feedback to NWP)
     // Meteorological variables (accessible externally)
     Variable2D<float> XLONG; // Longitude (degrees, West is negative)
     Variable2D<float> XLAT; // Latitude (degrees, South is negative)

@@ -6,20 +6,21 @@
 #include <algorithm>
 #include <functional>
 #include <ESMC.h>
+#include "domain.h"
 #include "mapUtils.h"
 #include "timekeeping.h"
 
 // Virtual contrail segment container structure
 struct ISegmentContainer {
-    bool onlineCoupling = true;
     int maxContrailAge_s;
+    Domain* domPtr; // Pointer to the Contrail Manager's domain
 
     virtual ~ISegmentContainer() = default;
     // Return number of segments in container
     virtual size_t getSize() const = 0;
     // Add segment to container after checking segment is in domain
     virtual void addItem(const std::string& parentID, const Geo3D& backLoc, const Geo3D& frontLoc,
-                         const float& length, const CMTime& birthTime, Domain& domain) = 0;
+                         const float& length, const CMTime& birthTime) = 0;
     // Integrate all segment plumes in vector
     virtual void integratePlumes(const CMTime& timeStepStart, const CMTime& timeStepEnd) = 0;
     // Dump old or dead segments
@@ -43,7 +44,7 @@ public:
     }
 
     void addItem(const std::string& parentID, const Geo3D& backLoc, const Geo3D& frontLoc,
-                 const float& length, const CMTime& birthTime, Domain& domain) override {
+                 const float& length, const CMTime& birthTime) override {
 
         SegmentType newSeg;
         newSeg.parentID = parentID;
@@ -51,8 +52,7 @@ public:
         newSeg.front = frontLoc;
         newSeg.length = length;
         newSeg.birthTime = birthTime;
-        newSeg.domPtr = &domain; // Pass address to pointer
-        newSeg.onlineCoupling = onlineCoupling;
+        newSeg.domPtr = domPtr; // Pass address to pointer
         newSeg.find_dependent_locs();
         vec.push_back(newSeg);
         
@@ -84,7 +84,7 @@ public:
             }
         }
 
-        if (onlineCoupling) {
+        if (domPtr->onlineCoupling) {
             // Dump if old or dead
             for (Segment& seg : vec) {
                 if (seg.isOld || seg.isDead) {

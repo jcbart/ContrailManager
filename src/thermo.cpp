@@ -20,6 +20,12 @@ float thermo::r_to_e(float r, float P) {
     return (r*P)/(EPS + r);
 }
 
+// Returns water vapour mass mixing ratio (kg (kg dry air)-1) when given water vapour partial
+// pressure (Pa) and total air pressure (Pa)
+float thermo::e_to_r(float e, float P) {
+    return (EPS*e)/(P - e);
+}
+
 // Returns the satuation vapour pressure with respect to liquid water (Pa) at temperature T (K)
 // according to Buck
 float thermo::Buck_liq(float T) {

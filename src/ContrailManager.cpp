@@ -23,7 +23,7 @@ void ContrailManager::init() {
     msg = "Contrail Manager internal time step set to " + timeStep.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
-    msg = "Online coupling: " + std::string(onlineCoupling ? "true" : "false");
+    msg = "Online coupling: " + std::string(domain.onlineCoupling ? "true" : "false");
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
     // Determine plume model
@@ -45,8 +45,8 @@ void ContrailManager::init() {
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
     // After the segments pointer has been set
-    segments->onlineCoupling = onlineCoupling;
     segments->maxContrailAge_s = maxContrailAge_s;
+    segments->domPtr = &domain;
 
     // Read flight data etc
     Flight test_flight;
@@ -76,7 +76,7 @@ void ContrailManager::read_config() {
     }
     timeStep.set(0, 0, 0, 0, 0, timeStep_s);
 
-    onlineCoupling = config["Online coupling"].as<bool>();
+    domain.onlineCoupling = config["Online coupling"].as<bool>();
 
     plumeModelID = config["Plume model"].as<int>();
 
@@ -128,7 +128,7 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
           + stopTime.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
-    if (onlineCoupling) {
+    if (domain.onlineCoupling) {
         // Set all delta variables and contrail ice mass to zero (will be built up again)
         domain.deltaQV.clear_all();
         domain.deltaQI.clear_all();
@@ -168,7 +168,7 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     }
 
-    if (onlineCoupling) {
+    if (domain.onlineCoupling) {
         // Construct QIcontrail field from the live contrail ice mass before ending run
         segments->constructQIcontrail();
     }
@@ -269,7 +269,7 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
                 // Add emissions info
 
                 // Add segment to container
-                segments->addItem(flight.ID, backLoc, frontLoc, segLen, birthTime, domain);
+                segments->addItem(flight.ID, backLoc, frontLoc, segLen, birthTime);
 
                 // Set back loc for next segment
                 backLoc = frontLoc;

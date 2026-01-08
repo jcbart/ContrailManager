@@ -17,6 +17,8 @@ float r_to_q(float r);
 
 float r_to_e(float r, float P);
 
+float e_to_r(float e, float P);
+
 float Buck_liq(float T);
 
 float Buck_ice(float T);
