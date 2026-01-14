@@ -7,8 +7,8 @@
 
 using namespace mathUtils;
 
-void Projection::init(int proj_code, float lat1, float lon1, float knowni, float knownj, float dx,
-                      float stdlon, float truelat1, float truelat2) {
+void Projection::init(int proj_code, double lat1, double lon1, double knowni, double knownj, double dx,
+                      double stdlon, double truelat1, double truelat2) {
     int rc;
     std::string msg;
     if (proj_code != PROJ_LC) {
@@ -34,12 +34,8 @@ void Projection::init(int proj_code, float lat1, float lon1, float knowni, float
     this->truelat1 = truelat1;
     this->truelat2 = truelat2;
 
-    if (truelat1 < 0) {
-        hemi = -1;
-    }
-    else {
-        hemi = 1;
-    }
+    hemi = (truelat1 < 0) ? -1 : 1;
+
     rebydx = EARTH_RADIUS_M / dx;
     if (std::abs(this->truelat2) > 90) {
         msg = "CM Projection: truelat2 > 90; assuming a tangent.";
@@ -54,7 +50,7 @@ void Projection::init(int proj_code, float lat1, float lon1, float knowni, float
 
 void Projection::set_lc() {
     cone = lc_cone(truelat1, truelat2);
-    float deltalon1 = lon1 - stdlon;
+    double deltalon1 = lon1 - stdlon;
     wrap_WE(deltalon1);
 
     ctl1r = std::cos(truelat1 * RAD_PER_DEG);
@@ -63,13 +59,13 @@ void Projection::set_lc() {
           * std::pow((std::tan((90.*hemi - lat1)*RAD_PER_DEG/2.) /
                       std::tan((90.*hemi - truelat1)*RAD_PER_DEG/2.)), cone);
 
-    float arg = cone * deltalon1 * RAD_PER_DEG;
+    double arg = cone * deltalon1 * RAD_PER_DEG;
     polei = 1. - hemi * rsw * std::sin(arg);
     polej = 1. + rsw * std::cos(arg);
 }
 
-float Projection::lc_cone(float truelat1, float truelat2) {
-    float cone;
+double Projection::lc_cone(double truelat1, double truelat2) {
+    double cone;
     if (std::abs(truelat1-truelat2) > 0.01) {
         cone = std::log10(std::cos(truelat1*RAD_PER_DEG))
                - std::log10(std::cos(truelat2*RAD_PER_DEG));
@@ -83,7 +79,7 @@ float Projection::lc_cone(float truelat1, float truelat2) {
 }
 
 // Returns the grid cell ij which loc lies within
-// Assumes i and j start at 1
+// Assumes i and j start at 0
 IDX2 Projection::loc_to_ij(const Geo2D& loc) const {
     if (code == PROJ_LC) {
         return loc_to_ij_lc(loc);
@@ -97,14 +93,14 @@ IDX2 Projection::loc_to_ij(const Geo2D& loc) const {
 IDX2 Projection::loc_to_ij_lc(const Geo2D& loc) const {
     IDX2 ij;
 
-    float deltalon = loc.lon - stdlon;
+    double deltalon = loc.lon - stdlon;
     wrap_WE(deltalon);
 
-    float rm = rebydx * ctl1r/cone
+    double rm = rebydx * ctl1r/cone
                * std::pow((std::tan((90.*hemi - loc.lat)*RAD_PER_DEG/2.) /
                            std::tan((90.*hemi - truelat1)*RAD_PER_DEG/2.)), cone);
 
-    float arg = cone * deltalon * RAD_PER_DEG;
+    double arg = cone * deltalon * RAD_PER_DEG;
     ij.i = hemi * (polei + hemi * rm * std::sin(arg));
     ij.j = hemi * (polej - rm * std::cos(arg));
     return ij;

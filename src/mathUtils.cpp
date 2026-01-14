@@ -3,6 +3,12 @@
 
 using namespace mathUtils;
 
+// List of types to compile
+template float mathUtils::r_to_v<float>(float);
+template double mathUtils::r_to_v<double>(double);
+template float mathUtils::v_to_r<float>(float);
+template double mathUtils::v_to_r<double>(double);
+
 // Returns the volume of a sphere if given its radius
 template <typename T>
 T mathUtils::r_to_v(const T r) {

@@ -15,26 +15,26 @@ struct Geo3D;
 
 // A structure to define a location in geographic (lat, lon) coordinates
 struct Geo2D {
-    float lon; // degrees, West is negative
-    float lat; // degrees, South is negative
+    double lon; // degrees, West is negative
+    double lat; // degrees, South is negative
     operator Geo3D() const;
-    std::string asString();
+    std::string asString() const;
 };
 
 // A structure to define a location in geodetic (lat, lon, alt) coordinates
 struct Geo3D {
-    float lon; // degrees, West is negative
-    float lat; // degrees, South is negative
-    float alt; // metres above mean sea level
+    double lon; // degrees, West is negative
+    double lat; // degrees, South is negative
+    double alt; // metres above mean sea level
     operator Geo2D() const;
-    std::string asString();
+    std::string asString() const;
 };
 
 // A structure to define a location (or vector) in Cartesian (x, y, z) coordinates
 struct Cart3D {
-    float x;
-    float y;
-    float z;
+    double x;
+    double y;
+    double z;
 
     // Sum two Cart3D points
     Cart3D operator+(const Cart3D& other) const {
@@ -64,7 +64,7 @@ struct IDX2 {
     int i;
     int j;
     operator IDX3() const;
-    std::string asString();
+    std::string asString() const;
 };
 
 // A structure to store 3 integer indices
@@ -73,7 +73,7 @@ struct IDX3 {
     int j;
     int k;
     operator IDX2() const;
-    std::string asString();
+    std::string asString() const;
 };
 
 Cart3D Geo2D_to_Cart3D(const Geo2D& pointIn);
@@ -92,14 +92,14 @@ float cart_dist(const Geo3D& pointA, const Geo3D& pointB);
 
 float great_circle_dist(const Geo3D& pointA, const Geo3D& pointB);
 
-Geo3D great_circle_interp(const float f, const Geo3D& loc1, const Geo3D& loc2);
+Geo3D great_circle_interp(const double f, const Geo3D& loc1, const Geo3D& loc2);
 
 Geo3D great_circle_interp(const CMTime& time, const CMTime& time1, const Geo3D& loc1,
                           const CMTime& time2, const Geo3D& loc2);
 
-void wrap_WE(float& lon);
+void wrap_WE(double& lon);
 
-void wrap_SN(float& lon, float& lat);
+void wrap_SN(double& lon, double& lat);
 
 float dot_prod(const Cart3D& vecA, const Cart3D& vecB);
 

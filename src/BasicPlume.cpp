@@ -1,5 +1,6 @@
 #include <ESMC.h>
 #include <cmath>
+#include <iostream>
 #include "plumeModels.h"
 #include "domain.h"
 #include "timekeeping.h"
@@ -9,15 +10,11 @@
 using namespace mathUtils;
 
 // Constants
-const double BOLTZMANN_CONSTANT = 1.380649e-23; // (J K-1)
-const double H2O_MOLECULAR_MASS = 2.991506e-26; // (kg)
-const double AVOGADRO_CONSTANT = 6.02214e23; // (mol-1)
-const double IDEAL_GAS_CONSTANT = 8.3145e0; // (J mol-1 K-1)
 const double ICE_DENSITY = 917; // Approx assumption (kg m-3)
-const double H2O_VOL_ICE = H2O_MOLECULAR_MASS / ICE_DENSITY; // (m3)
+const double H2O_VOL_ICE = thermo::H2O_MOLECULAR_MASS / ICE_DENSITY; // (m3)
 
 // Parameters
-const float MIN_M_ICE_PER_M = 0.01; // kg m-1
+const float MIN_M_ICE_PER_M = 1e-4; // kg m-1
 
 void SegmentBasicPlume::integrate(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
     if (!doneFormation) {
@@ -37,37 +34,46 @@ void SegmentBasicPlume::integrate(const CMTime& timeStepStart, const CMTime& tim
     const float accom_coeff = 1;
 
     const float P_amb = domPtr->P.get_value(ijkCurr);
-    const float T_amb = thermo::theta_to_T(domPtr->T_POT.get_value(ijkCurr), P_amb);
+    const float T_amb = thermo::theta_to_T(domPtr->T_POT.get_value(ijkCurr), P_amb);        
     float qv_amb = domPtr->QV.get_value(ijkCurr);
     float e_amb = thermo::r_to_e(qv_amb, P_amb);
-    const float S_i = e_amb/thermo::Buck_ice(T_amb);
+    float S_i = e_amb/thermo::Buck_ice(T_amb);
 
     float air_diffusivity = 2.11e-5 * std::pow(T_amb/273.15, 1.94) * (101325 / P_amb);
-    float vapour_thermal_speed = std::sqrt(8 * BOLTZMANN_CONSTANT * T_amb / (PI*H2O_MOLECULAR_MASS));
-    float n_sat = AVOGADRO_CONSTANT * e_amb / (IDEAL_GAS_CONSTANT * T_amb);
+    float vapour_thermal_speed = std::sqrt(8 * thermo::BOLTZMANN_CONSTANT * T_amb / (PI*thermo::H2O_MOLECULAR_MASS));
+    // Number concentration of water vapour
+    float n_vap = thermo::AVOGADRO_CONSTANT * e_amb / (thermo::IDEAL_GAS_CONSTANT * T_amb);
 
     float correction_factor = 1 + accom_coeff * vapour_thermal_speed * r_ice / (4 * air_diffusivity);
     // Flux of water vapour molecules to a crystal (s-1)
-    float J = (PI * r_ice * r_ice * accom_coeff * vapour_thermal_speed * n_sat) / correction_factor * (S_i - 1);
+    float J = (PI * r_ice * r_ice * accom_coeff * vapour_thermal_speed * n_vap) / correction_factor * (S_i - 1);
+
     // Growth rate of a crystal (m3 s-1)
     float dv_dt = H2O_VOL_ICE * J;
-    // Change in volume of a crystal (m3)
-    float dv_single = dv_dt * duration_s;
-    // Change in ambient vapour pressure
-    float delta_e_amb = -(BOLTZMANN_CONSTANT * T_amb * dv_single*n_ice/H2O_VOL_ICE);
+    // Change in volume of a crystal (m3) capped at crystal size
+    float dv = std::max(dv_dt * duration_s, -r_to_v(r_ice));
 
     // Update crystal size
-    float r_ice = v_to_r(r_to_v(r_ice) + dv_single);
+    r_ice = v_to_r(r_to_v(r_ice) + dv);
 
     // Update mass per metre
     M_ice_per_m = r_to_v(r_ice) * ICE_DENSITY * N_ice_per_m;
 
     if (domPtr->onlineCoupling) {
-        // Update ambient water vapour
-        e_amb += delta_e_amb;
-        float qv_amb_new = thermo::e_to_r(e_amb, P_amb);
-        float delta_qv = qv_amb_new - qv_amb;
-        *domPtr->QV.get(ijkCurr) += delta_qv;
+        // Update ambient water vapour mixing ratio
+        float vapour_mass_uptake_per_crystal = (dv/H2O_VOL_ICE) * thermo::H2O_MOLECULAR_MASS;
+        float vapour_mass_uptake_tot = vapour_mass_uptake_per_crystal * N_ice_per_m * length;
+        float grid_dry_mass = domPtr->DRYMASS.get_value(ijkCurr);
+        *domPtr->QV.get(ijkCurr) -= vapour_mass_uptake_tot/grid_dry_mass;
+
+        int rc;
+        std::string msg;
+        msg = "Vapour uptake per crystal (kg) = " + std::to_string(vapour_mass_uptake_per_crystal);
+        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+        msg = "Total vapour uptake (kg) = " + std::to_string(vapour_mass_uptake_tot);
+        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+        msg = "Delta QV (kg kg-1) = " + std::to_string(-vapour_mass_uptake_tot/grid_dry_mass * 1e6) + " * 1e-6";
+        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     }
 
     if (M_ice_per_m < MIN_M_ICE_PER_M) {
@@ -134,9 +140,9 @@ void SegmentBasicPlume::formation() {
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
     if (contrailForms) {
-        cross_section_area = 50;
+        cross_section_area = 300;
         r_ice = 1e-6;
-        n_ice = 1e12;
+        n_ice = 1e9;
         N_ice_per_m = n_ice * cross_section_area;
         M_ice_per_m = r_to_v(r_ice) * ICE_DENSITY * N_ice_per_m;
     }

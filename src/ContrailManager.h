@@ -34,7 +34,9 @@ private:
 
     void create_segments(const CMTime& timeStepStart, const CMTime& timeStepEnd);
 
-    bool find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc, int& lastWp);
+    int find_last_wp(const Flight& flight, const CMTime& time);
+
+    bool find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc);
 
 public:
     // Domain

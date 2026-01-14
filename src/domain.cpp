@@ -196,6 +196,7 @@ void Domain::init_vars(int ids, int ide, int jds, int jde, int kds, int kde) {
     V.init("V", ids, ide, jds, jde, kds, kde);
     W.init("W", ids, ide, jds, jde, kds, kde);
     QV.init("QV", ids, ide, jds, jde, kds, kde);
+    QVsave.init("QV", ids, ide, jds, jde, kds, kde);
     deltaQV.init("deltaQV", ids, ide, jds, jde, kds, kde);
     deltaQI.init("deltaQI", ids, ide, jds, jde, kds, kde);
     deltaNI.init("deltaNI", ids, ide, jds, jde, kds, kde);
@@ -224,15 +225,29 @@ void Domain::init_vars(int ids, int ide, int jds, int jde, int kds, int kde) {
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 }
 
+// Copy contents of QV to QVsave
+void Domain::save_QV() {
+    for (size_t i = 0; i < QV.get_num_elements(); i++) {
+        QVsave.data[i] = QV.data[i];
+    }
+}
+
+// Update deltaQV with deltaQV = QV - QVsave
+void Domain::find_deltaQV() {
+    for (size_t i = 0; i < deltaQV.get_num_elements(); i++) {
+        deltaQV.data[i] = QV.data[i] - QVsave.data[i];
+    }
+}
+
 // Updates ij with the lon/lat grid cell indices loc lies within
-// Calls the method in ContrailManager::proj and removes ids = jds = 1 assumption
+// Calls the method in ContrailManager::proj and removes ids = jds = 0 assumption
 // Returns false if loc is not in grid
 bool Domain::loc_to_ij(const Geo2D& loc, IDX2& ij) const {
     bool inGrid = false;
     ij = proj.loc_to_ij(loc);
     // Correct assumption that i and j start at 1
-    ij.i += ids - 1;
-    ij.j += jds - 1;
+    ij.i += ids;
+    ij.j += jds;
     if (ij.i >= ids && ij.i <= ide && ij.j >= jds && ij.j <= jde) {
         inGrid = true;
     }
@@ -352,9 +367,7 @@ bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX3>& interpPoint
         inQuad = loc_in_quad(loc, ij_to_loc(ij1), ij_to_loc(ij2), ij_to_loc(ij3), ij_to_loc(ij4));
     }
     // If inQuad is still false, no quad has been found with loc inside
-    if (!inQuad) {
-        return inQuad;
-    }
+    if (!inQuad) {return inQuad;}
     // Find k for each of the four grid points
     // Return false if no k found; else, update interp point
     int k;

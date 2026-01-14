@@ -17,7 +17,7 @@ Geo2D::operator Geo3D() const {
 }
 
 // Return location (lon, lat) as string
-std::string Geo2D::asString() {
+std::string Geo2D::asString() const {
     std::stringstream ss;
     ss << "(" << lon << ", " << lat << ")";
     return ss.str();
@@ -32,7 +32,7 @@ Geo3D::operator Geo2D() const {
 }
 
 // Return location (lon, lat, alt) as string
-std::string Geo3D::asString() {
+std::string Geo3D::asString() const {
     std::stringstream ss;
     ss << "(" << lon << ", " << lat << ", " << alt << ")";
     return ss.str();
@@ -47,7 +47,7 @@ IDX2::operator IDX3() const {
 }
 
 // Return location (i, j) as string
-std::string IDX2::asString() {
+std::string IDX2::asString() const {
     std::stringstream ss;
     ss << "(" << i << ", " << j << ")";
     return ss.str();
@@ -62,7 +62,7 @@ IDX3::operator IDX2() const {
 }
 
 // Return location (i, j, k) as string
-std::string IDX3::asString() {
+std::string IDX3::asString() const {
     std::stringstream ss;
     ss << "(" << i << ", " << j << ", " << k << ")";
     return ss.str();
@@ -71,13 +71,13 @@ std::string IDX3::asString() {
 // Converts a geographic point to a Cartesian point on a unit circle
 Cart3D Geo2D_to_Cart3D(const Geo2D& pointIn) {
     Cart3D pointOut;
-    float theta = RAD_PER_DEG * (90. - pointIn.lat);
-    float phi = RAD_PER_DEG * pointIn.lon;
+    double theta = RAD_PER_DEG * (90. - pointIn.lat);
+    double phi = RAD_PER_DEG * pointIn.lon;
     pointOut.x = std::sin(theta) * std::cos(phi);
     pointOut.y = std::sin(theta) * std::sin(phi);
     pointOut.z = std::cos(theta);
     // Rescale to reduce precision errors
-    float rho = vector_mag(pointOut);
+    double rho = vector_mag(pointOut);
     pointOut.x /= rho;
     pointOut.y /= rho;
     pointOut.z /= rho;
@@ -87,8 +87,8 @@ Cart3D Geo2D_to_Cart3D(const Geo2D& pointIn) {
 // Converts a Cartesian point on a unit circle to a geographic point
 Geo2D Cart3D_to_Geo2D(const Cart3D& pointIn) {
     Geo2D pointOut;
-    float theta = std::acos(pointIn.z);
-    float phi = std::atan2(pointIn.y, pointIn.x);
+    double theta = std::acos(pointIn.z);
+    double phi = std::atan2(pointIn.y, pointIn.x);
     pointOut.lat = 90. - theta/RAD_PER_DEG;
     pointOut.lon = phi/RAD_PER_DEG;
     return pointOut;
@@ -97,9 +97,9 @@ Geo2D Cart3D_to_Geo2D(const Cart3D& pointIn) {
 // Converts a geodetic point to a Cartesian point
 Cart3D Geo3D_to_Cart3D(const Geo3D& pointIn) {
     Cart3D pointOut;
-    float theta = RAD_PER_DEG * (90. - pointIn.lat);
-    float phi = RAD_PER_DEG * pointIn.lon;
-    float rho = EARTH_RADIUS_M + pointIn.alt;
+    double theta = RAD_PER_DEG * (90. - pointIn.lat);
+    double phi = RAD_PER_DEG * pointIn.lon;
+    double rho = EARTH_RADIUS_M + pointIn.alt;
     pointOut.x = rho * std::sin(theta) * std::cos(phi);
     pointOut.y = rho * std::sin(theta) * std::sin(phi);
     pointOut.z = rho * std::cos(theta);
@@ -109,9 +109,9 @@ Cart3D Geo3D_to_Cart3D(const Geo3D& pointIn) {
 // Converts a Cartesian point to a geodetic point
 Geo3D Cart3D_to_Geo3D(const Cart3D& pointIn) {
     Geo3D pointOut;
-    float rho = vector_mag(pointIn);
-    float theta = std::acos(pointIn.z/rho);
-    float phi = std::atan2(pointIn.y, pointIn.x);
+    double rho = vector_mag(pointIn);
+    double theta = std::acos(pointIn.z/rho);
+    double phi = std::atan2(pointIn.y, pointIn.x);
     pointOut.lat = 90. - theta/RAD_PER_DEG;
     pointOut.lon = phi/RAD_PER_DEG;
     pointOut.alt = rho - EARTH_RADIUS_M;
@@ -148,7 +148,7 @@ float great_circle_dist(const Geo3D& pointA, const Geo3D& pointB) {
 // Returns location at a fraction f [0,1] along a great circle by interpolating
 // between two waypoints
 // If f = 0, the returned location will be loc1 and vice versa for f = 1
-Geo3D great_circle_interp(const float f, const Geo3D& loc1, const Geo3D& loc2) {
+Geo3D great_circle_interp(const double f, const Geo3D& loc1, const Geo3D& loc2) {
     // Lat/lon interpolation
     // Pass Geo2D version of Geo3D objects to function
     Cart3D loc1_Cart = Geo2D_to_Cart3D(loc1);
@@ -181,22 +181,22 @@ Geo3D great_circle_interp(const float f, const Geo3D& loc1, const Geo3D& loc2) {
 // If time = time1, the returned location will be loc1 and vice versa
 Geo3D great_circle_interp(const CMTime& time, const CMTime& time1, const Geo3D& loc1,
                           const CMTime& time2, const Geo3D& loc2) {
-    float time_s = time.dhms_to_s();
-    float time1_s = time1.dhms_to_s();
-    float time2_s = time2.dhms_to_s();
-    float f = (time_s - time1_s)/(time2_s - time1_s);
+    double time_s = time.dhms_to_s();
+    double time1_s = time1.dhms_to_s();
+    double time2_s = time2.dhms_to_s();
+    double f = (time_s - time1_s)/(time2_s - time1_s);
     return great_circle_interp(f, loc1, loc2);
 }
 
 // Wraps longitude to be in range (-180, 180]
-void wrap_WE(float& lon) {
+void wrap_WE(double& lon) {
     while (lon > 180) {lon -= 360;}
     while (lon <= -180) {lon += 360;}
 }
 
 // Wraps longitude and latitude if latitude is outside range [-90, 90]
 // (reflects at poles)
-void wrap_SN(float& lon, float& lat) {
+void wrap_SN(double& lon, double& lat) {
     while (lat > 90) {
         lat = 180-lat;
         lon += 180;

@@ -12,7 +12,7 @@ private:
     std::string name = "UNDEFINED";
     int ids = 0, ide = 0, jds = 0, jde = 0;
     int i_size = 0, j_size = 0;
-    int num_elements = 0;
+    size_t num_elements = 0;
     bool isInitialised = false;
 
     const T* get_element_ptr(const int i, const int j) const;
@@ -31,6 +31,7 @@ public:
     int get_jde() const {return jde;};
     int get_i_size() const {return i_size;};
     int get_j_size() const {return j_size;};
+    size_t get_num_elements() const {return num_elements;};
 
     size_t get_1D_index_from_2D(const int i, const int j) const;
 
@@ -49,7 +50,7 @@ private:
     std::string name = "UNDEFINED";
     int ids = 0, ide = 0, jds = 0, jde = 0, kds = 0, kde = 0;
     int i_size = 0, j_size = 0, k_size = 0;
-    int num_elements = 0;
+    size_t num_elements = 0;
     bool isInitialised = false;
 
     const T* get_element_ptr(const int i, const int j, const int k) const;
@@ -71,6 +72,7 @@ public:
     int get_i_size() const {return i_size;};
     int get_j_size() const {return j_size;};
     int get_k_size() const {return k_size;};
+    size_t get_num_elements() const {return num_elements;};
 
     size_t get_1D_index_from_3D(const int i, const int j, const int k) const;
 
@@ -107,7 +109,8 @@ public:
     Variable3D<float> V; // Wind speed in Northward direction (m s-1)
     Variable3D<float> W; // Wind speed in vertical direction (m s-1)
     Variable3D<float> QV; // Water vapour mass mixing ratio (kg (kg dry air-1))
-    Variable3D<float> deltaQV; // Change in water vapour mass mixing ratio (kg (kg dry air-1))
+    Variable3D<float> QVsave; // Water vapour mass mixing ratio saved at start of coupling interval (kg (kg dry air-1))
+    Variable3D<float> deltaQV; // Change in water vapour mass mixing ratio over coupling interval (kg (kg dry air-1))
     //Variable3D<float> QI; // Ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
     Variable3D<float> deltaQI; // Change in ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
     //Variable3D<float> NI; // Ice number mixing ratio excl. live contrails (# (kg dry air-1))
@@ -129,6 +132,10 @@ public:
     bool get_varsInitd() const {return varsInitd;}
 
     void init_vars(int ids, int ide, int jds, int jde, int kds, int kde);
+
+    void save_QV();
+
+    void find_deltaQV();
 
     bool loc_to_ij(const Geo2D& loc, IDX2& ij) const;
 
