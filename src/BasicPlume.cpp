@@ -59,13 +59,13 @@ void SegmentBasicPlume::integrate(const CMTime& timeStepStart, const CMTime& tim
     // Update mass per metre
     M_ice_per_m = r_to_v(r_ice) * ICE_DENSITY * N_ice_per_m;
 
-    if (domPtr->onlineCoupling) {
+    if (domPtr->twoWayCoupling) {
         // Update ambient water vapour mixing ratio
         float vapour_mass_uptake_per_crystal = (dv/H2O_VOL_ICE) * thermo::H2O_MOLECULAR_MASS;
         float vapour_mass_uptake_tot = vapour_mass_uptake_per_crystal * N_ice_per_m * length;
         float grid_dry_mass = domPtr->DRYMASS.get_value(ijkCurr);
         *domPtr->QV.get(ijkCurr) -= vapour_mass_uptake_tot/grid_dry_mass;
-
+        /*
         int rc;
         std::string msg;
         msg = "Vapour uptake per crystal (kg) = " + std::to_string(vapour_mass_uptake_per_crystal);
@@ -74,6 +74,7 @@ void SegmentBasicPlume::integrate(const CMTime& timeStepStart, const CMTime& tim
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
         msg = "Delta QV (kg kg-1) = " + std::to_string(-vapour_mass_uptake_tot/grid_dry_mass * 1e6) + " * 1e-6";
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+        */
     }
 
     if (M_ice_per_m < MIN_M_ICE_PER_M) {

@@ -23,7 +23,7 @@ void ContrailManager::init() {
     msg = "Contrail Manager internal time step set to " + timeStep.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
-    msg = "Online coupling: " + std::string(domain.onlineCoupling ? "true" : "false");
+    msg = "Online coupling: " + std::string(domain.twoWayCoupling ? "true" : "false");
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
     // Determine plume model
@@ -76,7 +76,7 @@ void ContrailManager::read_config() {
     }
     timeStep.set(0, 0, 0, 0, 0, timeStep_s);
 
-    domain.onlineCoupling = config["Online coupling"].as<bool>();
+    domain.twoWayCoupling = config["Two-way coupling"].as<bool>();
 
     plumeModelID = config["Plume model"].as<int>();
 
@@ -131,7 +131,7 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
           + stopTime.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
-    if (domain.onlineCoupling) {
+    if (domain.twoWayCoupling) {
         // Set all delta variables and contrail ice mass to zero (will be built up again)
         domain.save_QV();
         domain.deltaQV.clear_all();
@@ -172,7 +172,7 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     }
 
-    if (domain.onlineCoupling) {
+    if (domain.twoWayCoupling) {
         // Update deltaQV field
         domain.find_deltaQV();
         // Construct QIcontrail field from the live contrail ice mass

@@ -3,8 +3,8 @@
 # Contrail Manager time step (plume models may have additional internal time steps)
 Time step (s): 10
 
-# Do online coupling?
-Online coupling: true
+# Do two-way coupling?
+Two-way coupling: true
 
 # Plume model. Options are:
 # 1 - Basic plume model

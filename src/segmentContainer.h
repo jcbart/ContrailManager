@@ -84,7 +84,7 @@ public:
             }
         }
 
-        if (domPtr->onlineCoupling) {
+        if (domPtr->twoWayCoupling) {
             // Dump if old or dead
             for (Segment& seg : vec) {
                 if (seg.isOld || seg.isDead) {
