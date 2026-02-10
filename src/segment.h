@@ -15,7 +15,7 @@ struct Segment {
     Geo3D front; // Location of front (last point created) of segment
     Geo3D centre; // Location of centre of segment; derived from back and front
 
-    float length; // Segment length (m)
+    double length; // Segment length (m)
 
     // Pointer to the Contrail Manager's domain
     Domain* domPtr;

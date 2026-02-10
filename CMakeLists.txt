@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 
 if(NOT DEFINED ENV{ESMFMKFILE})
     message(FATAL_ERROR "Environment variable ESMFMKFILE was not set.")
@@ -35,18 +35,28 @@ project(ContrailManager LANGUAGES CXX)
 
 # Submodules
 set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
 add_subdirectory(submodules/yaml-cpp EXCLUDE_FROM_ALL)
 
+# Source files
+set(SOURCES
+    "src/BasicPlume.cpp"
+    "src/ContrailManager.cpp"
+    "src/domain.cpp"
+    "src/extern.cpp"
+    "src/mapUtils.cpp"
+    "src/mathUtils.cpp"
+    "src/projection.cpp"
+    "src/thermo.cpp"
+    "src/timekeeping.cpp"
+)
+
 # Target definition
-file(GLOB SOURCES "src/*.cpp")
 add_library(contrailmanager STATIC ${SOURCES})
 
 # Apply ESMF options and flags
 target_compile_options(contrailmanager PRIVATE ${ESMF_CXXCOMPILEOPTS_LIST} -O2)
 target_compile_definitions(contrailmanager PRIVATE ${ESMF_CXXCOMPILECPPFLAGS})
 
-target_include_directories(contrailmanager PUBLIC
-    submodules/yaml-cpp/include
-)
-
-target_link_libraries(contrailmanager PUBLIC yaml-cpp ${ESMF_CXXLINKLIBS})
+target_link_libraries(contrailmanager PRIVATE yaml-cpp ${ESMF_CXXLINKLIBS})

@@ -132,7 +132,8 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
     if (domain.twoWayCoupling) {
-        // Set all delta variables and contrail ice mass to zero (will be built up again)
+        // Save QV and set all delta variables and contrail ice mass to zero
+        // (will be built up again)
         domain.save_QV();
         domain.deltaQV.clear_all();
         domain.deltaQI.clear_all();
@@ -158,7 +159,8 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         // 2. Integrate plumes
         segments->integratePlumes(timeStepStart, timeStepEnd);
 
-        // 3. Dump old or dead segments in the same location they were integrated (check if timeStepEnd)
+        // 3. Dump old or dead segments in the same location they were integrated
+        // (check if timeStepEnd)
         segments->dump(timeStepEnd);
 
         // 4. Advect segments
@@ -278,7 +280,7 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
                 inGrid = domain.find_interp_points(backLoc, interpTemp);
                 if (!inGrid) {continue;}
                 inGrid = domain.find_interp_points(frontLoc, interpTemp);
-                if (!inGrid) {continue;}       
+                if (!inGrid) {continue;}
 
                 // Find birth time
                 // Fraction of leg duration passed at centre of segment
