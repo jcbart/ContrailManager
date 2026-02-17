@@ -1,41 +1,71 @@
 #ifndef THERMO_H
 #define THERMO_H
 
+#include <cmath>
+
 namespace thermo {
 
-const double BOLTZMANN_CONSTANT = 1.380649e-23; // Boltzmann's constant (J K-1)
-const double AVOGADRO_CONSTANT = 6.02214e23; // Avogadro's constant (mol-1)
-const double IDEAL_GAS_CONSTANT = 8.3145e0; // Ideal gas constant (J mol-1 K-1)
-const double R_D = 287; // Gas constant for dry air (J kg-1 K-1)
-const double c_pd = 1004; // Specific heat capacity of dry air at constant pressure (J kg-1 K-1)
-const double DRY_AIR_MOLAR_MASS = 28.97e-3; // Molar mass of dry air (kg mol-1)
-const double H2O_MOLAR_MASS = 18.02e-3; // Molar mass of H2O (kg mol-1)
-const double H2O_MOLECULAR_MASS = 2.991506e-26; // Mass of an H2O molecule (kg)
-const double ABS_ZERO = -273.15; // Absolute zero in Celcius
-const double P0 = 1e5; // Reference pressure (Pa)
-const double EPS = H2O_MOLAR_MASS/DRY_AIR_MOLAR_MASS; // Ratio of water to dry air molar mass
+constexpr double BOLTZMANN_CONSTANT = 1.380649e-23; // Boltzmann's constant (J K-1)
+constexpr double AVOGADRO_CONSTANT = 6.02214e23; // Avogadro's constant (mol-1)
+constexpr double IDEAL_GAS_CONSTANT = 8.3145e0; // Ideal gas constant (J mol-1 K-1)
+constexpr double R_D = 287.05; // Gas constant for dry air (J kg-1 K-1)
+constexpr double c_pd = 1004; // Specific heat capacity of dry air at constant pressure (J kg-1 K-1)
+constexpr double DRY_AIR_MOLAR_MASS = 28.97e-3; // Molar mass of dry air (kg mol-1)
+constexpr double H2O_MOLAR_MASS = 18.02e-3; // Molar mass of H2O (kg mol-1)
+constexpr double H2O_MOLECULAR_MASS = 2.991506e-26; // Mass of an H2O molecule (kg)
+constexpr double ABS_ZERO = -273.15; // Absolute zero in Celcius
+constexpr double P0 = 1e5; // Reference pressure (Pa)
+constexpr double EPS = H2O_MOLAR_MASS/DRY_AIR_MOLAR_MASS; // Ratio of water to dry air molar mass
 
-float theta_to_T(float T_pot, float P);
+// Returns air density (kg m-3) for (T, P) assuming dry air
+constexpr double rho_d(double T, double P) {
+    return (P / (R_D * T));
+}
 
-float r_to_q(float r);
+// Returns temperature (K) given potential temperature (K) and total air pressure (Pa)
+constexpr double theta_to_T(double theta, double P) {
+    return theta * std::pow(P / P0, R_D / c_pd);
+}
 
-float r_to_e(float r, float P);
+// Returns specific humidity (kg (kg air)-1) given water vapour mass mixing ratio
+// (kg (kg dry air)-1)
+constexpr double r_to_q(double r) {
+    return r / (1 + r);
+}
 
-float e_to_r(float e, float P);
+// Returns water vapour mass mixing ratio (kg (kg dry air)-1) given specific humidity
+// (kg (kg air)-1) 
+constexpr double q_to_r(double q) {
+    return q / (1 - q);
+}
 
-float Buck_liq(float T);
+// Returns water vapour partial pressure (Pa) when given water vapour mass mixing ratio
+// (kg (kg dry air)-1) and total air pressure (Pa)
+constexpr double r_to_e(double r, double P) {
+    return (r * P) / (EPS + r);
+}
 
-float Buck_ice(float T);
+// Returns water vapour mass mixing ratio (kg (kg dry air)-1) when given water vapour partial
+// pressure (Pa) and total air pressure (Pa)
+constexpr double e_to_r(double e, double P) {
+    return (EPS * e) / (P - e);
+}
 
-float calc_G(float EI_H2O, float P, float Q, float eta);
+// Returns saturation pressure of water vapor over ice (Pa) given T (K) according to Sonntag (1994)
+constexpr double e_sat_ice(double T) {
+    return (100.0 * std::exp(
+        (-6024.5282 / T)
+        + 24.7219
+        + (0.010613868 * T)
+        - (1.3198825e-5 * (T*T))
+        - 0.49382577 * std::log(T)
+    ));
+}
 
-float calc_N_initial(float Q, float eta, float T_exhaust, float T_ambient);
-
-float calc_e_exhaust(float e_amb, float P, float EI_H2O, float N);
-
-float calc_T_LM(float G);
-
-bool formation_condition_met(float T_exhaust, float e_exhaust, float T_LM, float G);
+// Returns saturation specific humidity over ice (kg (kg air)-1)
+constexpr double q_sat_ice(double T, double P) {
+    return (EPS * e_sat_ice(T) / P);
+}
 
 }
 

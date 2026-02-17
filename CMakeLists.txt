@@ -4,6 +4,23 @@ if(NOT DEFINED ENV{ESMFMKFILE})
     message(FATAL_ERROR "Environment variable ESMFMKFILE was not set.")
 endif()
 
+# Build options
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+endif()
+
+option(WITH_COCIP "Build with CoCiP" ON)
+
+message(STATUS "--------------------------------------------")
+message(STATUS "Contrail Manager")
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "Build with CoCiP: ${WITH_COCIP}")
+message(STATUS "--------------------------------------------")
+
+set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+
 # Function to parse esmf.mk
 function(get_esmf_var VAR_NAME OUTPUT_VAR)
     execute_process(
@@ -33,30 +50,44 @@ set(CMAKE_CXX_COMPILER ${ESMF_CXXCOMPILER})
 # Begin project
 project(ContrailManager LANGUAGES CXX)
 
-# Submodules
-set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
-set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
-add_subdirectory(submodules/yaml-cpp EXCLUDE_FROM_ALL)
-
 # Source files
 set(SOURCES
-    "src/BasicPlume.cpp"
     "src/ContrailManager.cpp"
-    "src/domain.cpp"
+    "src/Domain.cpp"
     "src/extern.cpp"
     "src/mapUtils.cpp"
-    "src/mathUtils.cpp"
-    "src/projection.cpp"
-    "src/thermo.cpp"
+    "src/Projection.cpp"
+    "src/SegmentCoCiP.cpp"
     "src/timekeeping.cpp"
 )
 
 # Target definition
 add_library(contrailmanager STATIC ${SOURCES})
 
+# Submodules
+
+if(NOT TARGET yaml-cpp)
+    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+    add_subdirectory(submodules/yaml-cpp EXCLUDE_FROM_ALL)
+endif()
+
+if(WITH_COCIP)
+    set(COCIP_BUILD_EXECUTABLE OFF CACHE BOOL "Build a standalone executable" FORCE)
+    add_subdirectory(submodules/CoCiPPlusPlus EXCLUDE_FROM_ALL)
+    add_compile_definitions(WITH_COCIP)
+    target_link_libraries(contrailmanager PRIVATE cocip)
+    # Force library to be bundled inside
+    target_sources(contrailmanager PRIVATE $<TARGET_OBJECTS:cocip>)
+endif()
+
 # Apply ESMF options and flags
-target_compile_options(contrailmanager PRIVATE ${ESMF_CXXCOMPILEOPTS_LIST} -O2)
+target_compile_options(contrailmanager PRIVATE ${ESMF_CXXCOMPILEOPTS_LIST})
 target_compile_definitions(contrailmanager PRIVATE ${ESMF_CXXCOMPILECPPFLAGS})
 
-target_link_libraries(contrailmanager PRIVATE yaml-cpp ${ESMF_CXXLINKLIBS})
+target_link_libraries(contrailmanager PRIVATE yaml-cpp)
+# Force library to be bundled inside
+target_sources(contrailmanager PRIVATE $<TARGET_OBJECTS:yaml-cpp>)
+
+target_link_libraries(contrailmanager PUBLIC ${ESMF_CXXLINKLIBS})

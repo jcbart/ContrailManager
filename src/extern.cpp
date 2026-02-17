@@ -82,6 +82,16 @@ extern "C" float* get_W_extern(ContrailManager* CMptr) {
     return CMptr->domain.W.data;
 }
 
+// Returns a pointer to the TNSR data
+extern "C" float* get_TNSR_extern(ContrailManager* CMptr) {
+    return CMptr->domain.TNSR.data;
+}
+
+// Returns a pointer to the OLR data
+extern "C" float* get_OLR_extern(ContrailManager* CMptr) {
+    return CMptr->domain.OLR.data;
+}
+
 // Returns a pointer to the QV data
 extern "C" float* get_QV_extern(ContrailManager* CMptr) {
     return CMptr->domain.QV.data;
@@ -90,6 +100,11 @@ extern "C" float* get_QV_extern(ContrailManager* CMptr) {
 // Returns a pointer to the deltaQV data
 extern "C" float* get_deltaQV_extern(ContrailManager* CMptr) {
     return CMptr->domain.deltaQV.data;
+}
+
+// Returns a pointer to the QI data
+extern "C" float* get_QI_extern(ContrailManager* CMptr) {
+    return CMptr->domain.QI.data;
 }
 
 // Returns a pointer to the deltaQI data

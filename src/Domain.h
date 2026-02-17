@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include "mapUtils.h"
-#include "projection.h"
+#include "Projection.h"
 
 template <typename T>
 class Variable2D {
@@ -108,10 +108,12 @@ public:
     Variable3D<float> U; // Wind speed in Eastward direction (m s-1)
     Variable3D<float> V; // Wind speed in Northward direction (m s-1)
     Variable3D<float> W; // Wind speed in vertical direction (m s-1)
+    Variable2D<float> TNSR; // Net (downwards) shortwave radiation at TOA (W m-2)
+    Variable2D<float> OLR; // Outgoing longwave radiation at TOA (W m-2)
     Variable3D<float> QV; // Water vapour mass mixing ratio (kg (kg dry air-1))
     Variable3D<float> QVsave; // Water vapour mass mixing ratio saved at start of coupling interval (kg (kg dry air-1))
     Variable3D<float> deltaQV; // Change in water vapour mass mixing ratio over coupling interval (kg (kg dry air-1))
-    //Variable3D<float> QI; // Ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
+    Variable3D<float> QI; // Ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
     Variable3D<float> deltaQI; // Change in ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
     //Variable3D<float> NI; // Ice number mixing ratio excl. live contrails (# (kg dry air-1))
     Variable3D<float> deltaNI; // Change in ice number mixing ratio excl. live contrails (# (kg dry air-1))

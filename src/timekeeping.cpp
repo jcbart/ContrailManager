@@ -1,5 +1,3 @@
-#include <string>
-#include <sstream>
 #include "timekeeping.h"
 
 // ---------------------------------------------
@@ -35,7 +33,7 @@ void CMTimeInterval::adjust() {
 }
 
 // Sets the internal variables
-void CMTimeInterval::set(int yy, int mm, int dd, int h, int m, int s) {
+void CMTimeInterval::set(int yy, int mm, int dd, int h, int m, float s) {
     this->yy = yy;
     this->mm = mm;
     this->dd = dd;
@@ -93,28 +91,6 @@ CMTimeInterval& CMTimeInterval::operator+=(const CMTimeInterval& other) {
                 this->m + other.m,
                 this->s + other.s);
     return *this;
-}
-
-// Turns days, hours, minutes, and seconds into seconds
-int CMTimeInterval::dhms_to_s() const {
-    return (dd*86400 + h*3600 + m*60 + s);
-}
-
-// Return time as a string
-std::string CMTimeInterval::asString() {
-    std::stringstream ss;
-    ss << yy;
-    ss << "-";
-    (mm < 10) ? ss << "0" << mm : ss << mm;
-    ss << "-";
-    (dd < 10) ? ss << "0" << dd : ss << dd;
-    ss << " ";
-    (h < 10) ? ss << "0" << h : ss << h;
-    ss << ":";
-    (m < 10) ? ss << "0" << m : ss << m;
-    ss << ":";
-    (s < 10) ? ss << "0" << s : ss << s;
-    return ss.str();
 }
 
 // Non-member operators for CMTimeInterval
@@ -196,19 +172,8 @@ void CMTime::adjust() {
     }
 }
 
-// Returns true if internal year is a leap year
-bool CMTime::isLeap() {
-    if (yy % 4 == 0) {
-        if (yy % 100 == 0) {
-            return (yy % 400 == 0);
-        }
-        return true;
-    }
-    return false;
-}
-
 // Sets the internal variables from separate inputs
-void CMTime::set(int yy, int mm, int dd, int h, int m, int s) {
+void CMTime::set(int yy, int mm, int dd, int h, int m, float s) {
     this->yy = yy;
     this->mm = mm;
     this->dd = dd;
@@ -375,26 +340,4 @@ bool CMTime::operator<=(const CMTime& other) const {
 
 bool CMTime::operator>=(const CMTime& other) const {
     return !(*this < other);
-}
-
-// Turns days, hours, minutes, and seconds into seconds
-int CMTime::dhms_to_s() const {
-    return (dd*86400 + h*3600 + m*60 + s);
-}
-
-// Return time as a string
-std::string CMTime::asString() {
-    std::stringstream ss;
-    ss << yy;
-    ss << "-";
-    (mm < 10) ? ss << "0" << mm : ss << mm;
-    ss << "-";
-    (dd < 10) ? ss << "0" << dd : ss << dd;
-    ss << " ";
-    (h < 10) ? ss << "0" << h : ss << h;
-    ss << ":";
-    (m < 10) ? ss << "0" << m : ss << m;
-    ss << ":";
-    (s < 10) ? ss << "0" << s : ss << s;
-    return ss.str();
 }

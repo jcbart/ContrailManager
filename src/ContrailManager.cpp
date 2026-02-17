@@ -4,14 +4,19 @@
 #include <memory>
 #include <chrono>
 #include <yaml-cpp/yaml.h>
+#ifdef WITH_COCIP
+#include <CoCiP++/params.h>
+#endif
 #include "ContrailManager.h"
 #include "timekeeping.h"
-#include "domain.h"
-#include "segment.h"
-#include "flight.h"
-#include "projection.h"
+#include "Domain.h"
+#include "SegmentContainer.h"
+#include "Segment.h"
+#include "SegmentCoCiP.h"
+#include "Flight.h"
+#include "FlightInputs.h"
+#include "Projection.h"
 #include "mapUtils.h"
-#include "plumeModels.h"
 
 void ContrailManager::init() {
     int rc;
@@ -27,13 +32,21 @@ void ContrailManager::init() {
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
     // Determine plume model
+    // Sets pointer to specialised segment container
+
     std::string plumeModelStr;
     switch (plumeModelID) {
-        case MODEL_ID_BASIC_PLUME: {
-            // Set pointer to specialised segment container
-            segments = std::unique_ptr<SegmentContainer<SegmentBasicPlume>>(
-                new SegmentContainer<SegmentBasicPlume>());
-            plumeModelStr = MODEL_STR_BASIC_PLUME;
+        case MODEL_ID_COCIP: {
+            plumeModelStr = MODEL_STR_COCIP;
+#ifdef WITH_COCIP
+            segments = std::unique_ptr<SegmentContainer<SegmentCoCiP>>(
+                new SegmentContainer<SegmentCoCiP>());
+            segments->cocipParams = new Params;
+            segments->cocipParams->readYAML();
+#else
+            std::cerr << "Contrail Manager has not been built with " << plumeModelStr << ". Stopping.";
+            exit(EXIT_FAILURE);
+#endif
             break;
         }
         default: {
@@ -46,6 +59,7 @@ void ContrailManager::init() {
 
     // After the segments pointer has been set
     segments->maxContrailAge_s = maxContrailAge_s;
+    segments->maxAccumVapRatio = maxAccumVapRatio;
     segments->domPtr = &domain;
 
     // Read flight data etc
@@ -60,6 +74,15 @@ void ContrailManager::init() {
     test_flight.wpLocs.push_back(loc1);
     test_flight.wpLocs.push_back(loc2);
     test_flight.numWps = 2;
+    test_flight.engine_efficiency = 0.3;
+    test_flight.ei_h2o = 1.25;
+    test_flight.q_fuel = 43.15e6;
+    test_flight.aircraft_mass = 70e3;
+    test_flight.wingspan = 34;
+    test_flight.true_airspeed = 250;
+    test_flight.fuel_flow = 0.7;
+    test_flight.T_exhaust = 600;
+    test_flight.nvpm_ei_n = 1e15;
     flights.push_back(test_flight);
     rc = ESMC_LogWrite("Contrail Manager initialised", ESMC_LOGMSG_INFO);
 }
@@ -68,7 +91,7 @@ void ContrailManager::init() {
 void ContrailManager::read_config() {
     YAML::Node config = YAML::LoadFile("CM-config.yaml");
 
-    int timeStep_s = config["Time step (s)"].as<int>();
+    float timeStep_s = config["Time step (s)"].as<float>();
     if (timeStep_s <= 0) {
         std::cerr << "Config error: Read time step of " << timeStep_s << " s." << std::endl;
         std::cerr << "Time step must be positive. Stopping." << std::endl;
@@ -96,6 +119,14 @@ void ContrailManager::read_config() {
         exit(EXIT_FAILURE);
     }
     maxContrailAge_s = 3600 * maxContrailAge_h;
+
+    maxAccumVapRatio = config["Max accumulated vapour ratio ()"].as<float>();
+    if (maxAccumVapRatio <= 0) {
+        std::cerr << "Config error: Read maximum accumulated vapour ratio of " << maxAccumVapRatio
+                  << std::endl;
+        std::cerr << "Maximum accumulated vapour ratio must be positive. Stopping." << std::endl;
+        exit(EXIT_FAILURE);
+    }
 }
 
 // Integrate between times
@@ -119,8 +150,8 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
     }
 
     // Check there are a whole number of time steps between startTime and stopTime
-    CMTimeInterval timeInterval = stopTime-startTime;
-    if (timeInterval.dhms_to_s() % timeStep.dhms_to_s() != 0) {
+    CMTimeInterval timeInterval = stopTime - startTime;
+    if (std::fmod(timeInterval.dhms_to_s(), timeStep.dhms_to_s()) > 1e-6) {
         std::cerr << "Error: Integration time interval (" << timeInterval.asString()
                   << ") is not an integer multiple of time step ("
                   << timeStep.asString() << ")" << std::endl;
@@ -134,7 +165,7 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
     if (domain.twoWayCoupling) {
         // Save QV and set all delta variables and contrail ice mass to zero
         // (will be built up again)
-        domain.save_QV();
+        //domain.save_QV();
         domain.deltaQV.clear_all();
         domain.deltaQI.clear_all();
         domain.deltaNI.clear_all();
@@ -149,7 +180,7 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         2. Integrate all segment plumes (aggregate vapour delta based on start location,
            mark dead segments)
         3. Dump old/dead segments before advection (aggregate leftover crystals)
-        4. Advect all segments (update dependent segments locs and find new length and width)
+        4. Advect all segments (update dependent segments locs and find new length)
         5. Increment currTime
         */
         
@@ -176,7 +207,7 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
 
     if (domain.twoWayCoupling) {
         // Update deltaQV field
-        domain.find_deltaQV();
+        //domain.find_deltaQV();
         // Construct QIcontrail field from the live contrail ice mass
         segments->constructQIcontrail();
     }
@@ -228,7 +259,6 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
         int lastWpEnd = find_last_wp(flight, timeStepEnd);
 
         // n iterates each leg since the route may be sectioned by waypoints
-        //for (int n = 0; n <= lastWpEnd - lastWpStart; n++) {
         for (int n = lastWpStart; n <= lastWpEnd; n++) {
             // Find start and end locs and times for leg
             Geo3D legStartloc, legEndLoc;
@@ -288,9 +318,10 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
                 CMTime birthTime = legStartTime + f_centre * (legEndTime - legStartTime);
 
                 // Add emissions info
+                FlightInputs flightInputs = flight.createFlightInputs();
 
                 // Add segment to container
-                segments->addItem(flight.ID, backLoc, frontLoc, segLen, birthTime);
+                segments->addItem(flight.ID, birthTime, flightInputs, backLoc, frontLoc, segLen);
 
                 // Set back loc for next segment
                 backLoc = frontLoc;
@@ -311,7 +342,7 @@ int ContrailManager::find_last_wp(const Flight& flight, const CMTime& time) {
         // Flight is before first waypoint
         lastWp = -1;
     }
-    else if (time > flight.wpTimes[flight.numWps-1]) {
+    else if (time >= flight.wpTimes[flight.numWps-1]) {
         // Flight is after last waypoint
         lastWp = flight.numWps-1;
     }

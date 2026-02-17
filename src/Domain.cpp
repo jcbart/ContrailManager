@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <ESMC.h>
-#include "domain.h"
+#include "Domain.h"
 #include "mapUtils.h"
 
 // List of types to compile
@@ -195,9 +195,12 @@ void Domain::init_vars(int ids, int ide, int jds, int jde, int kds, int kde) {
     U.init("U", ids, ide, jds, jde, kds, kde);
     V.init("V", ids, ide, jds, jde, kds, kde);
     W.init("W", ids, ide, jds, jde, kds, kde);
+    TNSR.init("TNSR", ids, ide, jds, jde);
+    OLR.init("OLR", ids, ide, jds, jde);
     QV.init("QV", ids, ide, jds, jde, kds, kde);
     QVsave.init("QV", ids, ide, jds, jde, kds, kde);
     deltaQV.init("deltaQV", ids, ide, jds, jde, kds, kde);
+    QI.init("QI", ids, ide, jds, jde, kds, kde);
     deltaQI.init("deltaQI", ids, ide, jds, jde, kds, kde);
     deltaNI.init("deltaNI", ids, ide, jds, jde, kds, kde);
     QIcontrail.init("QIcontrail", ids, ide, jds, jde, kds, kde);
@@ -240,7 +243,7 @@ void Domain::find_deltaQV() {
 }
 
 // Updates ij with the lon/lat grid cell indices loc lies within
-// Calls the method in ContrailManager::proj and removes ids = jds = 0 assumption
+// Calls the method in Domain::proj and removes ids = jds = 0 assumption
 // Returns false if loc is not in grid
 bool Domain::loc_to_ij(const Geo2D& loc, IDX2& ij) const {
     bool inGrid = false;

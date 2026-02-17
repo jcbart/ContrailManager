@@ -4,25 +4,38 @@
 #include <vector>
 #include <string>
 #include "timekeeping.h"
-#include "domain.h"
+#include "Domain.h"
 #include "mapUtils.h"
+#include "FlightInputs.h"
 
 // Virtual contrail segment structure
 struct Segment {
     std::string parentID = "none"; // ID of the flight object which created the segment
     CMTime birthTime; // Estimated time at which centre of segment was emitted
+    FlightInputs flightInputs; // Inputs from flight
+    Domain* domPtr; // Pointer to the Contrail Manager's domain
+
     Geo3D back; // Location of back (first point created) of segment
     Geo3D front; // Location of front (last point created) of segment
     Geo3D centre; // Location of centre of segment; derived from back and front
-
+    double heading; // Angle between segment and North (degrees)
     double length; // Segment length (m)
+    double lengthRatio = 1; // Ratio of old length to new length; set in advect, used in integrate
+    double M_v_accum = 0; // Mass of ambient accumulated (double-counted) vapour (kg)
 
-    // Pointer to the Contrail Manager's domain
-    Domain* domPtr;
+    bool outOfBounds = false; // Flag updated by SegmentContainer if out of domain bounds; segment is not dumped
+    bool isOld = false; // Flag updated by SegmentContainer if passed age threshold; segment is dumped
+    bool isDead = false; // Flag updated by plume model if below survival threshold; segment is dumped
+    bool isTooMassive = false; // Flag updated by SegmentContainer if passed size threshold; segment is dumped
 
-    bool outOfBounds = false;
-    bool isOld = false;
-    bool isDead = false;
+    // Constructor
+    Segment(const std::string& parentID, const CMTime& birthTime, const FlightInputs& flightInputs,
+        Domain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc, const float length)
+        : parentID(parentID), birthTime(birthTime), flightInputs(flightInputs), domPtr(domPtr),
+          back(backLoc), front(frontLoc), length(length) {
+        
+        find_dependent_locs();
+    }
 
     // Virtual destructor
     virtual ~Segment() = default;
@@ -30,21 +43,25 @@ struct Segment {
     // Virtual integration method; must be overridden by plume model-specific method
     virtual void integrate(const CMTime& timeStepStart, const CMTime& timeStepEnd) = 0;
 
+    // Returns true if segment should be dumped (i.e. if flags raised for isOld, isTooMassive, or
+    // isDead)
+    constexpr bool shouldBeDumped() const {
+        return (isOld || isDead || isTooMassive);
+    }
+
     // Virtual method to add the "contents" of the segment into the NWP's native fields
-    // before it is destroyed
+    // before it is destroyed. Only called if two-way coupling.
     virtual void dump() = 0;
 
     // Virtual method to add the contrail ice mass in the segment to the QIcontrail field
     virtual void addToQIcontrail() = 0;
 
-    // Virtual method to scale the segment width after advection
-    // lengthRatio is the length after advection divided by the length before
-    virtual void scaleWidthAfterAdvection(float lengthRatio) = 0;
-
-    void find_dependent_locs() {
+    inline void find_dependent_locs() {
         centre = great_circle_interp(0.5, back, front);
+        heading = great_circle_bearing(back, front);
     }
     
+    // Advect front and back locations of segment and flag outOfBounds if out of bounds
     void advect(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
         float duration_s;
         // If birthTime > timeStepStart, integrate from birthTime to timeStepEnd
@@ -66,10 +83,9 @@ struct Segment {
 
         // Find new length
         float newLength = great_circle_dist(back, front);
-        // Call plume model-specific method to scale width
-        scaleWidthAfterAdvection(newLength/length);
-        // Set new length
+        lengthRatio = length / newLength;
         length = newLength;
+
         // Update dependent locs
         find_dependent_locs();
     }

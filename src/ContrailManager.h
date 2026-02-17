@@ -4,22 +4,27 @@
 #include <vector>
 #include <memory>
 #include "timekeeping.h"
-#include "domain.h"
-#include "segment.h"
-#include "segmentContainer.h"
-#include "flight.h"
-#include "projection.h"
+#include "Domain.h"
+#include "SegmentContainer.h"
+#include "Segment.h"
+#include "Flight.h"
+#include "Projection.h"
 #include "mapUtils.h"
-#include "plumeModels.h"
 
 class ContrailManager {
 private:
     CMTimeInterval timeStep;
     CMTime currTime;
+
     bool firstRunCall = true; // Determines whether to call setup_on_first_run
+
     int plumeModelID = 0;
+
     float maxInitialSegLen = 2500; // Maximum length of a new segment (m)
     float maxContrailAge_s = 12*3600; // Maximum age of a contrail segment (s)
+    // Maximum ratio of double-counted water vapour mass in contrail plume to water vapour mass in
+    // grid cell ()
+    float maxAccumVapRatio = 1e-2;
 
     // Flight vector
     std::vector<Flight> flights;

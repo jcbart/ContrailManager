@@ -1,3 +1,6 @@
 [submodule "submodules/yaml-cpp"]
 	path = submodules/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "submodules/CoCiPPlusPlus"]
+	path = submodules/CoCiPPlusPlus
+	url = https://github.com/jcbart/CoCiPPlusPlus.git
