@@ -11,11 +11,11 @@ Two-way coupling: true
 Plume model: 1
 
 # Maximum length with which a contrail segment can be initialised
-Max initial segment length (m): 2000
+Max initial segment length (m): 1000
 
 # Age at which a contrail segment, if it still exists, will be dumped into the NWP's native grid
-Max contrail age (h): 2
+Max contrail age (h): 0.033333333
 
 # Maximum ratio of double-counted water vapour mass in contrail plume to water vapour mass in the
 # grid cell it is inside; above this, the contrail is dumped into the NWP's native grid
-Max accumulated vapour ratio (): 5e-2
+Max accumulated vapour ratio (): 1e-2

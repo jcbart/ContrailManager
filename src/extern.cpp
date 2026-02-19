@@ -1,31 +1,41 @@
 // External interfaces
 
+#include <memory>
 #include "ContrailManager.h"
+#include "Projection.h"
 
-// Create and return reference to the contrail manager
+// Create and return reference to the Contrail Manager
 extern "C" ContrailManager* create_ContrailManager() {
     return new ContrailManager;
 }
 
+// Initialise Contrail Manager
 extern "C" void ContrailManager_init_extern(ContrailManager* CMptr) {
     CMptr->init();
 }
 
-extern "C" void ContrailManager_run_extern(ContrailManager* CMptr, CMTime_F startTime_F, CMTime_F stopTime_F) {
+// Run Contrail Manager between startTime and stopTime
+extern "C" void ContrailManager_run_extern(ContrailManager* CMptr, CMTime_F startTime_F,
+    CMTime_F stopTime_F) {
+    
     CMTime startTime, stopTime;
     startTime.set(startTime_F);
     stopTime.set(stopTime_F);
     CMptr->run(startTime, stopTime);
 }
 
-// Projection setup
+// Lambert-Conformal projection setup
+extern "C" void init_projectionlc_extern(ContrailManager* CMptr, float lat1, float lon1,
+    float knowni, float knownj, float dx, float stdlon, float truelat1, float truelat2) {
 
-extern "C" void init_projection_extern(ContrailManager* CMptr, int proj_code, float lat1, float lon1, float knowni, float knownj, float dx, float stdlon, float truelat1, float truelat2) {
-    CMptr->domain.proj.init(proj_code, lat1, lon1, knowni, knownj, dx, stdlon, truelat1, truelat2);
+    CMptr->domain.proj = std::unique_ptr<ProjectionLC>(new ProjectionLC(lat1, lon1, knowni, knownj,
+        dx, stdlon, truelat1, truelat2));
 }
 
 // Variable initialisation
-extern "C" void init_vars_extern(ContrailManager* CMptr, int ids, int ide, int jds, int jde, int kds, int kde) {
+extern "C" void init_vars_extern(ContrailManager* CMptr, int ids, int ide, int jds, int jde,
+    int kds, int kde) {
+    
     CMptr->domain.init_vars(ids, ide, jds, jde, kds, kde);
 }
 

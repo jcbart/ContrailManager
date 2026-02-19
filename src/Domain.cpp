@@ -247,7 +247,7 @@ void Domain::find_deltaQV() {
 // Returns false if loc is not in grid
 bool Domain::loc_to_ij(const Geo2D& loc, IDX2& ij) const {
     bool inGrid = false;
-    ij = proj.loc_to_ij(loc);
+    ij = proj->loc_to_ij(loc);
     // Correct assumption that i and j start at 1
     ij.i += ids;
     ij.j += jds;

@@ -3,13 +3,13 @@
 
 #include <vector>
 #include <memory>
-#include "timekeeping.h"
 #include "Domain.h"
 #include "SegmentContainer.h"
-#include "Segment.h"
 #include "Flight.h"
-#include "Projection.h"
-#include "mapUtils.h"
+
+// Forward declarations
+struct CMTime;
+struct Geo3D;
 
 class ContrailManager {
 private:

@@ -101,7 +101,7 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
     
     isDead = !cocip.persistent;
 
-    // Get altitude after CoCiP sediments
+    // Get change in altitude after CoCiP sediments
     double deltaAlt = cocip.altitude - centre.alt;
     centre.alt += deltaAlt;
     front.alt += deltaAlt;
@@ -141,8 +141,9 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
         double rho_d_contrail = cocip.met->rho_air;
         
         // Mass of vapour gained by the segment through sedimentation (kg)
+        // If the segment sediments beyond its depth, cap at depth
         double M_v_sed = (r_v_amb * rho_d_amb - r_v_contrail * rho_d_contrail)
-                            * cocip.width * length * deltaAlt;
+                         * cocip.width * length * std::min(std::abs(deltaAlt), cocip.depth);
         
         double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
 

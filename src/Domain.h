@@ -1,6 +1,7 @@
 #ifndef DOMAIN_H
 #define DOMAIN_H
 
+#include <memory>
 #include <string>
 #include <vector>
 #include "mapUtils.h"
@@ -119,8 +120,8 @@ public:
     Variable3D<float> deltaNI; // Change in ice number mixing ratio excl. live contrails (# (kg dry air-1))
     Variable3D<float> QIcontrail; // Contrail ice mass mixing ratio (kg (kg dry air-1))
 
-    // Projection
-    Projection proj;
+    // Pointer to projection
+    std::unique_ptr<IProjection> proj;
 
     int get_ids() const {return ids;}
     int get_ide() const {return ide;}

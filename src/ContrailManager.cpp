@@ -233,7 +233,7 @@ void ContrailManager::setup_on_first_run(CMTime& startTime) {
                   << std::endl;
         exit(EXIT_FAILURE);
     }
-    if (!domain.proj.isInitd) {
+    if (domain.proj == nullptr) {
         std::cerr << "ContrailManager run called before projection has been initialised. Stopping."
                   << std::endl;
         exit(EXIT_FAILURE);

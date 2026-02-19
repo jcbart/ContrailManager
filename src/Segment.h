@@ -82,7 +82,7 @@ struct Segment {
         }
 
         // Find new length
-        float newLength = great_circle_dist(back, front);
+        double newLength = great_circle_dist(back, front);
         lengthRatio = length / newLength;
         length = newLength;
 

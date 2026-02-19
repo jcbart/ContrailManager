@@ -56,7 +56,6 @@ set(SOURCES
     "src/Domain.cpp"
     "src/extern.cpp"
     "src/mapUtils.cpp"
-    "src/Projection.cpp"
     "src/SegmentCoCiP.cpp"
     "src/timekeeping.cpp"
 )
