@@ -4,6 +4,12 @@
 #include "Domain.h"
 #include "timekeeping.h"
 
+// Types to compile
+template struct IDX2<int>;
+template struct IDX2<double>;
+template struct IDX3<int>;
+template struct IDX3<double>;
+
 // Returns location at a fraction f [0,1] along a great circle by interpolating
 // between two waypoints
 // If f = 0, the returned location will be loc1 and vice versa for f = 1
@@ -102,7 +108,7 @@ bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
     loc.alt += w * duration_s;
 
     // Check if still in grid
-    std::vector<IDX3> interpTemp;
+    std::vector<IDX3<int>> interpTemp;
     inGrid = dom.find_interp_points(loc, interpTemp);
     return inGrid;
 }
@@ -202,7 +208,7 @@ bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
     loc.alt += (w1 + 2*w2 + 2*w3 + w4) * duration_s/6.;
 
     // Check if still in grid
-    std::vector<IDX3> interpTemp;
+    std::vector<IDX3<int>> interpTemp;
     inGrid = dom.find_interp_points(loc, interpTemp);
     return inGrid;
 }

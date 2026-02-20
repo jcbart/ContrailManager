@@ -52,10 +52,10 @@ public:
             this->truelat2 = this->truelat1;
         }
     }
-    
-    // Returns the grid cell ij which loc lies within
+
+    // Returns the grid cell ij (including fractions) which loc lies within
     // Assumes i and j start at 0
-    virtual inline IDX2 loc_to_ij(const Geo2D& loc) const = 0;
+    virtual inline IDX2<double> loc_to_ij(const Geo2D& loc) const = 0;
 };
 
 // Lambert-Conformal projection
@@ -97,8 +97,8 @@ public:
         polej = 1. + rsw * std::cos(arg);
     }
 
-    inline IDX2 loc_to_ij(const Geo2D& loc) const override {
-        IDX2 ij;
+    inline IDX2<double> loc_to_ij(const Geo2D& loc) const override {
+        IDX2<double> ij;
 
         double deltalon = loc.lon - stdlon;
         wrap_WE(deltalon);

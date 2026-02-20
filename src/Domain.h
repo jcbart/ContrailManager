@@ -37,10 +37,10 @@ public:
     size_t get_1D_index_from_2D(const int i, const int j) const;
 
     T* get(const int i, const int j);
-    T* get(const IDX2& ij);
+    T* get(const IDX2<int>& ij);
 
     T get_value(const int i, const int j) const;
-    T get_value(const IDX2& ij) const;
+    T get_value(const IDX2<int>& ij) const;
 
     void clear_all();
 };
@@ -78,10 +78,10 @@ public:
     size_t get_1D_index_from_3D(const int i, const int j, const int k) const;
 
     T* get(const int i, const int j, const int k);
-    T* get(const IDX3& ijk);
+    T* get(const IDX3<int>& ijk);
 
     T get_value(const int i, const int j, const int k) const;
-    T get_value(const IDX3& ijk) const;
+    T get_value(const IDX3<int>& ijk) const;
 
     void clear_all();
 };
@@ -140,21 +140,95 @@ public:
 
     void find_deltaQV();
 
-    bool loc_to_ij(const Geo2D& loc, IDX2& ij) const;
+    // Finds the index k such that loc.alt is inside grid cell ijk
+    // Updates k in argument
+    // Returns false if no valid k found
+    inline bool find_k_inside(const Geo3D& loc, const IDX2<int>& ij, int& k) const {
+        // Check if below first boundary
+        if (loc.alt < Z_AT_W.get_value(ij.i, ij.j, kds)) {
+            return false;
+        }
+        for (int kTrial = kds; kTrial <= kde; kTrial++) {
+            if (loc.alt < Z_AT_W.get_value(ij.i, ij.j, kTrial+1)) {
+                k = kTrial;
+                return true;
+            }
+        }
+        // Else, no valid k found
+        return false;
+    }
 
-    bool loc_to_ijk(const Geo3D& loc, IDX3& ijk) const;
+    // Finds the index k such that grid centre altitude at k is less than loc.alt and grid centre
+    // altitude at k+1 is greater than loc.alt
+    // Updates k in argument
+    // Returns false if no valid k found
+    inline bool find_k_below(const Geo3D& loc, const IDX2<int>& ij, int& k) const {
+        // Check if below first centre
+        if (loc.alt < Z.get_value(ij.i, ij.j, kds)) {
+            return false;
+        }
+        for (int kTrial = kds; kTrial < kde; kTrial++) {
+            if (loc.alt < Z.get_value(ij.i, ij.j, kTrial+1)) {
+                k = kTrial;
+                return true;
+            }
+        }
+        // Else, no valid k found
+        return false;
+    }
 
-    Geo2D ij_to_loc(const IDX2& ij) const;
+    // Updates ij with the lon/lat grid cell indices loc lies within
+    // ij can include fractions or not depending on its dtype
+    // Calls the method in Domain::proj and removes ids = jds = 0 assumption
+    // Returns false if loc is not in grid
+    template <typename dtype>
+    inline bool loc_to_ij(const Geo2D& loc, IDX2<dtype>& ij) const {
+        bool inGrid = false;
+        ij = proj->loc_to_ij(loc);
+        // Correct assumption that i and j start at 1
+        ij.i += ids;
+        ij.j += jds;
+        if (ij.i >= ids && ij.i <= ide && ij.j >= jds && ij.j <= jde) {
+            inGrid = true;
+        }
+        return inGrid;
+    }
 
-    Geo3D ijk_to_loc(const IDX3& ijk) const;
+    // Updates ijk with the lon/lat/alt grid cell indices which loc lies within
+    // Returns false if loc is not in grid
+    inline bool loc_to_ijk(const Geo3D& loc, IDX3<int>& ijk) const {
+        bool inGrid;
+        // Get ij
+        IDX2<int> ij;
+        inGrid = loc_to_ij(loc, ij);
+        if (!inGrid) return inGrid;
+        // Turn IDX2 object into IDX3
+        ijk = ij;
+        // Get k
+        inGrid = find_k_inside(loc, ijk, ijk.k);
+        return inGrid;
+    }
 
-    bool find_k_inside(const Geo3D& loc, const IDX2& ij, int& k) const;
+    // Returns the lon/lat grid values at indices ij
+    inline Geo2D ij_to_loc(const IDX2<int>& ij) const {
+        Geo2D loc;
+        loc.lon = XLONG.get_value(ij.i, ij.j);
+        loc.lat = XLAT.get_value(ij.i, ij.j);
+        return loc;
+    }
 
-    bool find_k_below(const Geo3D& loc, const IDX2& ij, int& k) const;
+    // Returns the lat/lon/alt grid values at indices ijk
+    inline Geo3D ijk_to_loc(const IDX3<int>& ijk) const {
+        Geo3D loc;
+        loc.lon = XLONG.get_value(ijk.i, ijk.j);
+        loc.lat = XLAT.get_value(ijk.i, ijk.j);
+        loc.alt = Z.get_value(ijk);
+        return loc;
+    }
 
-    bool find_interp_points(const Geo3D& loc, std::vector<IDX3>& interpPoints) const;
+    bool find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interpPoints) const;
 
-    void find_interp_weights(const Geo3D& loc, const std::vector<IDX3>& interpPoints,
+    void find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>& interpPoints,
                              std::vector<float>& interpWeights) const;
 
     bool wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const;

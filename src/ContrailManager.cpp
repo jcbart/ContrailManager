@@ -306,7 +306,7 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
                 // Use find_interp to find if in grid
                 // If any segment location is not in the grid, don't add the segment
                 bool inGrid;
-                std::vector<IDX3> interpTemp;
+                std::vector<IDX3<int>> interpTemp;
                 inGrid = domain.find_interp_points(backLoc, interpTemp);
                 if (!inGrid) {continue;}
                 inGrid = domain.find_interp_points(frontLoc, interpTemp);

@@ -63,7 +63,7 @@ T* Variable2D<T>::get(const int i, const int j) {
 
 // Returns a reference to the value, so can be used to set and get
 template <typename T>
-T* Variable2D<T>::get(const IDX2& ij) {
+T* Variable2D<T>::get(const IDX2<int>& ij) {
     return get(ij.i, ij.j);
 }
 
@@ -75,7 +75,7 @@ T Variable2D<T>::get_value(const int i, const int j) const {
 
 // Returns the value at indices
 template <typename T>
-T Variable2D<T>::get_value(const IDX2& ij) const {
+T Variable2D<T>::get_value(const IDX2<int>& ij) const {
     return get_value(ij.i, ij.j);
 }
 
@@ -147,7 +147,7 @@ T* Variable3D<T>::get(const int i, const int j, const int k) {
 
 // Returns a reference to the value, so can be used to set and get
 template <typename T>
-T* Variable3D<T>::get(const IDX3& ijk) {
+T* Variable3D<T>::get(const IDX3<int>& ijk) {
     return get(ijk.i, ijk.j, ijk.k);
 }
 
@@ -159,7 +159,7 @@ T Variable3D<T>::get_value(const int i, const int j, const int k) const {
 
 // Returns the value at indices
 template <typename T>
-T Variable3D<T>::get_value(const IDX3& ijk) const {
+T Variable3D<T>::get_value(const IDX3<int>& ijk) const {
     return get_value(ijk.i, ijk.j, ijk.k);
 }
 
@@ -242,91 +242,13 @@ void Domain::find_deltaQV() {
     }
 }
 
-// Updates ij with the lon/lat grid cell indices loc lies within
-// Calls the method in Domain::proj and removes ids = jds = 0 assumption
-// Returns false if loc is not in grid
-bool Domain::loc_to_ij(const Geo2D& loc, IDX2& ij) const {
-    bool inGrid = false;
-    ij = proj->loc_to_ij(loc);
-    // Correct assumption that i and j start at 1
-    ij.i += ids;
-    ij.j += jds;
-    if (ij.i >= ids && ij.i <= ide && ij.j >= jds && ij.j <= jde) {
-        inGrid = true;
-    }
-    return inGrid;
-}
-
-// Updates ijk with the lon/lat/alt grid cell indices loc lies within
-// Returns false if loc is not in grid
-bool Domain::loc_to_ijk(const Geo3D& loc, IDX3& ijk) const {
-    bool inGrid;
-    // Get ij
-    IDX2 ij;
-    inGrid = loc_to_ij(loc, ij);
-    if (!inGrid) return inGrid;
-    // Turn IDX2 object into IDX3
-    ijk = ij;
-    // Get k
-    inGrid = find_k_inside(loc, ijk, ijk.k);
-    return inGrid;
-}
-
-// Returns the lon/lat grid values at indices ij
-Geo2D Domain::ij_to_loc(const IDX2& ij) const {
-    Geo2D loc;
-    loc.lon = XLONG.get_value(ij.i, ij.j);
-    loc.lat = XLAT.get_value(ij.i, ij.j);
-    return loc;
-}
-
-// Returns the grid values at indices ijk
-Geo3D Domain::ijk_to_loc(const IDX3& ijk) const {
-    Geo3D loc;
-    loc.lon = XLONG.get_value(ijk.i, ijk.j);
-    loc.lat = XLAT.get_value(ijk.i, ijk.j);
-    loc.alt = Z.get_value(ijk);
-    return loc;
-}
-
-// Finds the index k such that loc.alt is inside grid cell ijk
-// Updates k in argument
-// Returns false if no valid k found
-bool Domain::find_k_inside(const Geo3D& loc, const IDX2& ij, int& k) const {
-    for (int kTrial = kds; kTrial < kde+1; kTrial++) {
-        if (loc.alt >= Z_AT_W.get_value(ij.i, ij.j, kTrial)
-            && loc.alt < Z_AT_W.get_value(ij.i, ij.j, kTrial+1)) {
-            k = kTrial;
-            return true;
-        }
-    }
-    // Else, no valid k found
-    return false;
-}
-
-// Finds the index k such that grid centre altitude at k is less than loc.alt and grid centre
-// altitude at k+1 is greater than loc.alt
-// Updates k in argument
-// Returns false if no valid k found
-bool Domain::find_k_below(const Geo3D& loc, const IDX2& ij, int& k) const {
-    for (int kTrial = kds; kTrial < kde; kTrial++) {
-        if (loc.alt >= Z.get_value(ij.i, ij.j, kTrial)
-            && loc.alt < Z.get_value(ij.i, ij.j, kTrial+1)) {
-            k = kTrial;
-            return true;
-        }
-    }
-    // Else, no valid k found
-    return false;
-}
-
 // Finds interpolation points for a location and updates interpPoints
 // Returns true if location is in grid
 // If false, interp contains garbage
-bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX3>& interpPoints) const {
+bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interpPoints) const {
     interpPoints.resize(4);
     bool inGrid = false;
-    IDX2 ijCentre;
+    IDX2<int> ijCentre;
     inGrid = loc_to_ij(loc, ijCentre);
 
     // If inGrid is still false, loc is not inside a grid cell
@@ -338,7 +260,7 @@ bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX3>& interpPoint
     if (ijCentre.i == ide) {doRight = false;}
     if (ijCentre.j == jds) {doLower = false;}
     if (ijCentre.j == jde) {doUpper = false;}
-    IDX2 ij1, ij2, ij3, ij4;
+    IDX2<int> ij1, ij2, ij3, ij4;
     // Set to true if loc is inside a quad (also to avoid excess computation)
     bool inQuad = false;
     if (!inQuad && doLeft && doLower) {
@@ -395,7 +317,7 @@ bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX3>& interpPoint
 }
 
 // Finds inverse-distance weights for a vector of interpolation points
-void Domain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3>& interpPoints,
+void Domain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>& interpPoints,
                                  std::vector<float>& interpWeights) const {
     int numInterpPoints = interpPoints.size();
     interpWeights.resize(numInterpPoints);
@@ -433,7 +355,7 @@ void Domain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3>& inte
 // Returns false if location is not in grid
 bool Domain::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const {
     bool inGrid;
-    std::vector<IDX3> interpPoints;
+    std::vector<IDX3<int>> interpPoints;
     std::vector<float> interpWeights;
     inGrid = find_interp_points(loc, interpPoints);
     if (!inGrid) {return inGrid;}

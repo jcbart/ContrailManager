@@ -29,12 +29,12 @@ SegmentCoCiP::SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
 }
 
 void SegmentCoCiP::updateMet() {
-    IDX3 ijkCurr;
+    IDX3<int> ijkCurr;
     // Should be safe to ignore return value
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
 
     // Indices at surface of column containing contrail
-    IDX3 ijkSurface = ijkCurr;
+    IDX3<int> ijkSurface = ijkCurr;
     ijkSurface.k = domPtr->get_kds();
 
     cocip.met->T_POT = domPtr->T_POT.get(ijkSurface);
@@ -108,7 +108,7 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
     back.alt += deltaAlt;
 
     // Location after cocip.evolve
-    IDX3 ijkCurr;
+    IDX3<int> ijkCurr;
     // Should be safe to ignore return value
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
 
@@ -153,7 +153,7 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
 }
 
 void SegmentCoCiP::dump() {
-    IDX3 ijkCurr;
+    IDX3<int> ijkCurr;
     // Should be safe to ignore return value
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
 
@@ -173,7 +173,7 @@ void SegmentCoCiP::dump() {
 }
 
 void SegmentCoCiP::addToQIcontrail() {
-    IDX3 ijkCurr;
+    IDX3<int> ijkCurr;
     // Should be safe to ignore return value
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
 

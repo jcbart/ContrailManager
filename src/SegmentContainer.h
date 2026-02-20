@@ -79,7 +79,7 @@ private:
     // Updates isTooMassive flag for each segment if past size threshold
     void flagTooMassiveSegments() {
         for (SegmentType& seg : vec) {
-            IDX3 ijkCurr;
+            IDX3<int> ijkCurr;
             // Should be safe to ignore return value
             bool inGrid = domPtr->loc_to_ijk(seg.centre, ijkCurr);
 

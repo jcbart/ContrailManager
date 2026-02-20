@@ -93,16 +93,29 @@ struct Cart3D {
 };
 
 // Forward declarations
+template <typename dtype>
 struct IDX2;
+template <typename dtype>
 struct IDX3;
 
-// A structure to store 2 integer indices
+// A template structure to store 2 indices of type dtype
+template <typename dtype>
 struct IDX2 {
-    int i;
-    int j;
+    dtype i;
+    dtype j;
+
+    // Return an IDX2 object with a different data type
+    template <typename dtypeTarget>
+    inline operator IDX2<dtypeTarget>() const {
+        IDX2<dtypeTarget> target;
+        target.i = static_cast<dtypeTarget>(i);
+        target.j = static_cast<dtypeTarget>(j);
+        return target;
+    }
 
     // Return a IDX3 version of an IDX2 object (k not set)
-    inline operator IDX3() const;
+    template <typename dtypeTarget>
+    inline operator IDX3<dtypeTarget>() const;
 
     // Return location (i, j) as string
     inline std::string asString() const {
@@ -112,14 +125,26 @@ struct IDX2 {
     }
 };
 
-// A structure to store 3 integer indices
+// A template structure to store 3 indices of type dtype
+template <typename dtype>
 struct IDX3 {
-    int i;
-    int j;
-    int k;
+    dtype i;
+    dtype j;
+    dtype k;
+
+    // Return an IDX3 object with a different data type
+    template <typename dtypeTarget>
+    inline operator IDX3<dtypeTarget>() const {
+        IDX3<dtypeTarget> target;
+        target.i = static_cast<dtypeTarget>(i);
+        target.j = static_cast<dtypeTarget>(j);
+        target.k = static_cast<dtypeTarget>(k);
+        return target;
+    }
 
     // Return a IDX2 version of an IDX3 object (k stripped)
-    inline operator IDX2() const;
+    template <typename dtypeTarget>
+    inline operator IDX2<dtypeTarget>() const;
 
     // Return location (i, j, k) as string
     inline std::string asString() const {
@@ -130,18 +155,22 @@ struct IDX3 {
 };
 
 // Return a IDX3 version of an IDX2 object (k not set)
-inline IDX2::operator IDX3() const {
-    IDX3 as3D;
-    as3D.i = this->i;
-    as3D.j = this->j;
+template <typename dtypeSource>
+template <typename dtypeTarget>
+inline IDX2<dtypeSource>::operator IDX3<dtypeTarget>() const {
+    IDX3<dtypeTarget> as3D;
+    as3D.i = static_cast<dtypeTarget>(i);
+    as3D.j = static_cast<dtypeTarget>(j);
     return as3D;
 }
 
 // Return a IDX2 version of an IDX3 object (k stripped)
-inline IDX3::operator IDX2() const {
-    IDX2 as2D;
-    as2D.i = this->i;
-    as2D.j = this->j;
+template <typename dtypeSource>
+template <typename dtypeTarget>
+inline IDX3<dtypeSource>::operator IDX2<dtypeTarget>() const {
+    IDX2<dtypeTarget> as2D;
+    as2D.i = static_cast<dtypeTarget>(i);
+    as2D.j = static_cast<dtypeTarget>(j);
     return as2D;
 }
 
