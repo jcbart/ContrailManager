@@ -10,7 +10,7 @@
 #include "thermo.h"
 
 SegmentCoCiP::SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
-    const FlightInputs& flightInputs, Domain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc,
+    const FlightInputs& flightInputs, IDomain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc,
     const float length, Params* params)
     : Segment(parentID, birthTime, flightInputs, domPtr, backLoc, frontLoc, length) {
     

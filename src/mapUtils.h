@@ -7,7 +7,7 @@
 
 // Forward declaration
 struct CMTime;
-class Domain;
+class IDomain;
 
 constexpr double PI = 3.14159265358979323846264338327950288419716939937510582;
 constexpr double RAD_PER_DEG = PI/180;
@@ -320,8 +320,8 @@ Geo3D great_circle_interp(const CMTime& time, const CMTime& time1, const Geo3D& 
 
 bool loc_in_quad(const Geo2D& loc, const Geo2D& point1, const Geo2D& point2, const Geo2D& point3, const Geo2D& point4);
 
-bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom);
+bool advect_loc(Geo3D& loc, const float duration_s, const IDomain& dom);
 
-bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom);
+bool advect_loc_RK4(Geo3D& loc, const float duration_s, const IDomain& dom);
 
 #endif

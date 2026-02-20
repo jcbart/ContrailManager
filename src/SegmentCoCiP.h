@@ -30,7 +30,7 @@ struct SegmentCoCiP : public Segment {
 
     // Constructor
     SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
-        const FlightInputs& flightInputs, Domain* domPtr, const Geo3D& backLoc,
+        const FlightInputs& flightInputs, IDomain* domPtr, const Geo3D& backLoc,
         const Geo3D& frontLoc, const float length, Params* params);
 
     // Update CoCiP's internal local meteorology

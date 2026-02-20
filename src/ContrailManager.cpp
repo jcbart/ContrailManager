@@ -28,7 +28,7 @@ void ContrailManager::init() {
     msg = "Contrail Manager internal time step set to " + timeStep.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
-    msg = "Online coupling: " + std::string(domain.twoWayCoupling ? "true" : "false");
+    msg = "Online coupling: " + std::string(twoWayCoupling ? "true" : "false");
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
     // Determine plume model
@@ -60,7 +60,6 @@ void ContrailManager::init() {
     // After the segments pointer has been set
     segments->maxContrailAge_s = maxContrailAge_s;
     segments->maxAccumVapRatio = maxAccumVapRatio;
-    segments->domPtr = &domain;
 
     // Read flight data etc
     Flight test_flight;
@@ -99,7 +98,7 @@ void ContrailManager::read_config() {
     }
     timeStep.set(0, 0, 0, 0, 0, timeStep_s);
 
-    domain.twoWayCoupling = config["Two-way coupling"].as<bool>();
+    twoWayCoupling = config["Two-way coupling"].as<bool>();
 
     plumeModelID = config["Plume model"].as<int>();
 
@@ -162,14 +161,14 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
           + stopTime.asString();
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 
-    if (domain.twoWayCoupling) {
+    if (domain->twoWayCoupling) {
         // Save QV and set all delta variables and contrail ice mass to zero
         // (will be built up again)
-        //domain.save_QV();
-        domain.deltaQV.clear_all();
-        domain.deltaQI.clear_all();
-        domain.deltaNI.clear_all();
-        domain.QIcontrail.clear_all();
+        //domain->save_QV();
+        domain->deltaQV.clear_all();
+        domain->deltaQI.clear_all();
+        domain->deltaNI.clear_all();
+        domain->QIcontrail.clear_all();
     }
 
     while (currTime+timeStep <= stopTime) {
@@ -205,9 +204,9 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     }
 
-    if (domain.twoWayCoupling) {
+    if (domain->twoWayCoupling) {
         // Update deltaQV field
-        //domain.find_deltaQV();
+        //domain->find_deltaQV();
         // Construct QIcontrail field from the live contrail ice mass
         segments->constructQIcontrail();
     }
@@ -228,16 +227,14 @@ void ContrailManager::setup_on_first_run(CMTime& startTime) {
     int rc;
     std::string msg;
 
-    if (!domain.get_varsInitd()) {
-        std::cerr << "ContrailManager run called before vars have been initialised. Stopping."
+    if (domain == nullptr) {
+        std::cerr << "ContrailManager run called before domain has been initialised. Stopping."
                   << std::endl;
         exit(EXIT_FAILURE);
     }
-    if (domain.proj == nullptr) {
-        std::cerr << "ContrailManager run called before projection has been initialised. Stopping."
-                  << std::endl;
-        exit(EXIT_FAILURE);
-    }
+
+    domain->twoWayCoupling = twoWayCoupling;
+    segments->domPtr = domain.get();
 
     currTime = startTime;
     msg = "Contrail Manager current time set to " + currTime.asString();
@@ -307,9 +304,9 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
                 // If any segment location is not in the grid, don't add the segment
                 bool inGrid;
                 std::vector<IDX3<int>> interpTemp;
-                inGrid = domain.find_interp_points(backLoc, interpTemp);
+                inGrid = domain->find_interp_points(backLoc, interpTemp);
                 if (!inGrid) {continue;}
-                inGrid = domain.find_interp_points(frontLoc, interpTemp);
+                inGrid = domain->find_interp_points(frontLoc, interpTemp);
                 if (!inGrid) {continue;}
 
                 // Find birth time

@@ -19,7 +19,7 @@ private:
     bool firstRunCall = true; // Determines whether to call setup_on_first_run
 
     int plumeModelID = 0;
-
+    bool twoWayCoupling = true; // True for two-way coupling (feedback to NWP)
     float maxInitialSegLen = 2500; // Maximum length of a new segment (m)
     float maxContrailAge_s = 12*3600; // Maximum age of a contrail segment (s)
     // Maximum ratio of double-counted water vapour mass in contrail plume to water vapour mass in
@@ -44,8 +44,8 @@ private:
     bool find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc);
 
 public:
-    // Domain
-    Domain domain;
+    // Pointer to domain
+    std::unique_ptr<IDomain> domain;
 
     // External functions
 

@@ -10,91 +10,177 @@
 template <typename T>
 class Variable2D {
 private:
-    std::string name = "UNDEFINED";
-    int ids = 0, ide = 0, jds = 0, jde = 0;
-    int i_size = 0, j_size = 0;
-    size_t num_elements = 0;
-    bool isInitialised = false;
+    std::string name;
+    const int ids, ide, jds, jde;
+    const int i_size, j_size;
+    const size_t num_elements;
 
-    const T* get_element_ptr(const int i, const int j) const;
+    const T* get_element_ptr(const int i, const int j) const {
+        if (i < ids || i > ide || j < jds || j > jde) {
+            std::cerr << "Variable2D " << name << " error: Index (i,j)=(" << i << "," << j
+                      << ") is out of range for array of size (ids:ide,jds:jde)=("
+                      << ids << ":" << ide << "," << jds << ":" << jde << ")" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        return &data[get_1D_index_from_2D(i, j)];
+    }
 
 public:
     T* data = nullptr;
 
     // Destructor
-    ~Variable2D();
+    ~Variable2D() {
+        if (data != nullptr) {
+            delete[] data;
+        }
+    }
 
-    void init(std::string name, int ids, int ide, int jds, int jde);
+    // Constructor
+    Variable2D(std::string name, int ids, int ide, int jds, int jde)
+        : name(name), ids(ids), ide(ide), jds(jds), jde(jde),
+          i_size(ide-ids+1), j_size(jde-jds+1),
+          num_elements(i_size*j_size) {
+        
+        // Allocate a 1D block of memory
+        data = new T[num_elements];
+        clear_all();
+    }
 
-    int get_ids() const {return ids;};
-    int get_ide() const {return ide;};
-    int get_jds() const {return jds;};
-    int get_jde() const {return jde;};
-    int get_i_size() const {return i_size;};
-    int get_j_size() const {return j_size;};
-    size_t get_num_elements() const {return num_elements;};
+    int get_ids() const { return ids; };
+    int get_ide() const { return ide; };
+    int get_jds() const { return jds; };
+    int get_jde() const { return jde; };
+    int get_i_size() const { return i_size; };
+    int get_j_size() const { return j_size; };
+    size_t get_num_elements() const { return num_elements; };
 
-    size_t get_1D_index_from_2D(const int i, const int j) const;
+    // Flatten 2D indices
+    inline size_t get_1D_index_from_2D(const int i, const int j) const {
+        return static_cast<size_t>((i-ids)*j_size + (j-jds));
+    }
 
-    T* get(const int i, const int j);
-    T* get(const IDX2<int>& ij);
+    // Returns a reference to the value, so can be used to set and get
+    inline T* get(const int i, const int j) {
+        return const_cast<T*>(get_element_ptr(i, j));
+    }
 
-    T get_value(const int i, const int j) const;
-    T get_value(const IDX2<int>& ij) const;
+    // Returns a reference to the value, so can be used to set and get
+    inline T* get(const IDX2<int>& ij) {
+        return get(ij.i, ij.j);
+    }
 
-    void clear_all();
+    // Returns the value at indices
+    inline T get_value(const int i, const int j) const {
+        return *get_element_ptr(i, j);
+    }
+
+    // Returns the value at indices
+    inline T get_value(const IDX2<int>& ij) const {
+        return get_value(ij.i, ij.j);
+    }
+
+    // Set all values to zero; only works if initialised
+    void clear_all() {
+        for (size_t i = 0; i < num_elements; i++) {
+            data[i] = 0;
+        }
+    }
 };
 
 template <typename T>
 class Variable3D {
 private:
-    std::string name = "UNDEFINED";
-    int ids = 0, ide = 0, jds = 0, jde = 0, kds = 0, kde = 0;
-    int i_size = 0, j_size = 0, k_size = 0;
-    size_t num_elements = 0;
-    bool isInitialised = false;
+    std::string name;
+    const int ids, ide, jds, jde, kds, kde;
+    const int i_size, j_size, k_size;
+    const size_t num_elements;
 
-    const T* get_element_ptr(const int i, const int j, const int k) const;
+    const T* get_element_ptr(const int i, const int j, const int k) const {
+        if (i < ids || i > ide || j < jds || j > jde || k < kds || k > kde) {
+            std::cerr << "Variable3D " << name << " error: Index (i,j,k)=(" << i << "," << j << ","
+                      << k << ") is out of range for array of size (ids:ide,jds:jde,kds:kde)=("
+                      << ids << ":" << ide << "," << jds << ":" << jde << "," << kds << ":" << kde
+                      << ")" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        return &data[get_1D_index_from_3D(i, j, k)];
+    }
 
 public:
     T* data = nullptr;
     
     // Destructor
-    ~Variable3D();
+    ~Variable3D() {
+        if (data != nullptr) {
+            delete[] data;
+        }
+    }
 
-    void init(std::string name, int ids, int ide, int jds, int jde, int kds, int kde);
+    // Constructor
+    Variable3D(std::string name, int ids, int ide, int jds, int jde, int kds, int kde)
+        : name(name), ids(ids), ide(ide), jds(jds), jde(jde), kds(kds), kde(kde),
+          i_size(ide-ids+1), j_size(jde-jds+1), k_size(kde-kds+1),
+          num_elements(i_size*j_size*k_size) {
+        
+        // Allocate a 1D block of memory
+        data = new T[num_elements];
+        clear_all();
+    }
 
-    int get_ids() const {return ids;};
-    int get_ide() const {return ide;};
-    int get_jds() const {return jds;};
-    int get_jde() const {return jde;};
-    int get_kds() const {return kds;};
-    int get_kde() const {return kde;};
-    int get_i_size() const {return i_size;};
-    int get_j_size() const {return j_size;};
-    int get_k_size() const {return k_size;};
-    size_t get_num_elements() const {return num_elements;};
+    int get_ids() const { return ids; };
+    int get_ide() const { return ide; };
+    int get_jds() const { return jds; };
+    int get_jde() const { return jde; };
+    int get_kds() const { return kds; };
+    int get_kde() const { return kde; };
+    int get_i_size() const { return i_size; };
+    int get_j_size() const { return j_size; };
+    int get_k_size() const { return k_size; };
+    size_t get_num_elements() const { return num_elements; };
 
-    size_t get_1D_index_from_3D(const int i, const int j, const int k) const;
+    inline size_t get_1D_index_from_3D(const int i, const int j, const int k) const {
+        return static_cast<size_t>((i-ids)*j_size*k_size + (j-jds)*k_size + (k-kds));
+    }
 
-    T* get(const int i, const int j, const int k);
-    T* get(const IDX3<int>& ijk);
+    // Returns a reference to the value, so can be used to set and get
+    inline T* get(const int i, const int j, const int k) {
+        return const_cast<T*>(get_element_ptr(i, j, k));
+    }
 
-    T get_value(const int i, const int j, const int k) const;
-    T get_value(const IDX3<int>& ijk) const;
+    // Returns a reference to the value, so can be used to set and get
+    inline T* get(const IDX3<int>& ijk) {
+        return get(ijk.i, ijk.j, ijk.k);
+    }
 
-    void clear_all();
+    // Returns the value at indices
+    inline T get_value(const int i, const int j, const int k) const {
+        return *get_element_ptr(i, j, k);
+    }
+
+    // Returns the value at indices
+    inline T get_value(const IDX3<int>& ijk) const {
+        return get_value(ijk.i, ijk.j, ijk.k);
+    }
+
+    // Set all values to zero; only works if initialised
+    void clear_all() {
+        for (size_t i = 0; i < num_elements; i++) {
+            data[i] = 0;
+        }
+    }
 };
 
-class Domain {
-private:
+class IDomain {
+protected:
     // End indices are one smaller than in WRF because CM only uses a staggered grid for Z_AT_W
     // Longitude is i/x/u direction
     // Latitude is j/y/v direction
     // Altitude is k/z/w direction
-    int ids = 0, ide = 0, jds = 0, jde = 0, kds = 0, kde = 0;
-    int lonSize = 0, latSize = 0, altSize = 0;
-    bool varsInitd = false;
+    const int ids, ide, jds, jde, kds, kde;
+    const int lonSize, latSize, altSize;
+
+    // Virtual method to get ij from proj
+    inline virtual IDX2<double> proj_loc_to_ij(const Geo2D& loc) const = 0;
 
 public:
     bool twoWayCoupling; // True for two-way coupling (feedback to NWP)
@@ -120,25 +206,35 @@ public:
     Variable3D<float> deltaNI; // Change in ice number mixing ratio excl. live contrails (# (kg dry air-1))
     Variable3D<float> QIcontrail; // Contrail ice mass mixing ratio (kg (kg dry air-1))
 
-    // Pointer to projection
-    std::unique_ptr<IProjection> proj;
+    int get_ids() const { return ids; }
+    int get_ide() const { return ide; }
+    int get_jds() const { return jds; }
+    int get_jde() const { return jde; }
+    int get_kds() const { return kds; }
+    int get_kde() const { return kde; }
+    int get_lonSize() const { return lonSize; };
+    int get_latSize() const { return latSize; };
+    int get_altSize() const { return altSize; };
 
-    int get_ids() const {return ids;}
-    int get_ide() const {return ide;}
-    int get_jds() const {return jds;}
-    int get_jde() const {return jde;}
-    int get_kds() const {return kds;}
-    int get_kde() const {return kde;}
-    int get_lonSize() const {return lonSize;};
-    int get_latSize() const {return latSize;};
-    int get_altSize() const {return altSize;};
-    bool get_varsInitd() const {return varsInitd;}
+    // Constructor
+    IDomain(int ids, int ide, int jds, int jde, int kds, int kde);
 
-    void init_vars(int ids, int ide, int jds, int jde, int kds, int kde);
+    // Destructor
+    ~IDomain() = default;
 
-    void save_QV();
+    // Copy contents of QV to QVsave
+    void save_QV() {
+        for (size_t i = 0; i < QV.get_num_elements(); i++) {
+            QVsave.data[i] = QV.data[i];
+        }
+    }
 
-    void find_deltaQV();
+    // Update deltaQV with deltaQV = QV - QVsave
+    void find_deltaQV() {
+        for (size_t i = 0; i < deltaQV.get_num_elements(); i++) {
+            deltaQV.data[i] = QV.data[i] - QVsave.data[i];
+        }
+    }
 
     // Finds the index k such that loc.alt is inside grid cell ijk
     // Updates k in argument
@@ -178,13 +274,13 @@ public:
     }
 
     // Updates ij with the lon/lat grid cell indices loc lies within
-    // ij can include fractions or not depending on its dtype
+    // ij may include fractions depending on its type
     // Calls the method in Domain::proj and removes ids = jds = 0 assumption
     // Returns false if loc is not in grid
     template <typename dtype>
     inline bool loc_to_ij(const Geo2D& loc, IDX2<dtype>& ij) const {
         bool inGrid = false;
-        ij = proj->loc_to_ij(loc);
+        ij = proj_loc_to_ij(loc);
         // Correct assumption that i and j start at 1
         ij.i += ids;
         ij.j += jds;
@@ -232,6 +328,21 @@ public:
                              std::vector<float>& interpWeights) const;
 
     bool wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const;
+};
+
+template <typename ProjType>
+class Domain : public IDomain {
+    ProjType proj;
+
+    inline IDX2<double> proj_loc_to_ij(const Geo2D& loc) const override {
+        return proj.loc_to_ij(loc);
+    }
+
+public:
+    Domain(int ids, int ide, int jds, int jde, int kds, int kde, double lat1, double lon1,
+        double knowni, double knownj, double dx, double stdlon, double truelat1, double truelat2)
+        : IDomain(ids, ide, jds, jde, kds, kde),
+          proj(lat1, lon1, knowni, knownj, dx, stdlon, truelat1, truelat2) {}
 };
 
 #endif

@@ -9,215 +9,32 @@
 template class Variable2D<float>;
 template class Variable3D<float>;
 
-// ---------- Variable2D ----------
 
-// Destructor
-template <typename T>
-Variable2D<T>::~Variable2D() {
-    if (data != nullptr) {
-        delete[] data;
-    }
-}
+IDomain::IDomain(int ids, int ide, int jds, int jde, int kds, int kde)
+    : ids(ids), ide(ide), jds(jds), jde(jde), kds(kds), kde(kde),
+      lonSize(ide-ids+1), latSize(jde-jds+1), altSize(kde-kds+1),
+      XLONG("XLONG", ids, ide, jds, jde),
+      XLAT("XLAT", ids, ide, jds, jde),
+      Z("Z", ids, ide, jds, jde, kds, kde),
+      Z_AT_W("Z_AT_W", ids, ide, jds, jde, kds, kde+1),
+      DRYMASS("DRYMASS", ids, ide, jds, jde, kds, kde),
+      T_POT("T_POT", ids, ide, jds, jde, kds, kde),
+      P("P", ids, ide, jds, jde, kds, kde),
+      U("U", ids, ide, jds, jde, kds, kde),
+      V("V", ids, ide, jds, jde, kds, kde),
+      W("W", ids, ide, jds, jde, kds, kde),
+      TNSR("TNSR", ids, ide, jds, jde),
+      OLR("OLR", ids, ide, jds, jde),
+      QV("QV", ids, ide, jds, jde, kds, kde),
+      QVsave("QV", ids, ide, jds, jde, kds, kde),
+      deltaQV("deltaQV", ids, ide, jds, jde, kds, kde),
+      QI("QI", ids, ide, jds, jde, kds, kde),
+      deltaQI("deltaQI", ids, ide, jds, jde, kds, kde),
+      deltaNI("deltaNI", ids, ide, jds, jde, kds, kde),
+      QIcontrail("QIcontrail", ids, ide, jds, jde, kds, kde) {
 
-template <typename T>
-void Variable2D<T>::init(std::string name, int ids, int ide, int jds, int jde) {
-    if (isInitialised) {
-        std::cerr << "Variable2D " << this->name << " has already been initialised" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    this->name = name;
-    this->ids = ids;
-    this->ide = ide;
-    this->jds = jds;
-    this->jde = jde;
-    i_size = ide-ids+1;
-    j_size = jde-jds+1;
-    num_elements = i_size*j_size;
-    // Allocate a 1D block of memory
-    data = new T[num_elements];
-    clear_all();
-    isInitialised = true;
-}
-
-template <typename T>
-size_t Variable2D<T>::get_1D_index_from_2D(int i, int j) const {
-    return static_cast<size_t>((i-ids)*j_size + (j-jds));
-}
-
-template <typename T>
-const T* Variable2D<T>::get_element_ptr(const int i, const int j) const {
-    if (i < ids || i > ide || j < jds || j > jde) {
-        std::cerr << "Variable2D " << name << " error: Index (i,j)=(" << i << "," << j <<
-                     ") is out of range for array of size (ids:ide,jds:jde)=(" <<
-                     ids << ":" << ide << "," << jds << ":" << jde << ")" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    return &data[get_1D_index_from_2D(i, j)];
-}
-
-// Returns a reference to the value, so can be used to set and get
-template <typename T>
-T* Variable2D<T>::get(const int i, const int j) {
-    return const_cast<T*>(get_element_ptr(i, j));
-}
-
-// Returns a reference to the value, so can be used to set and get
-template <typename T>
-T* Variable2D<T>::get(const IDX2<int>& ij) {
-    return get(ij.i, ij.j);
-}
-
-// Returns the value at indices
-template <typename T>
-T Variable2D<T>::get_value(const int i, const int j) const {
-    return *get_element_ptr(i, j);
-}
-
-// Returns the value at indices
-template <typename T>
-T Variable2D<T>::get_value(const IDX2<int>& ij) const {
-    return get_value(ij.i, ij.j);
-}
-
-// Set all values to zero; only works if initialised
-template <typename T>
-void Variable2D<T>::clear_all() {
-    if (isInitialised) {
-        for (size_t i = 0; i < num_elements; i++) {
-            data[i] = 0;
-        }
-    }
-}
-
-// ---------- Variable3D ----------
-
-// Destructor
-template <typename T>
-Variable3D<T>::~Variable3D() {
-    if (data != nullptr) {
-        delete[] data;
-    }
-}
-
-template <typename T>
-void Variable3D<T>::init(std::string name, int ids, int ide, int jds, int jde, int kds, int kde) {
-    if (isInitialised) {
-        std::cerr << "Variable3D " << this->name << " has already been initialised" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    this->name = name;
-    this->ids = ids;
-    this->ide = ide;
-    this->jds = jds;
-    this->jde = jde;
-    this->kds = kds;
-    this->kde = kde;
-    i_size = ide-ids+1;
-    j_size = jde-jds+1;
-    k_size = kde-kds+1;
-    num_elements = i_size*j_size*k_size;
-    // Allocate a 1D block of memory
-    data = new T[num_elements];
-    clear_all();
-    isInitialised = true;
-}
-
-template <typename T>
-size_t Variable3D<T>::get_1D_index_from_3D(int i, int j, int k) const {
-    return static_cast<size_t>((i-ids)*j_size*k_size + (j-jds)*k_size + (k-kds));
-}
-
-template <typename T>
-const T* Variable3D<T>::get_element_ptr(const int i, const int j, const int k) const {
-    if (i < ids || i > ide || j < jds || j > jde || k < kds || k > kde) {
-        std::cerr << "Variable3D " << name << " error: Index (i,j,k)=(" << i << "," << j << "," << k <<
-                     ") is out of range for array of size (ids:ide,jds:jde,kds:kde)=("
-                     << ids << ":" << ide << "," << jds << ":" << jde << "," << kds << ":" << kde << ")"
-                     << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    return &data[get_1D_index_from_3D(i, j, k)];
-}
-
-// Returns a reference to the value, so can be used to set and get
-template <typename T>
-T* Variable3D<T>::get(const int i, const int j, const int k) {
-    return const_cast<T*>(get_element_ptr(i, j, k));
-}
-
-// Returns a reference to the value, so can be used to set and get
-template <typename T>
-T* Variable3D<T>::get(const IDX3<int>& ijk) {
-    return get(ijk.i, ijk.j, ijk.k);
-}
-
-// Returns the value at indices
-template <typename T>
-T Variable3D<T>::get_value(const int i, const int j, const int k) const {
-    return *get_element_ptr(i, j, k);
-}
-
-// Returns the value at indices
-template <typename T>
-T Variable3D<T>::get_value(const IDX3<int>& ijk) const {
-    return get_value(ijk.i, ijk.j, ijk.k);
-}
-
-// Set all values to zero; only works if initialised
-template <typename T>
-void Variable3D<T>::clear_all() {
-    if (isInitialised) {
-        for (size_t i = 0; i < num_elements; i++) {
-            data[i] = 0;
-        }
-    }
-}
-
-// ---------- Domain ----------
-
-void Domain::init_vars(int ids, int ide, int jds, int jde, int kds, int kde) {
     int rc;
     std::string msg;
-
-    if (varsInitd) {
-        std::cerr << "Contrail Manager domain error: init_vars() called when variables already "
-                  << "initialised. Stopping." << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    XLONG.init("XLONG", ids, ide, jds, jde);
-    XLAT.init("XLAT", ids, ide, jds, jde);
-    Z.init("Z", ids, ide, jds, jde, kds, kde);
-    Z_AT_W.init("Z_AT_W", ids, ide, jds, jde, kds, kde+1);
-    DRYMASS.init("DRYMASS", ids, ide, jds, jde, kds, kde);
-    T_POT.init("T_POT", ids, ide, jds, jde, kds, kde);
-    P.init("P", ids, ide, jds, jde, kds, kde);
-    U.init("U", ids, ide, jds, jde, kds, kde);
-    V.init("V", ids, ide, jds, jde, kds, kde);
-    W.init("W", ids, ide, jds, jde, kds, kde);
-    TNSR.init("TNSR", ids, ide, jds, jde);
-    OLR.init("OLR", ids, ide, jds, jde);
-    QV.init("QV", ids, ide, jds, jde, kds, kde);
-    QVsave.init("QV", ids, ide, jds, jde, kds, kde);
-    deltaQV.init("deltaQV", ids, ide, jds, jde, kds, kde);
-    QI.init("QI", ids, ide, jds, jde, kds, kde);
-    deltaQI.init("deltaQI", ids, ide, jds, jde, kds, kde);
-    deltaNI.init("deltaNI", ids, ide, jds, jde, kds, kde);
-    QIcontrail.init("QIcontrail", ids, ide, jds, jde, kds, kde);
-    
-    varsInitd = true;
-
-    // Take sizes from Z
-    this->ids = Z.get_ids();
-    this->ide = Z.get_ide();
-    this->jds = Z.get_jds();
-    this->jde = Z.get_jde();
-    this->kds = Z.get_kds();
-    this->kde = Z.get_kde();
-    lonSize = Z.get_i_size();
-    latSize = Z.get_j_size();
-    altSize = Z.get_k_size();
-
     msg = "Contrail Manager variables initialised with dimensions:";
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
     msg = "ids = " + std::to_string(ids) + ", jds = " + std::to_string(jds) + ", kds = " + std::to_string(kds);
@@ -228,24 +45,10 @@ void Domain::init_vars(int ids, int ide, int jds, int jde, int kds, int kde) {
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 }
 
-// Copy contents of QV to QVsave
-void Domain::save_QV() {
-    for (size_t i = 0; i < QV.get_num_elements(); i++) {
-        QVsave.data[i] = QV.data[i];
-    }
-}
-
-// Update deltaQV with deltaQV = QV - QVsave
-void Domain::find_deltaQV() {
-    for (size_t i = 0; i < deltaQV.get_num_elements(); i++) {
-        deltaQV.data[i] = QV.data[i] - QVsave.data[i];
-    }
-}
-
 // Finds interpolation points for a location and updates interpPoints
 // Returns true if location is in grid
 // If false, interp contains garbage
-bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interpPoints) const {
+bool IDomain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interpPoints) const {
     interpPoints.resize(4);
     bool inGrid = false;
     IDX2<int> ijCentre;
@@ -317,7 +120,7 @@ bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interp
 }
 
 // Finds inverse-distance weights for a vector of interpolation points
-void Domain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>& interpPoints,
+void IDomain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>& interpPoints,
                                  std::vector<float>& interpWeights) const {
     int numInterpPoints = interpPoints.size();
     interpWeights.resize(numInterpPoints);
@@ -353,7 +156,7 @@ void Domain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>&
 // Finds the wind speed at location by interpolating between neighbouring grid cells
 // Updates u, v, and w
 // Returns false if location is not in grid
-bool Domain::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const {
+bool IDomain::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const {
     bool inGrid;
     std::vector<IDX3<int>> interpPoints;
     std::vector<float> interpWeights;

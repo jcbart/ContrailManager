@@ -13,7 +13,7 @@ struct Segment {
     std::string parentID = "none"; // ID of the flight object which created the segment
     CMTime birthTime; // Estimated time at which centre of segment was emitted
     FlightInputs flightInputs; // Inputs from flight
-    Domain* domPtr; // Pointer to the Contrail Manager's domain
+    IDomain* domPtr; // Pointer to the Contrail Manager's domain
 
     Geo3D back; // Location of back (first point created) of segment
     Geo3D front; // Location of front (last point created) of segment
@@ -30,7 +30,7 @@ struct Segment {
 
     // Constructor
     Segment(const std::string& parentID, const CMTime& birthTime, const FlightInputs& flightInputs,
-        Domain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc, const float length)
+        IDomain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc, const float length)
         : parentID(parentID), birthTime(birthTime), flightInputs(flightInputs), domPtr(domPtr),
           back(backLoc), front(frontLoc), length(length) {
         

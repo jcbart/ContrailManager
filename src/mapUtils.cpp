@@ -86,7 +86,7 @@ bool loc_in_quad(const Geo2D& loc, const Geo2D& point1, const Geo2D& point2, con
 // Advect a location (loc) for duration in seconds given a domain (dom)
 // Updates loc
 // Returns false if loc is outside or goes outside the grid
-bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
+bool advect_loc(Geo3D& loc, const float duration_s, const IDomain& dom) {
     bool inGrid;
 
     float u, v, w;
@@ -117,7 +117,7 @@ bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
 // domain (dom)
 // Updates loc
 // Returns false if loc is outside or goes outside the grid
-bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
+bool advect_loc_RK4(Geo3D& loc, const float duration_s, const IDomain& dom) {
     bool inGrid;
 
     float u1, v1, w1; // Values of k1

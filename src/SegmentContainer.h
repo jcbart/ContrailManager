@@ -24,7 +24,7 @@ struct ISegmentContainer {
     // grid cell (); set by ContrailManager
     float maxAccumVapRatio;
 
-    Domain* domPtr = nullptr; // Pointer to the Contrail Manager's domain
+    IDomain* domPtr = nullptr; // Pointer to the Contrail Manager's domain
 
 #ifdef WITH_COCIP
     Params* cocipParams = nullptr; // Pointer to CoCiP Params object if using
