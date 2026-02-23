@@ -9,7 +9,6 @@
 template class Variable2D<float>;
 template class Variable3D<float>;
 
-
 IDomain::IDomain(int ids, int ide, int jds, int jde, int kds, int kde)
     : ids(ids), ide(ide), jds(jds), jde(jde), kds(kds), kde(kde),
       lonSize(ide-ids+1), latSize(jde-jds+1), altSize(kde-kds+1),
@@ -45,83 +44,55 @@ IDomain::IDomain(int ids, int ide, int jds, int jde, int kds, int kde)
     rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
 }
 
-// Finds interpolation points for a location and updates interpPoints
-// Returns true if location is in grid
-// If false, interp contains garbage
 bool IDomain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interpPoints) const {
-    interpPoints.resize(4);
-    bool inGrid = false;
-    IDX2<int> ijCentre;
-    inGrid = loc_to_ij(loc, ijCentre);
+    // Find grid cell and relevant diagonal
+    IDX2<int> ij, ijDiag;
+    bool inGrid = loc_to_ij_and_diag(loc, ij, ijDiag);
 
-    // If inGrid is still false, loc is not inside a grid cell
-    if (!inGrid) {return inGrid;}
-    
-    // Determine existence of neighbouring quadrilaterals
-    bool doLeft = true, doRight = true, doLower = true, doUpper = true;
-    if (ijCentre.i == ids) {doLeft = false;}
-    if (ijCentre.i == ide) {doRight = false;}
-    if (ijCentre.j == jds) {doLower = false;}
-    if (ijCentre.j == jde) {doUpper = false;}
+    // Construct points
     IDX2<int> ij1, ij2, ij3, ij4;
-    // Set to true if loc is inside a quad (also to avoid excess computation)
-    bool inQuad = false;
-    if (!inQuad && doLeft && doLower) {
-        ij1 = ijCentre;
-        ij2 = {ijCentre.i-1, ijCentre.j};
-        ij3 = {ijCentre.i-1, ijCentre.j-1};
-        ij4 = {ijCentre.i, ijCentre.j-1};
-        inQuad = loc_in_quad(loc, ij_to_loc(ij1), ij_to_loc(ij2), ij_to_loc(ij3), ij_to_loc(ij4));
-    }
-    if (!inQuad && doLeft && doUpper) {
-        ij1 = ijCentre;
-        ij2 = {ijCentre.i, ijCentre.j+1};
-        ij3 = {ijCentre.i-1, ijCentre.j+1};
-        ij4 = {ijCentre.i-1, ijCentre.j};
-        inQuad = loc_in_quad(loc, ij_to_loc(ij1), ij_to_loc(ij2), ij_to_loc(ij3), ij_to_loc(ij4));
-    }
-    if (!inQuad && doRight && doUpper) {
-        ij1 = ijCentre;
-        ij2 = {ijCentre.i+1, ijCentre.j};
-        ij3 = {ijCentre.i+1, ijCentre.j+1};
-        ij4 = {ijCentre.i, ijCentre.j+1};
-        inQuad = loc_in_quad(loc, ij_to_loc(ij1), ij_to_loc(ij2), ij_to_loc(ij3), ij_to_loc(ij4));
-    }
-    if (!inQuad && doRight && doLower) {
-        ij1 = ijCentre;
-        ij2 = {ijCentre.i, ijCentre.j-1};
-        ij3 = {ijCentre.i+1, ijCentre.j-1};
-        ij4 = {ijCentre.i+1, ijCentre.j};
-        inQuad = loc_in_quad(loc, ij_to_loc(ij1), ij_to_loc(ij2), ij_to_loc(ij3), ij_to_loc(ij4));
-    }
-    // If inQuad is still false, no quad has been found with loc inside
-    if (!inQuad) {return inQuad;}
+    ij1.set(ij.i, ij.j);
+    ij2.set(ij.i, ijDiag.j);
+    ij3.set(ijDiag.i, ijDiag.j);
+    ij4.set(ijDiag.i, ij.j);
+
+    interpPoints.resize(8);
+
     // Find k for each of the four grid points
     // Return false if no k found; else, update interp point
     int k;
+    bool inQuad;
     // Point 1
     inQuad = find_k_below(loc, ij1, k);
-    if (!inQuad) {return inQuad;}
-    else {interpPoints[0] = {ij1.i, ij1.j, k};}
+    if (!inQuad) { return inQuad; }
+    interpPoints[0].set(ij1.i, ij1.j, k);
+    interpPoints[1].set(ij1.i, ij1.j, k+1);
+
     // Point 2
     inQuad = find_k_below(loc, ij2, k);
-    if (!inQuad) {return inQuad;}
-    else {interpPoints[1] = {ij2.i, ij2.j, k};}
+    if (!inQuad) { return inQuad; }
+    interpPoints[2].set(ij2.i, ij2.j, k);
+    interpPoints[3].set(ij2.i, ij2.j, k+1);
+
     // Point 3
     inQuad = find_k_below(loc, ij3, k);
-    if (!inQuad) {return inQuad;}
-    else {interpPoints[2] = {ij3.i, ij3.j, k};}
+    if (!inQuad) { return inQuad; }
+    interpPoints[4].set(ij3.i, ij3.j, k);
+    interpPoints[5].set(ij3.i, ij3.j, k+1);
+
     // Point 4
     inQuad = find_k_below(loc, ij4, k);
-    if (!inQuad) {return inQuad;}
-    else {interpPoints[3] = {ij4.i, ij4.j, k};}
+    if (!inQuad) { return inQuad; }
+    interpPoints[6].set(ij4.i, ij4.j, k);
+    interpPoints[7].set(ij4.i, ij4.j, k+1);
+    
     // All points found, return true
     return inQuad;
 }
 
-// Finds inverse-distance weights for a vector of interpolation points
 void IDomain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>& interpPoints,
-                                 std::vector<float>& interpWeights) const {
+    std::vector<float>& interpWeights) const {
+    
     int numInterpPoints = interpPoints.size();
     interpWeights.resize(numInterpPoints);
     std::vector<float> dists(numInterpPoints);
@@ -130,7 +101,7 @@ void IDomain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>
     bool anyZero = false;
     for (int i = 0; i < numInterpPoints; i++) {
         dists[i] = cart_dist(loc, ijk_to_loc(interpPoints[i]));
-        if (dists[i] == 0) {anyZero = true;}
+        if (dists[i] == 0) { anyZero = true; }
     }
     
     // Find weights
@@ -147,34 +118,31 @@ void IDomain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>
             totalWeight += interpWeights[i];
         }
     }
+    
     // Scale weights
     for (int i = 0; i < numInterpPoints; i++) {
         interpWeights[i] /= totalWeight;
     }
 }
 
-// Finds the wind speed at location by interpolating between neighbouring grid cells
-// Updates u, v, and w
-// Returns false if location is not in grid
 bool IDomain::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const {
     bool inGrid;
     std::vector<IDX3<int>> interpPoints;
     std::vector<float> interpWeights;
     inGrid = find_interp_points(loc, interpPoints);
-    if (!inGrid) {return inGrid;}
+    if (!inGrid) { return false; }
 
     find_interp_weights(loc, interpPoints, interpWeights);
 
-    int numInterpPoints = interpPoints.size();
     // Values at loc
     u = 0;
     v = 0;
     w = 0;
     // Find values at loc
-    for (int i = 0; i < numInterpPoints; i++) {
+    for (int i = 0; i < interpPoints.size(); i++) {
         u += U.get_value(interpPoints[i]) * interpWeights[i];
         v += V.get_value(interpPoints[i]) * interpWeights[i];
         w += W.get_value(interpPoints[i]) * interpWeights[i];
     }
-    return inGrid;
+    return true;
 }

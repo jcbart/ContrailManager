@@ -26,7 +26,6 @@ protected:
     int hemi; // 1 for NH, -1 for SH
     double polei; // i-location of pole point
     double polej; // j-location of pole point
-    double rsw; // Radius to SW corner
     double rebydx; // Earth radius divided by dx
 
 public:
@@ -62,6 +61,7 @@ public:
 class ProjectionLC : public IProjection {
     double cone; // Cone factor
     double ctl1r; // cos(truelat1*RAD_PER_DEG)
+    double rsw; // Radius to SW corner
 
     inline double lc_cone(double truelat1, double truelat2) {
         double cone;

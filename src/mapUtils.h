@@ -23,11 +23,17 @@ struct Geo2D {
     double lon; // degrees, West is negative
     double lat; // degrees, South is negative
 
+    // Set values
+    void set(double lon, double lat) {
+        this->lon = lon;
+        this->lat = lat;
+    }
+
     // Return a Geo3D version of a Geo2D object (alt not set)
     inline operator Geo3D() const;
 
     // Return location (lon, lat) as string
-    inline std::string asString() const {
+    std::string asString() const {
         std::stringstream ss;
         ss << "(" << lon << ", " << lat << ")";
         return ss.str();
@@ -40,11 +46,18 @@ struct Geo3D {
     double lat; // degrees, South is negative
     double alt; // metres above mean sea level
 
+    // Set values
+    void set(double lon, double lat, double alt) {
+        this->lon = lon;
+        this->lat = lat;
+        this->alt = alt;
+    }
+
     // Return a Geo2D version of a Geo3D object (alt stripped)
     inline operator Geo2D() const;
 
     // Return location (lon, lat, alt) as string
-    inline std::string asString() const {
+    std::string asString() const {
         std::stringstream ss;
         ss << "(" << lon << ", " << lat << ", " << alt << ")";
         return ss.str();
@@ -72,6 +85,13 @@ struct Cart3D {
     double x;
     double y;
     double z;
+
+    // Set values
+    void set(double x, double y, double z) {
+        this->x = x;
+        this->y = y;
+        this->z = z;
+    }
 
     // Sum two Cart3D points
     Cart3D operator+(const Cart3D& other) const {
@@ -104,6 +124,12 @@ struct IDX2 {
     dtype i;
     dtype j;
 
+    // Set values
+    void set(dtype i, dtype j) {
+        this->i = i;
+        this->j = j;
+    }
+
     // Return an IDX2 object with a different data type
     template <typename dtypeTarget>
     inline operator IDX2<dtypeTarget>() const {
@@ -118,7 +144,7 @@ struct IDX2 {
     inline operator IDX3<dtypeTarget>() const;
 
     // Return location (i, j) as string
-    inline std::string asString() const {
+    std::string asString() const {
         std::stringstream ss;
         ss << "(" << i << ", " << j << ")";
         return ss.str();
@@ -131,6 +157,13 @@ struct IDX3 {
     dtype i;
     dtype j;
     dtype k;
+
+    // Set values
+    void set(dtype i, dtype j, dtype k) {
+        this->i = i;
+        this->j = j;
+        this->k = k;
+    }
 
     // Return an IDX3 object with a different data type
     template <typename dtypeTarget>
@@ -147,7 +180,7 @@ struct IDX3 {
     inline operator IDX2<dtypeTarget>() const;
 
     // Return location (i, j, k) as string
-    inline std::string asString() const {
+    std::string asString() const {
         std::stringstream ss;
         ss << "(" << i << ", " << j << ", " << k << ")";
         return ss.str();

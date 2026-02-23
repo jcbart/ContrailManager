@@ -300,18 +300,17 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
                 float f_front = (i+1.)/numNewSegments;
                 frontLoc = great_circle_interp(f_front, legStartloc, legEndLoc);
 
-                // Use find_interp to find if in grid
-                // If any segment location is not in the grid, don't add the segment
-                bool inGrid;
-                std::vector<IDX3<int>> interpTemp;
-                inGrid = domain->find_interp_points(backLoc, interpTemp);
-                if (!inGrid) {continue;}
-                inGrid = domain->find_interp_points(frontLoc, interpTemp);
-                if (!inGrid) {continue;}
+                // Find if interpolation is possible
+                // If interpolation is not possible for any segment location, don't add the segment
+                bool canDoInterp;
+                canDoInterp = domain->can_do_interp(backLoc);
+                if (!canDoInterp) { continue; }
+                canDoInterp = domain->can_do_interp(frontLoc);
+                if (!canDoInterp) { continue; }
 
                 // Find birth time
                 // Fraction of leg duration passed at centre of segment
-                float f_centre = (i+0.5)/numNewSegments;
+                float f_centre = (i + 0.5) / numNewSegments;
                 CMTime birthTime = legStartTime + f_centre * (legEndTime - legStartTime);
 
                 // Add emissions info

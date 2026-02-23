@@ -279,15 +279,14 @@ public:
     // Returns false if loc is not in grid
     template <typename dtype>
     inline bool loc_to_ij(const Geo2D& loc, IDX2<dtype>& ij) const {
-        bool inGrid = false;
         ij = proj_loc_to_ij(loc);
-        // Correct assumption that i and j start at 1
+        // Correct assumption that i and j start at 0
         ij.i += ids;
         ij.j += jds;
-        if (ij.i >= ids && ij.i <= ide && ij.j >= jds && ij.j <= jde) {
-            inGrid = true;
+        if (ij.i < ids && ij.i > ide && ij.j < jds && ij.j > jde) {
+            return false;
         }
-        return inGrid;
+        return true;
     }
 
     // Updates ijk with the lon/lat/alt grid cell indices which loc lies within
@@ -297,12 +296,32 @@ public:
         // Get ij
         IDX2<int> ij;
         inGrid = loc_to_ij(loc, ij);
-        if (!inGrid) return inGrid;
+        if (!inGrid) { return false; }
         // Turn IDX2 object into IDX3
         ijk = ij;
         // Get k
         inGrid = find_k_inside(loc, ijk, ijk.k);
         return inGrid;
+    }
+
+    // Given a location (loc), find the grid cell ij and its diagonal ijDiag which, alongside
+    // their common adjacent grid cells, bound loc (used in interpolation)
+    // Updates ij and ijDiag
+    // Returns false if either ij or ijDiag are not in the grid
+    inline bool loc_to_ij_and_diag(const Geo3D& loc, IDX2<int>& ij, IDX2<int>& ijDiag) const {
+        IDX2<double> ijD; // ij as a double
+        bool inGrid = loc_to_ij(loc, ijD);
+        if (!inGrid) { return false; }
+
+        ij = ijD; // Convert to IDX2<int>
+
+        ijDiag.i = (ijD.i - floor(ijD.i) < 0.5) ? (ij.i - 1) : (ij.i + 1);
+        ijDiag.j = (ijD.j - floor(ijD.j) < 0.5) ? (ij.j - 1) : (ij.j + 1);
+        if ((ijDiag.i < ids) || (ijDiag.i > ide) || (ijDiag.j < jds) || (ijDiag.j > jde)) {
+            // Diag grid cell not in grid
+            return false;
+        }
+        return true;
     }
 
     // Returns the lon/lat grid values at indices ij
@@ -322,11 +341,26 @@ public:
         return loc;
     }
 
+    // Returns true if it is possible to do grid interpolation for loc
+    // Currently, this means that loc is not outside the outermost layer of grid cell centres
+    inline bool can_do_interp(const Geo3D& loc) const {
+        IDX2<int> ij, ijDiag;
+        bool canDoInterp = loc_to_ij_and_diag(loc, ij, ijDiag);
+        return canDoInterp;
+    }
+
+    // Finds interpolation points for a location and resizes and updates interpPoints
+    // Returns true if location is in grid
+    // If false, interp contains garbage
     bool find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interpPoints) const;
 
+    // Finds inverse-distance weights for a vector of interpolation points
     void find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>& interpPoints,
-                             std::vector<float>& interpWeights) const;
+        std::vector<float>& interpWeights) const;
 
+    // Finds the wind speed at location by interpolating between neighbouring grid cells
+    // Updates u, v, and w
+    // Returns false if location is not in grid
     bool wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const;
 };
 
@@ -334,11 +368,13 @@ template <typename ProjType>
 class Domain : public IDomain {
     ProjType proj;
 
+    // Defined version of IDomain's virtual method
     inline IDX2<double> proj_loc_to_ij(const Geo2D& loc) const override {
         return proj.loc_to_ij(loc);
     }
 
 public:
+    // Constructor
     Domain(int ids, int ide, int jds, int jde, int kds, int kde, double lat1, double lon1,
         double knowni, double knownj, double dx, double stdlon, double truelat1, double truelat2)
         : IDomain(ids, ide, jds, jde, kds, kde),
