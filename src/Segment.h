@@ -18,7 +18,7 @@ struct Segment {
     Geo3D back; // Location of back (first point created) of segment
     Geo3D front; // Location of front (last point created) of segment
     Geo3D centre; // Location of centre of segment; derived from back and front
-    double heading; // Angle between segment and North (degrees)
+    double heading; // Angle between segment and North increasing clockwise (degrees)
     double length; // Segment length (m)
     double lengthRatio = 1; // Ratio of old length to new length; set in advect, used in integrate
     double M_v_accum = 0; // Mass of ambient accumulated (double-counted) vapour (kg)

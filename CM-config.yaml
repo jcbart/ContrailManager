@@ -1,7 +1,7 @@
 # Contrail Manager config
 
 # Contrail Manager time step (plume models may have additional internal time steps)
-Time step (s): 30
+Time step (s): 60
 
 # Do two-way coupling?
 Two-way coupling: true
@@ -14,7 +14,7 @@ Plume model: 1
 Max initial segment length (m): 1000
 
 # Age at which a contrail segment, if it still exists, will be dumped into the NWP's native grid
-Max contrail age (h): 0.033333333
+Max contrail age (h): 2
 
 # Maximum ratio of double-counted water vapour mass in contrail plume to water vapour mass in the
 # grid cell it is inside; above this, the contrail is dumped into the NWP's native grid

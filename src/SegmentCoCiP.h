@@ -2,6 +2,7 @@
 #define SEGMENTCOCIP_H
 
 #include <string>
+#include <memory>
 #ifdef WITH_COCIP
 #include <CoCiP++/CoCiP.h>
 #include <CoCiP++/met.h>
@@ -31,7 +32,7 @@ struct SegmentCoCiP : public Segment {
     // Constructor
     SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
         const FlightInputs& flightInputs, IDomain* domPtr, const Geo3D& backLoc,
-        const Geo3D& frontLoc, const float length, Params* params);
+        const Geo3D& frontLoc, const float length, std::shared_ptr<Params> params);
 
     // Update CoCiP's internal local meteorology
     void updateMet();

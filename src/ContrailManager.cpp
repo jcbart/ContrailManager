@@ -41,7 +41,7 @@ void ContrailManager::init() {
 #ifdef WITH_COCIP
             segments = std::unique_ptr<SegmentContainer<SegmentCoCiP>>(
                 new SegmentContainer<SegmentCoCiP>());
-            segments->cocipParams = new Params;
+            segments->cocipParams = std::shared_ptr<Params>(new Params);
             segments->cocipParams->readYAML();
 #else
             std::cerr << "Contrail Manager has not been built with " << plumeModelStr << ". Stopping.";

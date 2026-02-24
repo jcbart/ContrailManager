@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <ESMC.h>
 #ifdef WITH_COCIP
 #include <CoCiP++/CoCiP.h>
@@ -27,7 +28,7 @@ struct ISegmentContainer {
     IDomain* domPtr = nullptr; // Pointer to the Contrail Manager's domain
 
 #ifdef WITH_COCIP
-    Params* cocipParams = nullptr; // Pointer to CoCiP Params object if using
+    std::shared_ptr<Params> cocipParams; // Pointer to CoCiP Params object if using
 #endif
 
     // Virtual destructor
@@ -112,7 +113,8 @@ public:
             length
         );
 
-        vec.push_back(newSeg);
+        // Add to vector; use move to support segments which have unique_ptr
+        vec.push_back(std::move(newSeg));
         
         int rc;
         std::string msg;

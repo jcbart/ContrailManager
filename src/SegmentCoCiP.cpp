@@ -11,10 +11,10 @@
 
 SegmentCoCiP::SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
     const FlightInputs& flightInputs, IDomain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc,
-    const float length, Params* params)
+    const float length, std::shared_ptr<Params> params)
     : Segment(parentID, birthTime, flightInputs, domPtr, backLoc, frontLoc, length) {
     
-    cocip.met = new ArrayMet<float>(domPtr->get_altSize());
+    cocip.met = std::unique_ptr<ArrayMet<float>>(new ArrayMet<float>(params->dz_m, domPtr->get_altSize()));
     cocip.params = params;
     // give flight inputs
     cocip.engine_efficiency = flightInputs.engine_efficiency;
@@ -30,8 +30,11 @@ SegmentCoCiP::SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
 
 void SegmentCoCiP::updateMet() {
     IDX3<int> ijkCurr;
-    // Should be safe to ignore return value
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
+    if (!inGrid) {
+        std::cerr << "segment should be in domain, but loc_to_ijk failed" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
     // Indices at surface of column containing contrail
     IDX3<int> ijkSurface = ijkCurr;
@@ -107,16 +110,12 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
     front.alt += deltaAlt;
     back.alt += deltaAlt;
 
-    // Location after cocip.evolve
-    IDX3<int> ijkCurr;
-    // Should be safe to ignore return value
-    bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-
     // Plume mass after time step (kg)
     double M_air_after = cocip.plume_mass_per_m * length;
 
     // Add to mass of accumulated ambient water vapour
-    M_v_accum += domPtr->QV.get_value(ijkCurr) * (M_air_after - M_air_before);
+    // using the interpolated humidity found by CoCiP
+    M_v_accum += cocip.met->specific_humidity * (M_air_after - M_air_before);
 
     int rc;
     std::string msg;
@@ -126,18 +125,25 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
     // The below is only required for a two-way coupling in which some water vapour is continually
     // exchanged through sedimentation
     if (domPtr->twoWayCoupling) {
+        // Calculate ambient conditions seen by CoCiP using its interpolation method
+        int k_below = cocip.met->find_k_below(cocip.altitude);
+        double interp_fraction = cocip.met->calc_interp_fraction(cocip.altitude, k_below);
 
-        double P_amb = domPtr->P.get_value(ijkCurr);
-
-        double r_v_amb = domPtr->QV.get_value(ijkCurr);
+        // Ambient air pressure (Pa)
+        double P_amb = cocip.met->interp_P(k_below, interp_fraction);
+        // Ambient water vapour mass mixing ratio (kg (kg dry air)-1)
+        double r_v_amb = cocip.met->interp_QV(k_below, interp_fraction);
+        // Ambient air temperature (kg m-3)
         double rho_d_amb = thermo::rho_d(
-            thermo::theta_to_T(domPtr->T_POT.get_value(ijkCurr), P_amb),
+            thermo::theta_to_T(cocip.met->interp_T_POT(k_below, interp_fraction), P_amb),
             P_amb
         );
+        // Contrail water vapour mass mixing ratio - CoCiP assumes saturation (kg (kg dry air)-1)
         double r_v_contrail = thermo::q_to_r(thermo::q_sat_ice(
             cocip.met->air_temperature,
             cocip.met->air_pressure
         ));
+        // Contrail air temperature (kg m-3)
         double rho_d_contrail = cocip.met->rho_air;
         
         // Mass of vapour gained by the segment through sedimentation (kg)
@@ -145,6 +151,13 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
         double M_v_sed = (r_v_amb * rho_d_amb - r_v_contrail * rho_d_contrail)
                          * cocip.width * length * std::min(std::abs(deltaAlt), cocip.depth);
         
+        // Get dry mass of grid cell contrail is inside
+        IDX3<int> ijkCurr;
+        bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
+        if (!inGrid) {
+            std::cerr << "segment should be in domain, but loc_to_ijk failed" << std::endl;
+            exit(EXIT_FAILURE);
+        }
         double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
 
         // Remove M_v_sed from current grid cell
@@ -154,8 +167,11 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
 
 void SegmentCoCiP::dump() {
     IDX3<int> ijkCurr;
-    // Should be safe to ignore return value
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
+    if (!inGrid) {
+        std::cerr << "segment should be in domain, but loc_to_ijk failed" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
     double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
 
@@ -174,8 +190,11 @@ void SegmentCoCiP::dump() {
 
 void SegmentCoCiP::addToQIcontrail() {
     IDX3<int> ijkCurr;
-    // Should be safe to ignore return value
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
+    if (!inGrid) {
+        std::cerr << "segment should be in domain, but loc_to_ijk failed" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
     float M_ice = cocip.iwc * cocip.plume_mass_per_m * length;
     float gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
