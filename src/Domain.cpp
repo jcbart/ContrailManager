@@ -1,7 +1,5 @@
-#include <iostream>
 #include <string>
 #include <vector>
-#include <ESMC.h>
 #include "Domain.h"
 #include "mapUtils.h"
 
@@ -32,16 +30,12 @@ IDomain::IDomain(int ids, int ide, int jds, int jde, int kds, int kde)
       deltaNI("deltaNI", ids, ide, jds, jde, kds, kde),
       QIcontrail("QIcontrail", ids, ide, jds, jde, kds, kde) {
 
-    int rc;
-    std::string msg;
-    msg = "Contrail Manager variables initialised with dimensions:";
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-    msg = "ids = " + std::to_string(ids) + ", jds = " + std::to_string(jds) + ", kds = " + std::to_string(kds);
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-    msg = "ide = " + std::to_string(ide) + ", jde = " + std::to_string(jde) + ", kde = " + std::to_string(kde);
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-    msg = "Note: Contrail Manager does not use a staggered grid except for Z_AT_W where kde += 1.";
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    CM_LogWrite("Contrail Manager variables initialised with dimensions:");
+    CM_LogWrite("ids = " + std::to_string(ids) + ", jds = " + std::to_string(jds) + ", kds = "
+                + std::to_string(kds));
+    CM_LogWrite("ide = " + std::to_string(ide) + ", jde = " + std::to_string(jde) + ", kde = "
+                + std::to_string(kde));
+    CM_LogWrite("Note: Contrail Manager does not use a staggered grid except for Z_AT_W where kde += 1.");
 }
 
 bool IDomain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interpPoints) const {

@@ -52,6 +52,7 @@ project(ContrailManager LANGUAGES CXX)
 
 # Source files
 set(SOURCES
+    "src/CMLog.cpp"
     "src/ContrailManager.cpp"
     "src/Domain.cpp"
     "src/extern.cpp"

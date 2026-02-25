@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
-#include <ESMC.h>
 #ifdef WITH_COCIP
 #include <CoCiP++/CoCiP.h>
 #include <CoCiP++/params.h>
@@ -115,15 +114,10 @@ public:
 
         // Add to vector; use move to support segments which have unique_ptr
         vec.push_back(std::move(newSeg));
-        
-        int rc;
-        std::string msg;
-        msg = "Segment created with birth time: " + newSeg.birthTime.asString();
-        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-        msg = "Centre location: " + newSeg.centre.asString();
-        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-        msg = "Length: " + std::to_string(newSeg.length);
-        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+
+        CM_LogWrite("Segment created with birth time: " + newSeg.birthTime.asString());
+        CM_LogWrite("Centre location: " + newSeg.centre.asString());
+        CM_LogWrite("Length: " + std::to_string(newSeg.length));
     }
 
     // Evolve all segment plumes in vector
@@ -135,9 +129,7 @@ public:
 
     // Dump old, massive, or dead segments
     void dump(const CMTime& timeStepEnd) override {
-        int rc;
-        std::string msg;
-        rc = ESMC_LogWrite("Dumping old and dead segments", ESMC_LOGMSG_INFO);
+        CM_LogWrite("Dumping old and dead segments");
         
         // Flag old segments
         flagOldSegments(timeStepEnd);
@@ -158,8 +150,8 @@ public:
             }
         }
 
-        msg = "Number of old: " + std::to_string(numOld) + ", number of massive: " + std::to_string(numMassive) + ", number of dead: " + std::to_string(numDead);
-        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+        CM_LogWrite("Number of old: " + std::to_string(numOld) + ", number of massive: "
+            + std::to_string(numMassive) + ", number of dead: " + std::to_string(numDead));
 
         if (domPtr->twoWayCoupling) {
             // Dump if old, massive, or dead
@@ -180,15 +172,13 @@ public:
         
         size_t numAfter = vec.size();
         
-        msg = "Number of old/massive/dead: " + std::to_string(numBefore - numAfter);
-        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+        CM_LogWrite("Number of old/massive/dead: " + std::to_string(numBefore - numAfter));
     }
 
     // Advect all segments in vector and remove if out of bounds
     void advectSegments(const CMTime& timeStepStart, const CMTime& timeStepEnd) override {
-        int rc;
-        std::string msg;
-        rc = ESMC_LogWrite("Advecting segments", ESMC_LOGMSG_INFO);
+        CM_LogWrite("Advecting segments");
+        
         size_t numOOB = 0;
         for (SegmentType& seg : vec) {
             seg.advect(timeStepStart, timeStepEnd);
@@ -196,8 +186,8 @@ public:
                 numOOB += 1;
             }
         }
-        msg = "Number out of bounds: " + std::to_string(numOOB);
-        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+
+        CM_LogWrite("Number out of bounds: " + std::to_string(numOOB));
 
         vec.erase(std::remove_if(vec.begin(), vec.end(),
                                  [](const SegmentType& seg) {

@@ -1,6 +1,5 @@
 #ifdef WITH_COCIP
 
-#include <ESMC.h>
 #include <CoCiP++/CoCiP.h>
 #include <CoCiP++/met.h>
 #include <CoCiP++/params.h>
@@ -8,6 +7,8 @@
 #include "Segment.h"
 #include "SegmentCoCiP.h"
 #include "thermo.h"
+#include "mapUtils.h"
+#include "CMLog.h"
 
 SegmentCoCiP::SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
     const FlightInputs& flightInputs, IDomain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc,
@@ -32,8 +33,8 @@ void SegmentCoCiP::updateMet() {
     IDX3<int> ijkCurr;
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
     if (!inGrid) {
-        std::cerr << "segment should be in domain, but loc_to_ijk failed" << std::endl;
-        exit(EXIT_FAILURE);
+        CM_RaiseError("segment should be in domain, but loc_to_ijk at " + centre.asString()
+        + " failed", __FILE__, __LINE__);
     }
 
     // Indices at surface of column containing contrail
@@ -75,7 +76,7 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
 
         if (!cocip.sac) {
             isDead = true;
-            int rc = ESMC_LogWrite("CoCiP: no formation", ESMC_LOGMSG_INFO);
+            CM_LogWrite("CoCiP: no formation");
             return;
         }
 
@@ -84,7 +85,7 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
 
         if (!cocip.persistent) {
             isDead = true;
-            int rc = ESMC_LogWrite("CoCiP: not initially persistent", ESMC_LOGMSG_INFO);
+            CM_LogWrite("CoCiP: not initially persistent");
             return;
         }
 
@@ -117,10 +118,9 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
     // using the interpolated humidity found by CoCiP
     M_v_accum += cocip.met->specific_humidity * (M_air_after - M_air_before);
 
-    int rc;
-    std::string msg;
-    msg = "CoCiP width: " + std::to_string(cocip.width) + ", depth: " + std::to_string(cocip.depth) + ", IWC: " + std::to_string(cocip.iwc) + ", M_v_accum: " + std::to_string(M_v_accum);
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    CM_LogWrite("CoCiP width: " + std::to_string(cocip.width) + ", depth: "
+        + std::to_string(cocip.depth) + ", IWC: " + std::to_string(cocip.iwc) + ", M_v_accum: "
+        + std::to_string(M_v_accum));
 
     // The below is only required for a two-way coupling in which some water vapour is continually
     // exchanged through sedimentation
@@ -155,8 +155,8 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
         IDX3<int> ijkCurr;
         bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
         if (!inGrid) {
-            std::cerr << "segment should be in domain, but loc_to_ijk failed" << std::endl;
-            exit(EXIT_FAILURE);
+            CM_RaiseError("segment should be in domain, but loc_to_ijk at " + centre.asString()
+                + " failed", __FILE__, __LINE__);
         }
         double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
 
@@ -169,8 +169,8 @@ void SegmentCoCiP::dump() {
     IDX3<int> ijkCurr;
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
     if (!inGrid) {
-        std::cerr << "segment should be in domain, but loc_to_ijk failed" << std::endl;
-        exit(EXIT_FAILURE);
+        CM_RaiseError("segment should be in domain, but loc_to_ijk at " + centre.asString()
+            + " failed", __FILE__, __LINE__);
     }
 
     double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
@@ -192,8 +192,8 @@ void SegmentCoCiP::addToQIcontrail() {
     IDX3<int> ijkCurr;
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
     if (!inGrid) {
-        std::cerr << "segment should be in domain, but loc_to_ijk failed" << std::endl;
-        exit(EXIT_FAILURE);
+        CM_RaiseError("segment should be in domain, but loc_to_ijk at " + centre.asString()
+            + " failed", __FILE__, __LINE__);
     }
 
     float M_ice = cocip.iwc * cocip.plume_mass_per_m * length;

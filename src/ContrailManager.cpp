@@ -1,5 +1,3 @@
-#include <ESMC.h>
-#include <iostream>
 #include <string>
 #include <memory>
 #include <chrono>
@@ -17,19 +15,16 @@
 #include "FlightInputs.h"
 #include "Projection.h"
 #include "mapUtils.h"
+#include "CMLog.h"
 
 void ContrailManager::init() {
-    int rc;
-    std::string msg;
-    rc = ESMC_LogWrite("Initialising Contrail Manager:", ESMC_LOGMSG_INFO);
+    CM_LogWrite("Initialising Contrail Manager:");
     
     read_config();
     
-    msg = "Contrail Manager internal time step set to " + timeStep.asString();
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    CM_LogWrite("Contrail Manager internal time step set to " + timeStep.asString());
 
-    msg = "Online coupling: " + std::string(twoWayCoupling ? "true" : "false");
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    CM_LogWrite("Online coupling: " + std::string(twoWayCoupling ? "true" : "false"));
 
     // Determine plume model
     // Sets pointer to specialised segment container
@@ -44,18 +39,18 @@ void ContrailManager::init() {
             segments->cocipParams = std::shared_ptr<Params>(new Params);
             segments->cocipParams->readYAML();
 #else
-            std::cerr << "Contrail Manager has not been built with " << plumeModelStr << ". Stopping.";
-            exit(EXIT_FAILURE);
+            
+            CM_RaiseError("Contrail Manager has not been built with " + plumeModelStr,
+                __FILE__, __LINE__);
 #endif
             break;
         }
         default: {
-            std::cerr << "Plume model " << plumeModelID << " not recognised. Stopping.";
-            exit(EXIT_FAILURE);
+            CM_RaiseError("Plume model " + std::to_string(plumeModelID) + " not recognised",
+                __FILE__, __LINE__);
         }
     }
-    msg = "Plume model: " + plumeModelStr;
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    CM_LogWrite("Plume model: " + plumeModelStr);
 
     // After the segments pointer has been set
     segments->maxContrailAge_s = maxContrailAge_s;
@@ -83,7 +78,7 @@ void ContrailManager::init() {
     test_flight.T_exhaust = 600;
     test_flight.nvpm_ei_n = 1e15;
     flights.push_back(test_flight);
-    rc = ESMC_LogWrite("Contrail Manager initialised", ESMC_LOGMSG_INFO);
+    CM_LogWrite("Contrail Manager initialised");
 }
 
 // Read config file
@@ -92,9 +87,8 @@ void ContrailManager::read_config() {
 
     float timeStep_s = config["Time step (s)"].as<float>();
     if (timeStep_s <= 0) {
-        std::cerr << "Config error: Read time step of " << timeStep_s << " s." << std::endl;
-        std::cerr << "Time step must be positive. Stopping." << std::endl;
-        exit(EXIT_FAILURE);
+        CoCiP_RaiseError("Config error: Read time step of " + std::to_string(timeStep_s)
+            + " s. Time must be positive.", __FILE__, __LINE__);
     }
     timeStep.set(0, 0, 0, 0, 0, timeStep_s);
 
@@ -104,35 +98,29 @@ void ContrailManager::read_config() {
 
     maxInitialSegLen = config["Max initial segment length (m)"].as<float>();
     if (maxInitialSegLen <= 0) {
-        std::cerr << "Config error: Read maximum initial segment length of " << maxInitialSegLen
-                  << " m." << std::endl;
-        std::cerr << "Maximum initial segment length must be positive. Stopping." << std::endl;
-        exit(EXIT_FAILURE);
+        CoCiP_RaiseError("Config error: Read maximum initial segment length of "
+            + std::to_string(maxInitialSegLen)
+            + " m. Maximum initial segment length must be positive.", __FILE__, __LINE__);
     }
 
     float maxContrailAge_h = config["Max contrail age (h)"].as<float>();
     if (maxContrailAge_h <= 0) {
-        std::cerr << "Config error: Read maximum contrail age of " << maxContrailAge_h
-                  << " h." << std::endl;
-        std::cerr << "Maximum contrail age must be positive. Stopping." << std::endl;
-        exit(EXIT_FAILURE);
+        CoCiP_RaiseError("Config error: Read maximum contrail age of "
+            + std::to_string(maxContrailAge_h)
+            + " h. Maximum contrail age must be positive.", __FILE__, __LINE__);
     }
     maxContrailAge_s = 3600 * maxContrailAge_h;
 
     maxAccumVapRatio = config["Max accumulated vapour ratio ()"].as<float>();
     if (maxAccumVapRatio <= 0) {
-        std::cerr << "Config error: Read maximum accumulated vapour ratio of " << maxAccumVapRatio
-                  << std::endl;
-        std::cerr << "Maximum accumulated vapour ratio must be positive. Stopping." << std::endl;
-        exit(EXIT_FAILURE);
+        CoCiP_RaiseError("Config error: Read maximum accumulated vapour ratio of "
+            + std::to_string(maxAccumVapRatio)
+            + ". Maximum accumulated vapour ratio must be positive.", __FILE__, __LINE__);
     }
 }
 
 // Integrate between times
 void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
-    int rc;
-    std::string msg;
-
     // Current time at start of run
     std::chrono::steady_clock::time_point computeTimeStart = std::chrono::steady_clock::now();
 
@@ -143,23 +131,19 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
     
     // Check startTime matches expected time
     if (currTime != startTime) {
-        std::cerr << "Error: currTime (" << currTime.asString() << ") does not match "
-                  << "integration startTime (" << startTime.asString() << ")" << std::endl;
-        exit(EXIT_FAILURE);
+        CM_RaiseError("currTime (" + currTime.asString() + ") does not match "
+            + "integration startTime (" + startTime.asString() + ")", __FILE__, __LINE__);
     }
 
     // Check there are a whole number of time steps between startTime and stopTime
     CMTimeInterval timeInterval = stopTime - startTime;
     if (std::fmod(timeInterval.dhms_to_s(), timeStep.dhms_to_s()) > 1e-6) {
-        std::cerr << "Error: Integration time interval (" << timeInterval.asString()
-                  << ") is not an integer multiple of time step ("
-                  << timeStep.asString() << ")" << std::endl;
-        exit(EXIT_FAILURE);
+        CM_RaiseError("Integration time interval (" + timeInterval.asString()
+            + ") is not an integer multiple of time step (" + timeStep.asString() + ")",
+            __FILE__, __LINE__);
     }
 
-    msg = "Integrating between " + startTime.asString() + " and "
-          + stopTime.asString();
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    CM_LogWrite("Integrating between " + startTime.asString() + " and " + stopTime.asString());
 
     if (domain->twoWayCoupling) {
         // Save QV and set all delta variables and contrail ice mass to zero
@@ -198,10 +182,8 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
 
         // 5. Increment currTime
         currTime = timeStepEnd;
-        msg = "Current time: " + currTime.asString();
-        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
-        msg = "Number of live contrail segments: " + std::to_string(segments->getSize());
-        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+        CM_LogWrite("Current time: " + currTime.asString());
+        CM_LogWrite("Number of live contrail segments: " + std::to_string(segments->getSize()));
     }
 
     if (domain->twoWayCoupling) {
@@ -217,39 +199,31 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
     // Elapsed time in run (seconds)
     std::chrono::duration<double> computeTime = computeTimeEnd - computeTimeStart;
 
-    msg = "Computation time for coupling interval: " + std::to_string(computeTime.count()) + " s";
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    CM_LogWrite("Computation time for coupling interval: "
+        + std::to_string(computeTime.count()) + " s");
 }
 
 
 // Completes the setup required on the first run call (i.e. after getting external data)
 void ContrailManager::setup_on_first_run(CMTime& startTime) {
-    int rc;
-    std::string msg;
-
     if (domain == nullptr) {
-        std::cerr << "ContrailManager run called before domain has been initialised. Stopping."
-                  << std::endl;
-        exit(EXIT_FAILURE);
+        CM_RaiseError("ContrailManager run called before domain has been initialised",
+            __FILE__, __LINE__);
     }
 
     domain->twoWayCoupling = twoWayCoupling;
     segments->domPtr = domain.get();
 
     currTime = startTime;
-    msg = "Contrail Manager current time set to " + currTime.asString();
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+
+    CM_LogWrite("Contrail Manager current time set to " + currTime.asString());
 }
 
 // Create new segments from flights
 void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
-    int rc;
-    std::string msg;
-
     int num_created = 0;
     for (const Flight& flight : flights) {
-        msg = "Creating segments for flight: " + flight.ID;
-        rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+        CM_LogWrite("Creating segments for flight: " + flight.ID);
 
         // Find last waypoint passed at start and end of time step
         int lastWpStart = find_last_wp(flight, timeStepStart);
@@ -292,8 +266,7 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
             Geo3D backLoc = legStartloc;
             Geo3D frontLoc;
             for (int i = 0; i < numNewSegments; i++) {
-                msg = "Segment " + std::to_string(i) + ":";
-                rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+                CM_LogWrite("Segment " + std::to_string(i) + ":");
 
                 // Find new front loc
                 // Fraction of the total distance where the front of the segment is
@@ -326,8 +299,7 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
             }
         }
     }
-    msg = "Number of segments created: " + std::to_string(num_created);
-    rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+    CM_LogWrite("Number of segments created: " + std::to_string(num_created));
 }
 
 // Find the last waypoint passed by the flight at time (e.g. 0 for 0th waypoint)

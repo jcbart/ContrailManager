@@ -1,10 +1,9 @@
 #ifndef PROJECTION_H
 #define PROJECTION_H
 
-#include <iostream>
 #include <cmath>
-#include <ESMC.h>
 #include "mapUtils.h"
+#include "CMLog.h"
 
 const int PROJ_LC = 1; // Consistent with WRF
 
@@ -37,17 +36,15 @@ public:
           truelat1(truelat1), truelat2(truelat2) {
 
         if (std::abs(lat1) > 90) {
-            std::cerr << "CM Projection error: lat1 = " << lat1 << " not in range (-90,90]."
-                    << std::endl;
-            exit(EXIT_FAILURE);
+            CM_RaiseError("Projection error: lat1 = " + std::to_string(lat1)
+                + " not in range (-90,90].", __FILE__, __LINE__);
         }
 
         hemi = (truelat1 < 0) ? -1 : 1;
 
         rebydx = EARTH_RADIUS_M / dx;
         if (std::abs(this->truelat2) > 90) {
-            std::string msg = "CM Projection: truelat2 > 90; assuming a tangent.";
-            int rc = ESMC_LogWrite(msg.c_str(), ESMC_LOGMSG_INFO);
+            CM_LogWrite("CM Projection: truelat2 > 90; assuming a tangent.");
             this->truelat2 = this->truelat1;
         }
     }
