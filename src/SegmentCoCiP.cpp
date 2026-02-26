@@ -77,6 +77,26 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
         if (!cocip.sac) {
             isDead = true;
             CM_LogWrite("CoCiP: no formation");
+
+            // If two-way coupling, return water vapour to atmosphere
+            if (domPtr->twoWayCoupling) {
+                double fuel_dist = cocip.fuel_flow / cocip.true_airspeed; // (kg fuel m-1)
+                double vap_mass_per_m_released = cocip.ei_h2o * fuel_dist; // (kg vapour m-1)
+                // Mass of vapour released to the atmosphere (kg)
+                double M_v_released = vap_mass_per_m_released * length;
+
+                // Get dry mass of grid cell contrail is inside
+                IDX3<int> ijkCurr;
+                bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
+                if (!inGrid) {
+                    CM_RaiseError("segment should be in domain, but loc_to_ijk at "
+                        + centre.asString() + " failed", __FILE__, __LINE__);
+                }
+                double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
+
+                // Add M_v_released to current grid cell
+                *domPtr->deltaQV.get(ijkCurr) += M_v_released / gridDryMass;
+            }
             return;
         }
 
@@ -86,11 +106,33 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
         if (!cocip.persistent) {
             isDead = true;
             CM_LogWrite("CoCiP: not initially persistent");
+
+            // If two-way coupling, return water vapour to atmosphere and assume !cocip.persistent
+            // is because IWC -> 0
+            if (domPtr->twoWayCoupling) {
+                double fuel_dist = cocip.fuel_flow / cocip.true_airspeed; // (kg fuel m-1)
+                double vap_mass_per_m_released = cocip.ei_h2o * fuel_dist; // (kg vapour m-1)
+                // Mass of vapour released to the atmosphere (kg)
+                double M_v_released = vap_mass_per_m_released * length;
+
+                // Get dry mass of grid cell contrail is inside
+                IDX3<int> ijkCurr;
+                bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
+                if (!inGrid) {
+                    CM_RaiseError("segment should be in domain, but loc_to_ijk at "
+                        + centre.asString() + " failed", __FILE__, __LINE__);
+                }
+                double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
+
+                // Add M_v_released to current grid cell
+                *domPtr->deltaQV.get(ijkCurr) += M_v_released / gridDryMass;
+            }
             return;
         }
 
         // Takes angle between segment and longitude axis
         cocip.process_downwash_flight(90 - heading);
+
         doneFormation = true;
     }
 
@@ -145,11 +187,14 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
         ));
         // Contrail air temperature (kg m-3)
         double rho_d_contrail = cocip.met->rho_air;
+
+        // Cross-sectional area sedimented through (m2) - if the segment sediments through a
+        // greater cross-sectional area than its own, cap at its own
+        double area_swept = std::min(std::abs(deltaAlt) * cocip.width, cocip.area_eff);
         
         // Mass of vapour gained by the segment through sedimentation (kg)
-        // If the segment sediments beyond its depth, cap at depth
         double M_v_sed = (r_v_amb * rho_d_amb - r_v_contrail * rho_d_contrail)
-                         * cocip.width * length * std::min(std::abs(deltaAlt), cocip.depth);
+                         * area_swept * length;
         
         // Get dry mass of grid cell contrail is inside
         IDX3<int> ijkCurr;
@@ -175,13 +220,17 @@ void SegmentCoCiP::dump() {
 
     double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
 
-    // Ice mass
-    double M_ice = cocip.iwc * cocip.plume_mass_per_m * length;
-    *domPtr->deltaQI.get(ijkCurr) += M_ice / gridDryMass;
-
+    // Specific humidity inside contrail
+    double q_sat = thermo::q_sat_ice(cocip.met->air_temperature, cocip.met->air_pressure);
     // Water vapour mass (returned is mass inside minus that double-counted from atmosphere)
-    double M_v = cocip.met->specific_humidity * cocip.plume_mass_per_m * length;
+    // Do q_to_r as long as plume_mass_per_m is actually dry air mass
+    double M_v = thermo::q_to_r(q_sat) * cocip.plume_mass_per_m * length;
     *domPtr->deltaQV.get(ijkCurr) += (M_v - M_v_accum) / gridDryMass;
+
+    // Ice mass
+    // Do q_to_r as long as plume_mass_per_m is actually dry air mass
+    double M_ice = thermo::q_to_r(cocip.iwc) * cocip.plume_mass_per_m * length;
+    *domPtr->deltaQI.get(ijkCurr) += M_ice / gridDryMass;
 
     // Ice number
     double N_ice = cocip.n_ice_per_m * length;
@@ -196,7 +245,8 @@ void SegmentCoCiP::addToQIcontrail() {
             + " failed", __FILE__, __LINE__);
     }
 
-    float M_ice = cocip.iwc * cocip.plume_mass_per_m * length;
+    // Do q_to_r as long as plume_mass_per_m is actually dry air mass
+    float M_ice = thermo::q_to_r(cocip.iwc) * cocip.plume_mass_per_m * length;
     float gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
     *domPtr->QIcontrail.get(ijkCurr) += M_ice / gridDryMass;
 }

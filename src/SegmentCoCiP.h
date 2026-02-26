@@ -34,14 +34,15 @@ struct SegmentCoCiP : public Segment {
         const FlightInputs& flightInputs, IDomain* domPtr, const Geo3D& backLoc,
         const Geo3D& frontLoc, const float length, std::shared_ptr<Params> params);
 
-    // Update CoCiP's internal local meteorology
-    void updateMet();
-
     void integrate(const CMTime& timeStepStart, const CMTime& timeStepEnd) override;
 
     void dump() override;
 
     void addToQIcontrail() override;
+
+private:
+    // Update CoCiP's internal local meteorology
+    void updateMet();
 };
 #endif
 
