@@ -32,10 +32,7 @@ SegmentCoCiP::SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
 void SegmentCoCiP::updateMet() {
     IDX3<int> ijkCurr;
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-    if (!inGrid) {
-        CM_RaiseError("segment should be in domain, but loc_to_ijk at " + centre.asString()
-        + " failed", __FILE__, __LINE__);
-    }
+    if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
 
     // Indices at surface of column containing contrail
     IDX3<int> ijkSurface = ijkCurr;
@@ -88,10 +85,8 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
                 // Get dry mass of grid cell contrail is inside
                 IDX3<int> ijkCurr;
                 bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-                if (!inGrid) {
-                    CM_RaiseError("segment should be in domain, but loc_to_ijk at "
-                        + centre.asString() + " failed", __FILE__, __LINE__);
-                }
+                if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
+
                 double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
 
                 // Add M_v_released to current grid cell
@@ -118,10 +113,8 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
                 // Get dry mass of grid cell contrail is inside
                 IDX3<int> ijkCurr;
                 bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-                if (!inGrid) {
-                    CM_RaiseError("segment should be in domain, but loc_to_ijk at "
-                        + centre.asString() + " failed", __FILE__, __LINE__);
-                }
+                if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
+
                 double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
 
                 // Add M_v_released to current grid cell
@@ -199,10 +192,8 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
         // Get dry mass of grid cell contrail is inside
         IDX3<int> ijkCurr;
         bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-        if (!inGrid) {
-            CM_RaiseError("segment should be in domain, but loc_to_ijk at " + centre.asString()
-                + " failed", __FILE__, __LINE__);
-        }
+        if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
+
         double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
 
         // Remove M_v_sed from current grid cell
@@ -213,10 +204,7 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
 void SegmentCoCiP::dump() {
     IDX3<int> ijkCurr;
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-    if (!inGrid) {
-        CM_RaiseError("segment should be in domain, but loc_to_ijk at " + centre.asString()
-            + " failed", __FILE__, __LINE__);
-    }
+    if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
 
     double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
 
@@ -240,10 +228,7 @@ void SegmentCoCiP::dump() {
 void SegmentCoCiP::addToQIcontrail() {
     IDX3<int> ijkCurr;
     bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-    if (!inGrid) {
-        CM_RaiseError("segment should be in domain, but loc_to_ijk at " + centre.asString()
-            + " failed", __FILE__, __LINE__);
-    }
+    if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
 
     // Do q_to_r as long as plume_mass_per_m is actually dry air mass
     float M_ice = thermo::q_to_r(cocip.iwc) * cocip.plume_mass_per_m * length;

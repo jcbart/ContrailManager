@@ -3,10 +3,6 @@
 #include "Domain.h"
 #include "mapUtils.h"
 
-// List of types to compile
-template class Variable2D<float>;
-template class Variable3D<float>;
-
 IDomain::IDomain(int ids, int ide, int jds, int jde, int kds, int kde)
     : ids(ids), ide(ide), jds(jds), jde(jde), kds(kds), kde(kde),
       lonSize(ide-ids+1), latSize(jde-jds+1), altSize(kde-kds+1),
