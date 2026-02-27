@@ -41,14 +41,14 @@ struct ISegmentContainer {
         const FlightInputs& flightInputs, const Geo3D& backLoc, const Geo3D& frontLoc,
         const float length) = 0;
     
-    // Evolve all segment plumes in vector
-    virtual void integratePlumes(const CMTime& timeStepStart, const CMTime& timeStepEnd) = 0;
+    // Evolve all segment plumes
+    virtual void integratePlumes(const CMTime& startTime, const CMTime& stopTime) = 0;
+
+    // Advect all segments and remove if out of bounds
+    virtual void advectSegments(const CMTime& startTime, const CMTime& stopTime) = 0;
 
     // Dump old, massive, or dead segments
-    virtual void dump(const CMTime& timeStepEnd) = 0;
-
-    // Advect all segments in vector and remove if out of bounds
-    virtual void advectSegments(const CMTime& timeStepStart, const CMTime& timeStepEnd) = 0;
+    virtual void dump(const CMTime& stopTime) = 0;
 
     // Construct QIcontrail using live segment data
     virtual void constructQIcontrail() = 0;
@@ -120,19 +120,44 @@ public:
         CM_LogWrite("Length: " + std::to_string(newSeg.length));
     }
 
-    // Evolve all segment plumes in vector
-    void integratePlumes(const CMTime& timeStepStart, const CMTime& timeStepEnd) override {
+    // Evolve all segment plumes
+    void integratePlumes(const CMTime& startTime, const CMTime& stopTime) override {
         for (SegmentType& seg : vec) {
-            seg.integrate(timeStepStart, timeStepEnd);
+            seg.integrate(startTime, stopTime);
         }
     }
 
+    // Advect all segments and remove if out of bounds
+    void advectSegments(const CMTime& startTime, const CMTime& stopTime) override {
+        CM_LogWrite("Advecting segments");
+        
+        size_t numOOB = 0;
+        for (SegmentType& seg : vec) {
+            seg.advect(startTime, stopTime);
+            if (seg.outOfBounds) {
+                numOOB += 1;
+            }
+        }
+
+        CM_LogWrite("Number out of bounds: " + std::to_string(numOOB));
+
+        vec.erase(
+            std::remove_if(
+                vec.begin(), vec.end(),
+                [](const SegmentType& seg) {
+                    return seg.outOfBounds;
+                }
+            ),
+            vec.end()
+        );
+    }
+
     // Dump old, massive, or dead segments
-    void dump(const CMTime& timeStepEnd) override {
-        CM_LogWrite("Dumping old and dead segments");
+    void dump(const CMTime& stopTime) override {
+        CM_LogWrite("Dumping old, massive, and dead segments");
         
         // Flag old segments
-        flagOldSegments(timeStepEnd);
+        flagOldSegments(stopTime);
 
         // Flag massive segments
         flagTooMassiveSegments();
@@ -178,31 +203,6 @@ public:
         size_t numAfter = vec.size();
         
         CM_LogWrite("Number of old/massive/dead: " + std::to_string(numBefore - numAfter));
-    }
-
-    // Advect all segments in vector and remove if out of bounds
-    void advectSegments(const CMTime& timeStepStart, const CMTime& timeStepEnd) override {
-        CM_LogWrite("Advecting segments");
-        
-        size_t numOOB = 0;
-        for (SegmentType& seg : vec) {
-            seg.advect(timeStepStart, timeStepEnd);
-            if (seg.outOfBounds) {
-                numOOB += 1;
-            }
-        }
-
-        CM_LogWrite("Number out of bounds: " + std::to_string(numOOB));
-
-        vec.erase(
-            std::remove_if(
-                vec.begin(), vec.end(),
-                [](const SegmentType& seg) {
-                    return seg.outOfBounds;
-                }
-            ),
-            vec.end()
-        );
     }
 
     // Construct QIcontrail using live segment data

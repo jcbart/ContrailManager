@@ -41,7 +41,7 @@ struct Segment {
     virtual ~Segment() = default;
 
     // Virtual integration method; must be overridden by plume model-specific method
-    virtual void integrate(const CMTime& timeStepStart, const CMTime& timeStepEnd) = 0;
+    virtual void integrate(const CMTime& startTime, const CMTime& stopTime) = 0;
 
     // Returns true if segment should be dumped (i.e. if flags raised for isOld, isTooMassive, or
     // isDead)
@@ -62,14 +62,14 @@ struct Segment {
     }
     
     // Advect front and back locations of segment and flag outOfBounds if out of bounds
-    void advect(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
+    void advect(const CMTime& startTime, const CMTime& stopTime) {
         float duration_s;
-        // If birthTime > timeStepStart, integrate from birthTime to timeStepEnd
-        if (birthTime > timeStepStart) {
-            duration_s = (timeStepEnd - birthTime).dhms_to_s();
+        // If birthTime > startTime, integrate from birthTime to stopTime
+        if (birthTime > startTime) {
+            duration_s = (stopTime - birthTime).dhms_to_s();
         }
         else {
-            duration_s = (timeStepEnd - timeStepStart).dhms_to_s();
+            duration_s = (stopTime - startTime).dhms_to_s();
         }
         bool inGridBack, inGridFront;
 

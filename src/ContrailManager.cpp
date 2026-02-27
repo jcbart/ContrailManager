@@ -22,8 +22,6 @@ void ContrailManager::init() {
     CM_LogWrite("Initialising Contrail Manager:");
     
     read_config();
-    
-    CM_LogWrite("Contrail Manager internal time step set to " + timeStep.asString());
 
     CM_LogWrite("Online coupling: " + std::string(twoWayCoupling ? "true" : "false"));
 
@@ -65,13 +63,6 @@ void ContrailManager::init() {
 // Read config file
 void ContrailManager::read_config() {
     YAML::Node config = YAML::LoadFile("CM-config.yaml");
-
-    float timeStep_s = config["Time step (s)"].as<float>();
-    if (timeStep_s <= 0) {
-        CoCiP_RaiseError("Config error: Read time step of " + std::to_string(timeStep_s)
-            + " s. Time must be positive.", __FILE__, __LINE__);
-    }
-    timeStep.set(0, 0, 0, 0, 0, timeStep_s);
 
     twoWayCoupling = config["Two-way coupling"].as<bool>();
 
@@ -129,7 +120,7 @@ void ContrailManager::read_flight_dataset() {
 }
 
 // Integrate between times
-void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
+void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     // Current time at start of run
     std::chrono::steady_clock::time_point computeTimeStart = std::chrono::steady_clock::now();
 
@@ -142,14 +133,6 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
     if (currTime != startTime) {
         CM_RaiseError("currTime (" + currTime.asString() + ") does not match "
             + "integration startTime (" + startTime.asString() + ")", __FILE__, __LINE__);
-    }
-
-    // Check there are a whole number of time steps between startTime and stopTime
-    CMTimeInterval timeInterval = stopTime - startTime;
-    if (std::fmod(timeInterval.dhms_to_s(), timeStep.dhms_to_s()) > 1e-6) {
-        CM_RaiseError("Integration time interval (" + timeInterval.asString()
-            + ") is not an integer multiple of time step (" + timeStep.asString() + ")",
-            __FILE__, __LINE__);
     }
 
     CM_LogWrite("Integrating between " + startTime.asString() + " and " + stopTime.asString());
@@ -177,28 +160,23 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         }
     }
     */
-
-    while (currTime+timeStep <= stopTime) {
-        CMTime timeStepStart = currTime;
-        CMTime timeStepEnd = currTime + timeStep;
         
-        // 1. Create segments
-        create_segments(timeStepStart, timeStepEnd);
+    // 1. Create segments
+    create_segments(startTime, stopTime);
 
-        // 2. Integrate plumes
-        segments->integratePlumes(timeStepStart, timeStepEnd);
+    // 2. Integrate plumes
+    segments->integratePlumes(startTime, stopTime);
 
-        // 3. Dump old or dead segments in the same location they were integrated
-        segments->dump(timeStepEnd);
+    // 3. Advect segments
+    segments->advectSegments(startTime, stopTime);
 
-        // 4. Advect segments
-        segments->advectSegments(timeStepStart, timeStepEnd);
+    // 4. Dump old or dead segments in their new location
+    segments->dump(stopTime);
 
-        // 5. Increment currTime
-        currTime = timeStepEnd;
-        CM_LogWrite("Current time: " + currTime.asString());
-        CM_LogWrite("Number of live contrail segments: " + std::to_string(segments->getSize()));
-    }
+    // 5. Update currTime
+    currTime = stopTime;
+    CM_LogWrite("Current time: " + currTime.asString());
+    CM_LogWrite("Number of live contrail segments: " + std::to_string(segments->getSize()));
 
     if (domain->twoWayCoupling) {
         // Update deltaQV field
@@ -263,7 +241,7 @@ void ContrailManager::update_active_flights(const CMTime& startTime, const CMTim
 }
 
 // Create new segments from flights
-void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
+void ContrailManager::create_segments(const CMTime& startTime, const CMTime& stopTime) {
     CM_LogWrite("Creating segments for " + std::to_string(activeFlights.size())
         + " active flights");
     
@@ -271,11 +249,11 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
     for (const Flight& flight : activeFlights) {
         CM_LogWrite("Creating segments for flight: " + flight.ID);
 
-        // Find last waypoint passed at start and end of time step
-        int lastWpStart = find_last_wp(flight, timeStepStart);
-        int lastWpEnd = find_last_wp(flight, timeStepEnd);
+        // Find last waypoint passed at start and end of time interval
+        int lastWpStart = find_last_wp(flight, startTime);
+        int lastWpEnd = find_last_wp(flight, stopTime);
 
-        // n iterates each leg since the route may be sectioned by waypoints
+        // Iterate through each leg (sectioned by waypoints) between start and end locations
         for (int n = lastWpStart; n <= lastWpEnd; n++) {
             // Find start and end locs and times for leg
             Geo3D legStartloc, legEndLoc;
@@ -287,9 +265,10 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
             // If first leg, start from flight start loc (not wp)
             if (n == lastWpStart) {
                 // Safe to ignore return value
-                bool startFound = find_flight_loc(flight, timeStepStart, legStartloc);
-                legStartTime = timeStepStart;
+                bool startFound = find_flight_loc(flight, startTime, legStartloc);
+                legStartTime = startTime;
             }
+            // Else, leg starts at wp
             else {
                 legStartloc = flight.wpLocs[n];
                 legStartTime = flight.wpTimes[n];
@@ -297,18 +276,19 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
             // If last leg, end at flight end loc (not wp)
             if (n == lastWpEnd) {
                 // Safe to ignore return value
-                bool endFound = find_flight_loc(flight, timeStepEnd, legEndLoc);
-                legEndTime = timeStepEnd;
+                bool endFound = find_flight_loc(flight, stopTime, legEndLoc);
+                legEndTime = stopTime;
             }
+            // Else, leg ends at wp
             else {
                 legEndLoc = flight.wpLocs[n+1];
                 legEndTime = flight.wpTimes[n+1];
             }
 
             // Create as many segments as needed between
-            float distInLeg = great_circle_dist(legStartloc, legEndLoc);
+            double distInLeg = great_circle_dist(legStartloc, legEndLoc);
             int numNewSegments = ceil(distInLeg / maxInitialSegLen);
-            float segLen = distInLeg / numNewSegments;
+            double segLen = distInLeg / numNewSegments;
             Geo3D backLoc = legStartloc;
             Geo3D frontLoc;
             for (int i = 0; i < numNewSegments; i++) {
@@ -316,7 +296,7 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
 
                 // Find new front loc
                 // Fraction of the total distance where the front of the segment is
-                float f_front = (i+1.)/numNewSegments;
+                double f_front = (i+1.)/numNewSegments;
                 frontLoc = great_circle_interp(f_front, legStartloc, legEndLoc);
 
                 // Find if interpolation is possible
@@ -329,7 +309,7 @@ void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime&
 
                 // Find birth time
                 // Fraction of leg duration passed at centre of segment
-                float f_centre = (i + 0.5) / numNewSegments;
+                double f_centre = (i + 0.5) / numNewSegments;
                 CMTime birthTime = legStartTime + f_centre * (legEndTime - legStartTime);
 
                 // Add emissions info
@@ -364,7 +344,7 @@ int ContrailManager::find_last_wp(const Flight& flight, const CMTime& time) {
     // Find last waypoint passed
     else {
         for (int i = 0; i < flight.numWps-1; i++) {
-            if (time >= flight.wpTimes[i] && time < flight.wpTimes[i+1]) {
+            if (time < flight.wpTimes[i+1]) {
                 lastWp = i;
                 break;
             }

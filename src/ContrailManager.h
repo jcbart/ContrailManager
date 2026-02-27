@@ -13,7 +13,6 @@ struct Geo3D;
 
 class ContrailManager {
 private:
-    CMTimeInterval timeStep;
     CMTime currTime;
 
     bool firstRunCall = true; // Determines whether to call setup_on_first_run
@@ -48,7 +47,7 @@ private:
 
     void update_active_flights(const CMTime& startTime, const CMTime& stopTime);
 
-    void create_segments(const CMTime& timeStepStart, const CMTime& timeStepEnd);
+    void create_segments(const CMTime& startTime, const CMTime& stopTime);
 
     int find_last_wp(const Flight& flight, const CMTime& time);
 
@@ -62,7 +61,7 @@ public:
 
     void init();
 
-    void run(CMTime& startTime, CMTime& stopTime);
+    void run(const CMTime& startTime, const CMTime& stopTime);
     
 };
 

@@ -131,7 +131,7 @@ public:
 
 // Non-member operators for CMTimeInterval
 
-inline CMTimeInterval operator*(const CMTimeInterval& timeInt, float scalar) {
+inline CMTimeInterval operator*(const CMTimeInterval& timeInt, double scalar) {
     CMTimeInterval newTimeInt;
     newTimeInt.set(timeInt.yy*scalar,
                    timeInt.mm*scalar,
@@ -142,7 +142,7 @@ inline CMTimeInterval operator*(const CMTimeInterval& timeInt, float scalar) {
     return newTimeInt;
 }
 
-inline CMTimeInterval operator*(float scalar, const CMTimeInterval& timeInt) {
+inline CMTimeInterval operator*(double scalar, const CMTimeInterval& timeInt) {
     return timeInt*scalar;
 }
 
