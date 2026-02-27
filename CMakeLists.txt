@@ -58,7 +58,6 @@ set(SOURCES
     "src/extern.cpp"
     "src/mapUtils.cpp"
     "src/SegmentCoCiP.cpp"
-    "src/timekeeping.cpp"
 )
 
 # Target definition

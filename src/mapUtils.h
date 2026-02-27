@@ -132,7 +132,7 @@ struct IDX2 {
 
     // Return an IDX2 object with a different data type
     template <typename dtypeTarget>
-    inline operator IDX2<dtypeTarget>() const {
+    operator IDX2<dtypeTarget>() const {
         IDX2<dtypeTarget> target;
         target.i = static_cast<dtypeTarget>(i);
         target.j = static_cast<dtypeTarget>(j);
@@ -167,7 +167,7 @@ struct IDX3 {
 
     // Return an IDX3 object with a different data type
     template <typename dtypeTarget>
-    inline operator IDX3<dtypeTarget>() const {
+    operator IDX3<dtypeTarget>() const {
         IDX3<dtypeTarget> target;
         target.i = static_cast<dtypeTarget>(i);
         target.j = static_cast<dtypeTarget>(j);
@@ -337,12 +337,8 @@ inline double great_circle_bearing(const double lon1, const double lat1, const d
 }
 
 // Returns angle between the line from loc 1 to loc 2 and North (degrees)
-inline double great_circle_bearing(const Geo2D& loc1, const Geo2D& loc2) {
-    return great_circle_bearing(loc1.lon, loc1.lat, loc2.lon, loc2.lat);
-}
-
-// Returns angle between the line from loc 1 to loc 2 and North (degrees)
-inline double great_circle_bearing(const Geo3D& loc1, const Geo3D& loc2) {
+template <typename GeoType>
+inline double great_circle_bearing(const GeoType& loc1, const GeoType& loc2) {
     return great_circle_bearing(loc1.lon, loc1.lat, loc2.lon, loc2.lat);
 }
 

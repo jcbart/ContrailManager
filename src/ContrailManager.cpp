@@ -1,6 +1,7 @@
 #include <string>
 #include <memory>
 #include <chrono>
+#include <algorithm>
 #include <yaml-cpp/yaml.h>
 #ifdef WITH_COCIP
 #include <CoCiP++/params.h>
@@ -56,28 +57,8 @@ void ContrailManager::init() {
     segments->maxContrailAge_s = maxContrailAge_s;
     segments->maxAccumVapRatio = maxAccumVapRatio;
 
-    // Read flight data etc
-    Flight test_flight;
-    test_flight.ID = "1";
-    CMTime time1 = {2025, 4, 1, 0, 0, 10};
-    CMTime time2 = {2025, 4, 1, 0, 2, 0};
-    test_flight.wpTimes.push_back(time1);
-    test_flight.wpTimes.push_back(time2);
-    Geo3D loc1 = {-0.71, 51.73, 10e3};
-    Geo3D loc2 = {-1.05, 51.76, 11e3};
-    test_flight.wpLocs.push_back(loc1);
-    test_flight.wpLocs.push_back(loc2);
-    test_flight.numWps = 2;
-    test_flight.engine_efficiency = 0.3;
-    test_flight.ei_h2o = 1.25;
-    test_flight.q_fuel = 43.15e6;
-    test_flight.aircraft_mass = 70e3;
-    test_flight.wingspan = 34;
-    test_flight.true_airspeed = 250;
-    test_flight.fuel_flow = 0.7;
-    test_flight.T_exhaust = 600;
-    test_flight.nvpm_ei_n = 1e15;
-    flights.push_back(test_flight);
+    read_flight_dataset();
+
     CM_LogWrite("Contrail Manager initialised");
 }
 
@@ -119,6 +100,34 @@ void ContrailManager::read_config() {
     }
 }
 
+void ContrailManager::read_flight_dataset() {
+    // Read flight data etc
+    Flight test_flight;
+    test_flight.ID = "1";
+    CMTime time1 = {2025, 4, 1, 0, 0, 10};
+    CMTime time2 = {2025, 4, 1, 0, 2, 0};
+    test_flight.wpTimes.push_back(time1);
+    test_flight.wpTimes.push_back(time2);
+    Geo3D loc1 = {-0.71, 51.73, 10e3};
+    Geo3D loc2 = {-1.05, 51.76, 11e3};
+    test_flight.wpLocs.push_back(loc1);
+    test_flight.wpLocs.push_back(loc2);
+    test_flight.numWps = 2;
+    test_flight.engine_efficiency = 0.3;
+    test_flight.ei_h2o = 1.25;
+    test_flight.q_fuel = 43.15e6;
+    test_flight.aircraft_mass = 70e3;
+    test_flight.wingspan = 34;
+    test_flight.true_airspeed = 250;
+    test_flight.fuel_flow = 0.7;
+    test_flight.T_exhaust = 600;
+    test_flight.nvpm_ei_n = 1e15;
+    stagedFlights.push_back(test_flight);
+
+    // Sort stagedFlights by first waypoint time
+    std::sort(stagedFlights.begin(), stagedFlights.end(), flightFirstTimeCompare);
+}
+
 // Integrate between times
 void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
     // Current time at start of run
@@ -155,17 +164,23 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         domain->QIcontrail.clear_all();
     }
 
+    update_active_flights(startTime, stopTime);
+
+    /*
+    if (readFlightsInChunks) {
+        while (lastFlightAdded == stagedFlights.size()) {
+            // Read new chunk into stagedFlights
+            // Reset lastFlightAdded
+            lastFlightAdded = -1;
+            // Update active flights again
+            update_active_flights(startTime, stopTime);
+        }
+    }
+    */
+
     while (currTime+timeStep <= stopTime) {
         CMTime timeStepStart = currTime;
         CMTime timeStepEnd = currTime + timeStep;
-        /*
-        1. Create new segments
-        2. Integrate all segment plumes (aggregate vapour delta based on start location,
-           mark dead segments)
-        3. Dump old/dead segments before advection (aggregate leftover crystals)
-        4. Advect all segments (update dependent segments locs and find new length)
-        5. Increment currTime
-        */
         
         // 1. Create segments
         create_segments(timeStepStart, timeStepEnd);
@@ -174,7 +189,6 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
         segments->integratePlumes(timeStepStart, timeStepEnd);
 
         // 3. Dump old or dead segments in the same location they were integrated
-        // (check if timeStepEnd)
         segments->dump(timeStepEnd);
 
         // 4. Advect segments
@@ -205,7 +219,7 @@ void ContrailManager::run(CMTime& startTime, CMTime& stopTime) {
 
 
 // Completes the setup required on the first run call (i.e. after getting external data)
-void ContrailManager::setup_on_first_run(CMTime& startTime) {
+void ContrailManager::setup_on_first_run(const CMTime& startTime) {
     if (domain == nullptr) {
         CM_RaiseError("ContrailManager run called before domain has been initialised",
             __FILE__, __LINE__);
@@ -219,10 +233,42 @@ void ContrailManager::setup_on_first_run(CMTime& startTime) {
     CM_LogWrite("Contrail Manager current time set to " + currTime.asString());
 }
 
+void ContrailManager::update_active_flights(const CMTime& startTime, const CMTime& stopTime) {
+    // Remove flights whose last waypoint is before startTime
+    activeFlights.erase(
+        std::remove_if(
+            activeFlights.begin(), activeFlights.end(),
+            [startTime](const Flight& flight) {
+                return flight.wpTimes[flight.numWps-1] <= startTime;
+            }
+        ),
+        activeFlights.end()
+    );
+
+    // Add flights whose first waypoint is between startTime and stopTime
+    for (size_t i = lastFlightAdded + 1; i < stagedFlights.size(); i++) {
+        // Add if wanted
+        if ((stagedFlights[i].wpTimes[0] >= startTime)
+            && (stagedFlights[i].wpTimes[0] < stopTime)) {
+            
+            activeFlights.push_back(stagedFlights[i]);
+            // Update last flight added (so far)
+            lastFlightAdded = i;
+        }
+        // Break if this (and thus everything after) is not wanted
+        else {
+            break;
+        }
+    }
+}
+
 // Create new segments from flights
 void ContrailManager::create_segments(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
-    int num_created = 0;
-    for (const Flight& flight : flights) {
+    CM_LogWrite("Creating segments for " + std::to_string(activeFlights.size())
+        + " active flights");
+    
+    size_t num_created = 0;
+    for (const Flight& flight : activeFlights) {
         CM_LogWrite("Creating segments for flight: " + flight.ID);
 
         // Find last waypoint passed at start and end of time step

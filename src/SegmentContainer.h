@@ -165,10 +165,15 @@ public:
         size_t numBefore = vec.size();
 
         // Remove old or dead
-        vec.erase(std::remove_if(vec.begin(), vec.end(),
-                                 [](const SegmentType& seg) {
-                                    return (seg.shouldBeDumped());
-                                 }), vec.end());
+        vec.erase(
+            std::remove_if(
+                vec.begin(), vec.end(),
+                [](const SegmentType& seg) {
+                    return (seg.shouldBeDumped());
+                }
+            ),
+            vec.end()
+        );
         
         size_t numAfter = vec.size();
         
@@ -189,10 +194,15 @@ public:
 
         CM_LogWrite("Number out of bounds: " + std::to_string(numOOB));
 
-        vec.erase(std::remove_if(vec.begin(), vec.end(),
-                                 [](const SegmentType& seg) {
-                                    return seg.outOfBounds;
-                                 }), vec.end());
+        vec.erase(
+            std::remove_if(
+                vec.begin(), vec.end(),
+                [](const SegmentType& seg) {
+                    return seg.outOfBounds;
+                }
+            ),
+            vec.end()
+        );
     }
 
     // Construct QIcontrail using live segment data
@@ -210,7 +220,8 @@ inline SegmentCoCiP SegmentContainer<SegmentCoCiP>::newSegmentInstance(const std
     const Geo3D& frontLoc, const float length) {
     
     // Initialise with additional pointer to common params
-    SegmentCoCiP newSeg(parentID, birthTime, flightInputs, domPtr, backLoc, frontLoc, length, cocipParams);
+    SegmentCoCiP newSeg(parentID, birthTime, flightInputs, domPtr, backLoc, frontLoc, length,
+        cocipParams);
     return newSeg;
 }
 #endif
