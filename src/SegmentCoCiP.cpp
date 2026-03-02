@@ -52,9 +52,6 @@ void SegmentCoCiP::updateMet() {
 }
 
 void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
-    // Get local meteorology
-    updateMet();
-
     // Give CoCiP current location and datetime
     cocip.longitude = centre.lon;
     cocip.latitude = centre.lat;
@@ -67,9 +64,17 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
         timeStepEnd.m,
         timeStepEnd.s
     );
+
+    // Get local meteorology
+    updateMet();
     
     if (!doneFormation) {
         cocip.formation();
+
+        double fuel_dist = cocip.fuel_flow / cocip.true_airspeed; // (kg fuel m-1)
+        double vap_mass_per_m_exhaust = cocip.ei_h2o * fuel_dist; // (kg vapour m-1)
+        // Mass of vapour exhausted (kg) - used in both formation and no formation
+        double M_v_exhaust = vap_mass_per_m_exhaust * length;
 
         if (!cocip.sac) {
             isDead = true;
@@ -77,11 +82,6 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
 
             // If two-way coupling, return water vapour to atmosphere
             if (domPtr->twoWayCoupling) {
-                double fuel_dist = cocip.fuel_flow / cocip.true_airspeed; // (kg fuel m-1)
-                double vap_mass_per_m_released = cocip.ei_h2o * fuel_dist; // (kg vapour m-1)
-                // Mass of vapour released to the atmosphere (kg)
-                double M_v_released = vap_mass_per_m_released * length;
-
                 // Get dry mass of grid cell contrail is inside
                 IDX3<int> ijkCurr;
                 bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
@@ -89,8 +89,8 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
 
                 double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
 
-                // Add M_v_released to current grid cell
-                *domPtr->deltaQV.get(ijkCurr) += M_v_released / gridDryMass;
+                // Add M_v_exhaust to current grid cell
+                *domPtr->deltaQV.get(ijkCurr) += M_v_exhaust / gridDryMass;
             }
             return;
         }
@@ -105,11 +105,6 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
             // If two-way coupling, return water vapour to atmosphere and assume !cocip.persistent
             // is because IWC -> 0
             if (domPtr->twoWayCoupling) {
-                double fuel_dist = cocip.fuel_flow / cocip.true_airspeed; // (kg fuel m-1)
-                double vap_mass_per_m_released = cocip.ei_h2o * fuel_dist; // (kg vapour m-1)
-                // Mass of vapour released to the atmosphere (kg)
-                double M_v_released = vap_mass_per_m_released * length;
-
                 // Get dry mass of grid cell contrail is inside
                 IDX3<int> ijkCurr;
                 bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
@@ -117,14 +112,30 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
 
                 double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
 
-                // Add M_v_released to current grid cell
-                *domPtr->deltaQV.get(ijkCurr) += M_v_released / gridDryMass;
+                // Add M_v_exhaust to current grid cell
+                *domPtr->deltaQV.get(ijkCurr) += M_v_exhaust / gridDryMass;
             }
             return;
         }
 
         // Takes angle between segment and longitude axis
         cocip.process_downwash_flight(90 - heading);
+
+        // Do q_to_r as long as plume_mass_per_m is actually dry air mass
+        double M_ice = thermo::q_to_r(cocip.iwc) * cocip.plume_mass_per_m * length;
+
+        // Specific humidity inside contrail
+        double q_sat = thermo::q_sat_ice(cocip.met->air_temperature, cocip.met->air_pressure);
+        // Do q_to_r as long as plume_mass_per_m is actually dry air mass
+        double M_v_inside = thermo::q_to_r(q_sat) * cocip.plume_mass_per_m * length;
+
+        // Vapour mass intaken from atmosphere =
+        //    ice mass + vapour mass inside - vapour mass exhausted
+        M_v_accum = M_ice + M_v_inside - M_v_exhaust;
+
+        CM_LogWrite("CoCiP M_v_exhaust: " + std::to_string(M_v_exhaust)
+            + ", M_ice (initial): " + std::to_string(M_ice)
+            + ", M_v_accum (initial): " + std::to_string(M_v_accum));
 
         doneFormation = true;
     }
