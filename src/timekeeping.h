@@ -135,10 +135,10 @@ inline CMTimeInterval operator*(const CMTimeInterval& timeInt, double scalar) {
     CMTimeInterval newTimeInt;
     newTimeInt.set(timeInt.yy*scalar,
                    timeInt.mm*scalar,
-                   timeInt.dd*scalar,
-                   timeInt.h*scalar,
-                   timeInt.m*scalar,
-                   timeInt.s*scalar);
+                   0,
+                   0,
+                   0,
+                   timeInt.dhms_to_s() * scalar);
     return newTimeInt;
 }
 

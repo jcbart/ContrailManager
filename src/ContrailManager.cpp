@@ -95,12 +95,12 @@ void ContrailManager::read_flight_dataset() {
     // Read flight data etc
     Flight test_flight;
     test_flight.ID = "1";
-    CMTime time1 = {2025, 4, 1, 0, 0, 10};
-    CMTime time2 = {2025, 4, 1, 0, 2, 0};
+    CMTime time1 = {2025, 4, 1, 6, 0, 0};
+    CMTime time2 = {2025, 4, 1, 6, 3, 0};
     test_flight.wpTimes.push_back(time1);
     test_flight.wpTimes.push_back(time2);
-    Geo3D loc1 = {-0.71, 51.73, 10e3};
-    Geo3D loc2 = {-1.05, 51.76, 11e3};
+    Geo3D loc1 = {-1.4, 56, 10500};
+    Geo3D loc2 = {-1, 56.3, 10500};
     test_flight.wpLocs.push_back(loc1);
     test_flight.wpLocs.push_back(loc2);
     test_flight.numWps = 2;
