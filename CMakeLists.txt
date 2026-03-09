@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if(NOT DEFINED ENV{ESMFMKFILE})
     message(FATAL_ERROR "Environment variable ESMFMKFILE was not set.")
 endif()
@@ -40,7 +43,11 @@ get_esmf_var("ESMF_CXXCOMPILECPPFLAGS" ESMF_CXXCOMPILECPPFLAGS)
 get_esmf_var("ESMF_CXXLINKLIBS" ESMF_CXXLINKLIBS)
 
 # Remove optimisation flags from ESMF_CXXCOMPILEOPTS
-string(REGEX REPLACE "-O[0-3|g|s|z|fast]*" "" ESMF_CXXCOMPILEOPTS_CLEAN "${ESMF_CXXCOMPILEOPTS}")
+string(REGEX REPLACE
+    "-O[0-3|g|s|z|fast]*|-std=c\\+\\+[0-9][0-9]"
+    ""
+    ESMF_CXXCOMPILEOPTS_CLEAN
+    "${ESMF_CXXCOMPILEOPTS}")
 separate_arguments(ESMF_CXXCOMPILEOPTS_LIST NATIVE_COMMAND "${ESMF_CXXCOMPILEOPTS_CLEAN}")
 
 # Set CMake compiler

@@ -99,8 +99,8 @@ void ContrailManager::read_flight_dataset() {
     CMTime time2 = {2025, 4, 1, 6, 3, 0};
     test_flight.wpTimes.push_back(time1);
     test_flight.wpTimes.push_back(time2);
-    Geo3D loc1 = {-1.4, 56, 10500};
-    Geo3D loc2 = {-1, 56.3, 10500};
+    Geo3D loc1 = {-9.7, 52.1, 10500};
+    Geo3D loc2 = {-9.1, 52.1, 10500};
     test_flight.wpLocs.push_back(loc1);
     test_flight.wpLocs.push_back(loc2);
     test_flight.numWps = 2;
