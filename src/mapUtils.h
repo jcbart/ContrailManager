@@ -5,23 +5,27 @@
 #include <string>
 #include <sstream>
 
-// Forward declaration
-struct CMTime;
-class IDomain;
-
 constexpr double PI = 3.14159265358979323846264338327950288419716939937510582;
 constexpr double RAD_PER_DEG = PI/180;
 constexpr double DEG_PER_RAD = 1/RAD_PER_DEG;
 constexpr double EARTH_RADIUS_M = 6.37e6; // Earth radius (m); consistent with WRF
 
 // Forward declarations
+struct CMTime;
+class Domain;
 struct Geo2D;
 struct Geo3D;
 
-// A structure to define a location in geographic (lat, lon) coordinates
+// A structure to define a location in geographic (lon, lat) coordinates
 struct Geo2D {
     double lon; // degrees, West is negative
     double lat; // degrees, South is negative
+
+    // Constructor without values
+    Geo2D() {}
+
+    // Constructor with values
+    Geo2D(double lon, double lat) : lon(lon), lat(lat) {}
 
     // Set values
     void set(double lon, double lat) {
@@ -40,11 +44,17 @@ struct Geo2D {
     }
 };
 
-// A structure to define a location in geodetic (lat, lon, alt) coordinates
+// A structure to define a location in geodetic (lon, lat, alt) coordinates
 struct Geo3D {
     double lon; // degrees, West is negative
     double lat; // degrees, South is negative
     double alt; // metres above mean sea level
+
+    // Constructor without values
+    Geo3D() {}
+
+    // Constructor with values
+    Geo3D(double lon, double lat, double alt) : lon(lon), lat(lat), alt(alt) {}
 
     // Set values
     void set(double lon, double lat, double alt) {
@@ -64,20 +74,21 @@ struct Geo3D {
     }
 };
 
-// Return a Geo3D version of a Geo2D object (alt not set)
+// Return a Geo3D version of a Geo2D object (alt set to 0)
 inline Geo2D::operator Geo3D() const {
-    Geo3D as3D;
-    as3D.lon = this->lon;
-    as3D.lat = this->lat;
-    return as3D;
+    return Geo3D(
+        this->lon,
+        this->lat,
+        0
+    );
 }
 
 // Return a Geo2D version of a Geo3D object (alt stripped)
 inline Geo3D::operator Geo2D() const {
-    Geo2D as2D;
-    as2D.lon = this->lon;
-    as2D.lat = this->lat;
-    return as2D;
+    return Geo2D(
+        this->lon,
+        this->lat
+    );
 }
 
 // A structure to define a location (or vector) in Cartesian (x, y, z) coordinates
@@ -85,6 +96,12 @@ struct Cart3D {
     double x;
     double y;
     double z;
+
+    // Constructor without values
+    Cart3D() {}
+
+    // Constructor with values
+    Cart3D(double x, double y, double z) : x(x), y(y), z(z) {}
 
     // Set values
     void set(double x, double y, double z) {
@@ -95,20 +112,20 @@ struct Cart3D {
 
     // Sum two Cart3D points
     Cart3D operator+(const Cart3D& other) const {
-        Cart3D result;
-        result.x = this->x + other.x;
-        result.y = this->y + other.y;
-        result.z = this->z + other.z;
-        return result;
+        return Cart3D(
+            this->x + other.x,
+            this->y + other.y,
+            this->z + other.z
+        );
     }
 
     // Subtract one Cart3D point from another
     Cart3D operator-(const Cart3D& other) const {
-        Cart3D result;
-        result.x = this->x - other.x;
-        result.y = this->y - other.y;
-        result.z = this->z - other.z;
-        return result;
+        return Cart3D(
+            this->x - other.x,
+            this->y - other.y,
+            this->z - other.z
+        );
     }
 };
 
@@ -124,6 +141,12 @@ struct IDX2 {
     dtype i;
     dtype j;
 
+    // Constructor without values
+    IDX2() {}
+
+    // Constructor with values
+    IDX2(dtype i, dtype j) : i(i), j(j) {}
+
     // Set values
     void set(dtype i, dtype j) {
         this->i = i;
@@ -133,10 +156,10 @@ struct IDX2 {
     // Return an IDX2 object with a different data type
     template <typename dtypeTarget>
     operator IDX2<dtypeTarget>() const {
-        IDX2<dtypeTarget> target;
-        target.i = static_cast<dtypeTarget>(i);
-        target.j = static_cast<dtypeTarget>(j);
-        return target;
+        return IDX2<dtypeTarget>(
+            static_cast<dtypeTarget>(i),
+            static_cast<dtypeTarget>(j)
+        );
     }
 
     // Return a IDX3 version of an IDX2 object (k not set)
@@ -158,6 +181,12 @@ struct IDX3 {
     dtype j;
     dtype k;
 
+    // Constructor without values
+    IDX3() {}
+
+    // Constructor with values
+    IDX3(dtype i, dtype j, dtype k) : i(i), j(j), k(k) {}
+
     // Set values
     void set(dtype i, dtype j, dtype k) {
         this->i = i;
@@ -168,11 +197,11 @@ struct IDX3 {
     // Return an IDX3 object with a different data type
     template <typename dtypeTarget>
     operator IDX3<dtypeTarget>() const {
-        IDX3<dtypeTarget> target;
-        target.i = static_cast<dtypeTarget>(i);
-        target.j = static_cast<dtypeTarget>(j);
-        target.k = static_cast<dtypeTarget>(k);
-        return target;
+        return IDX3<dtypeTarget>(
+            static_cast<dtypeTarget>(i),
+            static_cast<dtypeTarget>(j),
+            static_cast<dtypeTarget>(k)
+        );
     }
 
     // Return a IDX2 version of an IDX3 object (k stripped)
@@ -187,28 +216,29 @@ struct IDX3 {
     }
 };
 
-// Return a IDX3 version of an IDX2 object (k not set)
+// Return a IDX3 version of an IDX2 object (k set to 0)
 template <typename dtypeSource>
 template <typename dtypeTarget>
 inline IDX2<dtypeSource>::operator IDX3<dtypeTarget>() const {
-    IDX3<dtypeTarget> as3D;
-    as3D.i = static_cast<dtypeTarget>(i);
-    as3D.j = static_cast<dtypeTarget>(j);
-    return as3D;
+    return IDX3<dtypeTarget>(
+        static_cast<dtypeTarget>(i),
+        static_cast<dtypeTarget>(j),
+        static_cast<dtypeTarget>(0)
+    );
 }
 
 // Return a IDX2 version of an IDX3 object (k stripped)
 template <typename dtypeSource>
 template <typename dtypeTarget>
 inline IDX3<dtypeSource>::operator IDX2<dtypeTarget>() const {
-    IDX2<dtypeTarget> as2D;
-    as2D.i = static_cast<dtypeTarget>(i);
-    as2D.j = static_cast<dtypeTarget>(j);
-    return as2D;
+    return IDX2<dtypeTarget>(
+        static_cast<dtypeTarget>(i),
+        static_cast<dtypeTarget>(j)
+    );
 }
 
 // Finds the length of a vector (or distance of a point from the origin)
-inline double vector_mag(const Cart3D& vec) {
+constexpr double vector_mag(const Cart3D& vec) {
     return std::sqrt(vec.x*vec.x + vec.y*vec.y + vec.z*vec.z);
 }
 
@@ -233,8 +263,8 @@ inline Geo2D Cart3D_to_Geo2D(const Cart3D& pointIn) {
     Geo2D pointOut;
     double theta = std::acos(pointIn.z);
     double phi = std::atan2(pointIn.y, pointIn.x);
-    pointOut.lat = 90. - theta/RAD_PER_DEG;
     pointOut.lon = phi/RAD_PER_DEG;
+    pointOut.lat = 90. - theta/RAD_PER_DEG;
     return pointOut;
 }
 
@@ -256,16 +286,15 @@ inline Geo3D Cart3D_to_Geo3D(const Cart3D& pointIn) {
     double rho = vector_mag(pointIn);
     double theta = std::acos(pointIn.z/rho);
     double phi = std::atan2(pointIn.y, pointIn.x);
-    pointOut.lat = 90. - theta/RAD_PER_DEG;
     pointOut.lon = phi/RAD_PER_DEG;
+    pointOut.lat = 90. - theta/RAD_PER_DEG;
     pointOut.alt = rho - EARTH_RADIUS_M;
     return pointOut;
 }
 
 // Calculates distance between two Cartesian points
 inline double cart_dist(const Cart3D& pointA, const Cart3D& pointB) {
-    Cart3D diff = pointA - pointB;
-    return vector_mag(diff);
+    return vector_mag(pointA - pointB);
 }
 
 // Calculates Cartesian (straight line) distance between points
@@ -320,7 +349,7 @@ inline void wrap_SN(double& lon, double& lat) {
 
 // Returns angle between the line from loc 1 (lon1, lat1) to loc 2 (lon2, lat2) and North
 // (degrees)
-inline double great_circle_bearing(const double lon1, const double lat1, const double lon2,
+constexpr double great_circle_bearing(const double lon1, const double lat1, const double lon2,
     const double lat2) {
 
     double lon1_rad = RAD_PER_DEG * lon1;
@@ -338,7 +367,7 @@ inline double great_circle_bearing(const double lon1, const double lat1, const d
 
 // Returns angle between the line from loc 1 to loc 2 and North (degrees)
 template <typename GeoType>
-inline double great_circle_bearing(const GeoType& loc1, const GeoType& loc2) {
+constexpr double great_circle_bearing(const GeoType& loc1, const GeoType& loc2) {
     return great_circle_bearing(loc1.lon, loc1.lat, loc2.lon, loc2.lat);
 }
 
@@ -349,8 +378,8 @@ Geo3D great_circle_interp(const CMTime& time, const CMTime& time1, const Geo3D& 
 
 bool loc_in_quad(const Geo2D& loc, const Geo2D& point1, const Geo2D& point2, const Geo2D& point3, const Geo2D& point4);
 
-bool advect_loc(Geo3D& loc, const float duration_s, const IDomain& dom);
+bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom);
 
-bool advect_loc_RK4(Geo3D& loc, const float duration_s, const IDomain& dom);
+bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom);
 
 #endif

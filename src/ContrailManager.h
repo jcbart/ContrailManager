@@ -55,7 +55,7 @@ private:
 
 public:
     // Pointer to domain
-    std::unique_ptr<IDomain> domain;
+    std::unique_ptr<Domain> domain;
 
     // External functions
 

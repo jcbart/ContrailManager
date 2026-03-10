@@ -43,9 +43,4 @@ struct Flight {
     }
 };
 
-// Comparator - returns true if the first waypoint of flight A occurs before that of flight B
-inline bool flightFirstTimeCompare(Flight& A, Flight& B) {
-    return A.wpTimes[0] < B.wpTimes[0];
-}
-
 #endif

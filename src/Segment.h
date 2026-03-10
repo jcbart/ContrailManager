@@ -13,7 +13,7 @@ struct Segment {
     std::string parentID = "none"; // ID of the flight object which created the segment
     CMTime birthTime; // Estimated time at which centre of segment was emitted
     FlightInputs flightInputs; // Inputs from flight
-    IDomain* domPtr; // Pointer to the Contrail Manager's domain
+    Domain* domPtr; // Pointer to the Contrail Manager's domain
 
     Geo3D back; // Location of back (first point created) of segment
     Geo3D front; // Location of front (last point created) of segment
@@ -30,7 +30,7 @@ struct Segment {
 
     // Constructor
     Segment(const std::string& parentID, const CMTime& birthTime, const FlightInputs& flightInputs,
-        IDomain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc, const float length)
+        Domain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc, const float length)
         : parentID(parentID), birthTime(birthTime), flightInputs(flightInputs), domPtr(domPtr),
           back(backLoc), front(frontLoc), length(length) {
         
@@ -66,10 +66,10 @@ struct Segment {
         float duration_s;
         // If birthTime > startTime, integrate from birthTime to stopTime
         if (birthTime > startTime) {
-            duration_s = (stopTime - birthTime).dhms_to_s();
+            duration_s = (stopTime - birthTime).to_s();
         }
         else {
-            duration_s = (stopTime - startTime).dhms_to_s();
+            duration_s = (stopTime - startTime).to_s();
         }
         bool inGridBack, inGridFront;
 

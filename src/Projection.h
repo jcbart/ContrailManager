@@ -5,8 +5,6 @@
 #include "mapUtils.h"
 #include "CMLog.h"
 
-const int PROJ_LC = 1; // Consistent with WRF
-
 class IProjection {
 protected:
     // Set externally
@@ -110,5 +108,8 @@ public:
         return ij;
     }
 };
+
+// Variant of all Projection options
+using ProjVariant = std::variant<ProjectionLC>;
 
 #endif

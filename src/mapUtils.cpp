@@ -46,10 +46,7 @@ Geo3D great_circle_interp(const double f, const Geo3D& loc1, const Geo3D& loc2) 
 // If time = time1, the returned location will be loc1 and vice versa
 Geo3D great_circle_interp(const CMTime& time, const CMTime& time1, const Geo3D& loc1,
                           const CMTime& time2, const Geo3D& loc2) {
-    double time_s = time.dhms_to_s();
-    double time1_s = time1.dhms_to_s();
-    double time2_s = time2.dhms_to_s();
-    double f = (time_s - time1_s)/(time2_s - time1_s);
+    double f = (time - time1).to_s()/(time2 - time1).to_s();
     return great_circle_interp(f, loc1, loc2);
 }
 
@@ -86,7 +83,7 @@ bool loc_in_quad(const Geo2D& loc, const Geo2D& point1, const Geo2D& point2, con
 // Advect a location (loc) for duration in seconds given a domain (dom)
 // Updates loc
 // Returns false if loc is outside or goes outside the grid
-bool advect_loc(Geo3D& loc, const float duration_s, const IDomain& dom) {
+bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
     bool inGrid;
 
     float u, v, w;
@@ -117,7 +114,7 @@ bool advect_loc(Geo3D& loc, const float duration_s, const IDomain& dom) {
 // domain (dom)
 // Updates loc
 // Returns false if loc is outside or goes outside the grid
-bool advect_loc_RK4(Geo3D& loc, const float duration_s, const IDomain& dom) {
+bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
     bool inGrid;
 
     float u1, v1, w1; // Values of k1

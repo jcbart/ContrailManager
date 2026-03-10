@@ -11,7 +11,7 @@
 #include "CMLog.h"
 
 SegmentCoCiP::SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
-    const FlightInputs& flightInputs, IDomain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc,
+    const FlightInputs& flightInputs, Domain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc,
     const float length, std::shared_ptr<Params> params)
     : Segment(parentID, birthTime, flightInputs, domPtr, backLoc, frontLoc, length) {
     
@@ -144,8 +144,8 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
     double M_air_before = cocip.plume_mass_per_m * length;
 
     double dt_s = (birthTime > timeStepStart)
-        ? (timeStepEnd - birthTime).dhms_to_s()
-        : (timeStepEnd - timeStepStart).dhms_to_s();
+        ? (timeStepEnd - birthTime).to_s()
+        : (timeStepEnd - timeStepStart).to_s();
     // Takes angle between segment and longitude axis
     cocip.evolve(lengthRatio, 90 - heading, dt_s);
     

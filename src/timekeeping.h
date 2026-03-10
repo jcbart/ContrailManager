@@ -4,17 +4,36 @@
 #include <string>
 #include <sstream>
 
-constexpr int DAYS_IN_MONTH[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-constexpr int DAYS_IN_MONTH_LEAP[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+constexpr int DAYS_IN_MONTH_NO_LEAP[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+// Forward declarations
+struct CMTime;
+constexpr long long fullDaysBetween(const CMTime& time1, const CMTime& time2);
+
+// Returns true if supplied year is a leap year
+constexpr bool isLeap(int year) {
+    return ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0));
+}
+
+// Returns number of days in month (with January = 1) accounting for leap days
+constexpr int daysInMonth(int year, int month) {
+    if (month == 2) {
+        return isLeap(year) ? DAYS_IN_MONTH_NO_LEAP[1] + 1 : DAYS_IN_MONTH_NO_LEAP[1];
+    }
+    return DAYS_IN_MONTH_NO_LEAP[month - 1];
+}
+
+// Returns number of days in year accounting for leap days
+constexpr int daysInYear(int year) {
+    return isLeap(year) ? 366 : 365;
+}
 
 // Time interval structure
+// Does not contain month or year members, but days can be arbitrarily large
 // Time intervals may be negative
-// Time intervals can have day and month equal to 0
-// Given that years have varying numbers of days, their value is always relative to
-// a CMTime
 struct CMTimeInterval {
 private:
-    // Adjust only seconds, minutes, and hours within their limits
+    // Adjust values within their limits
     void adjust() {
         while (s >= 60) {
             s -= 60;
@@ -43,17 +62,23 @@ private:
     }
 
 public:
-    int yy;
-    int mm;
     int dd;
     int h;
     int m;
     float s;
 
+    // Constructor without values
+    CMTimeInterval() {}
+
+    // Constructor with values
+    CMTimeInterval(int dd, int h, int m, float s)
+        : dd(dd), h(h), m(m), s(s) {
+        
+        adjust();
+    }
+
     // Sets the internal variables
-    void set(int yy, int mm, int dd, int h, int m, float s) {
-        this->yy = yy;
-        this->mm = mm;
+    void set(int dd, int h, int m, float s) {
         this->dd = dd;
         this->h = h;
         this->m = m;
@@ -62,62 +87,50 @@ public:
     }
 
     constexpr bool operator==(const CMTimeInterval& other) const {
-        return (this->yy == other.yy &&
-                this->mm == other.mm &&
-                this->dd == other.dd &&
+        return (this->dd == other.dd &&
                 this->h == other.h &&
                 this->m == other.m &&
                 this->s == other.s);
     }
 
-    bool operator!=(const CMTimeInterval& other) const {
+    constexpr bool operator!=(const CMTimeInterval& other) const {
         return !(operator==(other));
     }
 
     CMTimeInterval operator+(const CMTimeInterval& other) const {
-        CMTimeInterval newTimeInt;
-        newTimeInt.set(this->yy + other.yy,
-                       this->mm + other.mm,
-                       this->dd + other.dd,
-                       this->h + other.h,
-                       this->m + other.m,
-                       this->s + other.s);
-        return newTimeInt;
+        return CMTimeInterval(
+            this->dd + other.dd,
+            this->h + other.h,
+            this->m + other.m,
+            this->s + other.s
+        );
     }
 
     CMTimeInterval operator-(const CMTimeInterval& other) const {
-        CMTimeInterval newTimeInt;
-        newTimeInt.set(this->yy - other.yy,
-                       this->mm - other.mm,
-                       this->dd - other.dd,
-                       this->h - other.h,
-                       this->m - other.m,
-                       this->s - other.s);
-        return newTimeInt;
+        return CMTimeInterval(
+            this->dd - other.dd,
+            this->h - other.h,
+            this->m - other.m,
+            this->s - other.s
+        );
     }
 
     CMTimeInterval& operator+=(const CMTimeInterval& other) {
-        this->set(this->yy + other.yy,
-                  this->mm + other.mm,
-                  this->dd + other.dd,
+        this->set(this->dd + other.dd,
                   this->h + other.h,
                   this->m + other.m,
                   this->s + other.s);
         return *this;
     }
 
-    // Turns days, hours, minutes, and seconds into seconds
-    constexpr double dhms_to_s() const {
+    // Turns time interval into seconds
+    constexpr double to_s() const {
         return (dd*86400. + h*3600. + m*60. + s);
     }
 
-    // Return time as a string
+    // Return time interval as a string
     std::string asString() const {
         std::stringstream ss;
-        ss << yy;
-        ss << "-";
-        (mm < 10) ? ss << "0" << mm : ss << mm;
-        ss << "-";
         (dd < 10) ? ss << "0" << dd : ss << dd;
         ss << " ";
         (h < 10) ? ss << "0" << h : ss << h;
@@ -132,14 +145,12 @@ public:
 // Non-member operators for CMTimeInterval
 
 inline CMTimeInterval operator*(const CMTimeInterval& timeInt, double scalar) {
-    CMTimeInterval newTimeInt;
-    newTimeInt.set(timeInt.yy*scalar,
-                   timeInt.mm*scalar,
-                   0,
-                   0,
-                   0,
-                   timeInt.dhms_to_s() * scalar);
-    return newTimeInt;
+    return CMTimeInterval(
+        0,
+        0,
+        0,
+        timeInt.to_s() * scalar
+    );
 }
 
 inline CMTimeInterval operator*(double scalar, const CMTimeInterval& timeInt) {
@@ -196,20 +207,12 @@ private:
                 mm += 12;
                 yy -= 1;
             }
-            else if (isLeap() && dd > DAYS_IN_MONTH_LEAP[mm-1]) {
-                dd -= DAYS_IN_MONTH_LEAP[mm-1];
+            else if (dd > daysInMonth(yy, mm)) {
+                dd -= daysInMonth(yy, mm);
                 mm += 1;
             }
-            else if (isLeap() && dd <= 0) {
-                dd += DAYS_IN_MONTH_LEAP[mm-1];
-                mm -= 1;
-            }
-            else if (!isLeap() && dd > DAYS_IN_MONTH[mm-1]) {
-                dd -= DAYS_IN_MONTH[mm-1];
-                mm += 1;
-            }
-            else if (!isLeap() && dd <= 0) {
-                dd += DAYS_IN_MONTH[mm-1];
+            else if (dd <= 0) {
+                dd += daysInMonth(yy, mm);
                 mm -= 1;
             }
             else {
@@ -226,15 +229,14 @@ public:
     int m;
     float s;
 
-    // Returns true if internal year is a leap year
-    bool isLeap() const {
-        if (yy % 4 == 0) {
-            if (yy % 100 == 0) {
-                return (yy % 400 == 0);
-            }
-            return true;
-        }
-        return false;
+    // Constructor without values
+    CMTime() {}
+
+    // Constructor with values
+    CMTime(int yy, int mm, int dd, int h, int m, float s)
+        : yy(yy), mm(mm), dd(dd), h(h), m(m), s(s) {
+        
+        adjust();
     }
 
     // Sets the internal variables from separate inputs
@@ -246,6 +248,11 @@ public:
         this->m = m;
         this->s = s;
         adjust();
+    }
+
+    // Returns true if internal year is a leap year
+    constexpr bool isLeap() const {
+        return ::isLeap(yy);
     }
 
     // Sets the internal variables from CMTime_F input
@@ -272,33 +279,56 @@ public:
         return !(operator==(other));
     }
 
+    constexpr int fullDaysPassedInYear() const {
+        int fullDays = 0;
+        for (int month = 1; month < mm; month++) {
+            fullDays += daysInMonth(yy, month);
+        }
+        fullDays += (dd - 1);
+        return fullDays;
+    }
+
+    constexpr int fullDaysRemainingInYear() const {
+        int fullDays = 0;
+        fullDays += (daysInMonth(yy, mm) - dd);
+        for (int month = mm + 1; month <= 12; month++) {
+            fullDays += daysInMonth(yy, month);
+        }
+        return fullDays;
+    }
+
+    // Calculates the number of full days between (the same time on) two dates (this - other)
+    constexpr long long fullDaysBetween(const CMTime& other) const {
+        return (*this >= other)
+            ? ::fullDaysBetween(*this, other)
+            : -::fullDaysBetween(other, *this);
+    }
+
     // CMTime + CMTimeInterval = CMTime
     CMTime operator+(const CMTimeInterval& other) const {
-        CMTime newTime;
-        newTime.set(this->yy + other.yy,
-                    this->mm + other.mm,
-                    this->dd + other.dd,
-                    this->h + other.h,
-                    this->m + other.m,
-                    this->s + other.s);
-        return newTime;
+        return CMTime(
+            this->yy,
+            this->mm,
+            this->dd + other.dd,
+            this->h + other.h,
+            this->m + other.m,
+            this->s + other.s
+        );
     }
 
     // CMTime - CMTime = CMTimeInterval
     CMTimeInterval operator-(const CMTime& other) const {
-        CMTimeInterval timeInt;
-        timeInt.set(this->yy - other.yy,
-                    this->mm - other.mm,
-                    this->dd - other.dd,
-                    this->h - other.h,
-                    this->m - other.m,
-                    this->s - other.s);
-        return timeInt;
+        return CMTimeInterval(
+            fullDaysBetween(other),
+            this->h - other.h,
+            this->m - other.m,
+            this->s - other.s
+        );
     }
 
     CMTime& operator+=(const CMTimeInterval& other) {
-        this->set(this->yy + other.yy,
-                  this->mm + other.mm,
+        this->set(this->yy,
+                  this->mm,
                   this->dd + other.dd,
                   this->h + other.h,
                   this->m + other.m,
@@ -306,7 +336,7 @@ public:
         return *this;
     }
 
-    bool operator>(const CMTime& other) const {
+    constexpr bool operator>(const CMTime& other) const {
         if (this->yy > other.yy) {
             return true;
         }
@@ -350,21 +380,16 @@ public:
         }
     }
 
-    bool operator>=(const CMTime& other) const {
+    constexpr bool operator>=(const CMTime& other) const {
         return (operator>(other) || operator==(other));
     }
 
-    bool operator<(const CMTime& other) const {
+    constexpr bool operator<(const CMTime& other) const {
         return !operator>=(other);
     }
 
-    bool operator<=(const CMTime& other) const {
+    constexpr bool operator<=(const CMTime& other) const {
         return !operator>(other);
-    }
-
-    // Turns days, hours, minutes, and seconds into seconds
-    constexpr double dhms_to_s() const {
-        return (dd*86400. + h*3600. + m*60. + s);
     }
 
     // Return time as a string
@@ -384,5 +409,31 @@ public:
         return ss.str();
     }
 };
+
+// Calculates the number of full days between (the same time on) two dates (time1 - time2)
+// time1 must be after time2
+constexpr long long fullDaysBetween(const CMTime& time1, const CMTime& time2) {
+    long long fullDays = 0;
+
+    if (time1.yy > time2.yy) {
+        fullDays += time2.fullDaysRemainingInYear();
+        for (int year = time2.yy + 1; year < time1.yy; year++) {
+            fullDays += daysInYear(year);
+        }
+        fullDays += time1.fullDaysPassedInYear();
+    }
+    else if (time1.mm > time2.mm) {
+        fullDays += (daysInMonth(time2.yy, time2.mm) - time2.dd);
+        for (int month = time2.mm + 1; month < time1.mm; month++) {
+            fullDays += daysInMonth(time2.yy, month);
+        }
+        fullDays += (time1.dd - 1);
+    }
+    else {
+        fullDays += (time1.dd - time2.dd);
+    }
+
+    return fullDays;
+}
 
 #endif

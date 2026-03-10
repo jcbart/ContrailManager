@@ -3,7 +3,8 @@
 #include "Domain.h"
 #include "mapUtils.h"
 
-IDomain::IDomain(int ids, int ide, int jds, int jde, int kds, int kde)
+template <typename ProjType>
+Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
     : ids(ids), ide(ide), jds(jds), jde(jde), kds(kds), kde(kde),
       lonSize(ide-ids+1), latSize(jde-jds+1), altSize(kde-kds+1),
       XLONG("XLONG", ids, ide, jds, jde),
@@ -24,7 +25,8 @@ IDomain::IDomain(int ids, int ide, int jds, int jde, int kds, int kde)
       QI("QI", ids, ide, jds, jde, kds, kde),
       deltaQI("deltaQI", ids, ide, jds, jde, kds, kde),
       deltaNI("deltaNI", ids, ide, jds, jde, kds, kde),
-      QIcontrail("QIcontrail", ids, ide, jds, jde, kds, kde) {
+      QIcontrail("QIcontrail", ids, ide, jds, jde, kds, kde),
+      proj(std::move(p)) {
 
     CM_LogWrite("Contrail Manager variables initialised with dimensions:");
     CM_LogWrite("ids = " + std::to_string(ids) + ", jds = " + std::to_string(jds) + ", kds = "
@@ -34,7 +36,10 @@ IDomain::IDomain(int ids, int ide, int jds, int jde, int kds, int kde)
     CM_LogWrite("Note: Contrail Manager does not use a staggered grid except for Z_AT_W where kde += 1.");
 }
 
-bool IDomain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interpPoints) const {
+// Methods to compile
+template Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjectionLC p);
+
+bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interpPoints) const {
     // Find grid cell and relevant diagonal
     IDX2<int> ij, ijDiag;
     bool inGrid = loc_to_ij_and_diag(loc, ij, ijDiag);
@@ -80,7 +85,7 @@ bool IDomain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& inter
     return inQuad;
 }
 
-void IDomain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>& interpPoints,
+void Domain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>& interpPoints,
     std::vector<float>& interpWeights) const {
     
     int numInterpPoints = interpPoints.size();
@@ -115,7 +120,7 @@ void IDomain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>
     }
 }
 
-bool IDomain::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const {
+bool Domain::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const {
     bool inGrid;
     std::vector<IDX3<int>> interpPoints;
     std::vector<float> interpWeights;

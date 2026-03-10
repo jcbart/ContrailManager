@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <variant>
 #include "mapUtils.h"
 #include "Projection.h"
 #include "CMLog.h"
@@ -175,8 +176,8 @@ public:
     }
 };
 
-class IDomain {
-protected:
+class Domain {
+private:
     // End indices are one smaller than in WRF because CM only uses a staggered grid for Z_AT_W
     // Longitude is i/x/u direction
     // Latitude is j/y/v direction
@@ -184,8 +185,8 @@ protected:
     const int ids, ide, jds, jde, kds, kde;
     const int lonSize, latSize, altSize;
 
-    // Virtual method to get ij from proj
-    inline virtual IDX2<double> proj_loc_to_ij(const Geo2D& loc) const = 0;
+    // Projection (std::variant type defined in Projection.h)
+    ProjVariant proj;
 
 public:
     bool twoWayCoupling; // True for two-way coupling (feedback to NWP)
@@ -222,10 +223,11 @@ public:
     int get_altSize() const { return altSize; };
 
     // Constructor
-    IDomain(int ids, int ide, int jds, int jde, int kds, int kde);
+    template <typename ProjType>
+    Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p);
 
     // Destructor
-    ~IDomain() = default;
+    ~Domain() = default;
 
     // Copy contents of QV to QVsave
     void save_QV() {
@@ -284,7 +286,9 @@ public:
     // Returns false if loc is not in grid
     template <typename dtype>
     inline bool loc_to_ij(const Geo2D& loc, IDX2<dtype>& ij) const {
-        ij = proj_loc_to_ij(loc);
+        std::visit([&](auto const& p) {
+            ij = p.loc_to_ij(loc);
+        }, proj);
         // Correct assumption that i and j start at 0
         ij.i += ids;
         ij.j += jds;
@@ -367,23 +371,6 @@ public:
     // Updates u, v, and w
     // Returns false if location is not in grid
     bool wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const;
-};
-
-template <typename ProjType>
-class Domain : public IDomain {
-    ProjType proj;
-
-    // Defined version of IDomain's virtual method
-    inline IDX2<double> proj_loc_to_ij(const Geo2D& loc) const override {
-        return proj.loc_to_ij(loc);
-    }
-
-public:
-    // Constructor
-    Domain(int ids, int ide, int jds, int jde, int kds, int kde, double lat1, double lon1,
-        double knowni, double knownj, double dx, double stdlon, double truelat1, double truelat2)
-        : IDomain(ids, ide, jds, jde, kds, kde),
-          proj(lat1, lon1, knowni, knownj, dx, stdlon, truelat1, truelat2) {}
 };
 
 #endif

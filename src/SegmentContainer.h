@@ -24,7 +24,7 @@ struct ISegmentContainer {
     // grid cell (); set by ContrailManager
     float maxAccumVapRatio;
 
-    IDomain* domPtr = nullptr; // Pointer to the Contrail Manager's domain
+    Domain* domPtr = nullptr; // Pointer to the Contrail Manager's domain
 
 #ifdef WITH_COCIP
     std::shared_ptr<Params> cocipParams; // Pointer to CoCiP Params object if using
@@ -70,7 +70,7 @@ private:
     // time
     void flagOldSegments(const CMTime& time) {
         for (SegmentType& seg : vec) {
-            if ((time - seg.birthTime).dhms_to_s() > maxContrailAge_s) {
+            if ((time - seg.birthTime).to_s() > maxContrailAge_s) {
                 seg.isOld = true;
             }
         }
@@ -141,14 +141,11 @@ public:
 
         CM_LogWrite("Number out of bounds: " + std::to_string(numOOB));
 
-        vec.erase(
-            std::remove_if(
-                vec.begin(), vec.end(),
-                [](const SegmentType& seg) {
-                    return seg.outOfBounds;
-                }
-            ),
-            vec.end()
+        std::erase_if(
+            vec,
+            [](const SegmentType& seg) {
+                return seg.outOfBounds;
+            }
         );
     }
 
@@ -190,14 +187,11 @@ public:
         size_t numBefore = vec.size();
 
         // Remove old or dead
-        vec.erase(
-            std::remove_if(
-                vec.begin(), vec.end(),
-                [](const SegmentType& seg) {
-                    return (seg.shouldBeDumped());
-                }
-            ),
-            vec.end()
+        std::erase_if(
+            vec,
+            [](const SegmentType& seg) {
+                return (seg.shouldBeDumped());
+            }
         );
         
         size_t numAfter = vec.size();

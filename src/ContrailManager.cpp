@@ -116,7 +116,13 @@ void ContrailManager::read_flight_dataset() {
     stagedFlights.push_back(test_flight);
 
     // Sort stagedFlights by first waypoint time
-    std::sort(stagedFlights.begin(), stagedFlights.end(), flightFirstTimeCompare);
+    std::sort(
+        stagedFlights.begin(),
+        stagedFlights.end(),
+        [](const Flight& A, const Flight& B) {
+            return A.wpTimes[0] < B.wpTimes[0];
+        }
+    );
 }
 
 // Integrate between times
@@ -213,14 +219,11 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
 
 void ContrailManager::update_active_flights(const CMTime& startTime, const CMTime& stopTime) {
     // Remove flights whose last waypoint is before startTime
-    activeFlights.erase(
-        std::remove_if(
-            activeFlights.begin(), activeFlights.end(),
-            [startTime](const Flight& flight) {
-                return flight.wpTimes[flight.numWps-1] <= startTime;
-            }
-        ),
-        activeFlights.end()
+    std::erase_if(
+        activeFlights,
+        [startTime](const Flight& flight) {
+            return flight.wpTimes[flight.numWps-1] <= startTime;
+        }
     );
 
     // Add flights whose first waypoint is between startTime and stopTime

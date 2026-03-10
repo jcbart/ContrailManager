@@ -31,7 +31,7 @@ struct SegmentCoCiP : public Segment {
 
     // Constructor
     SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
-        const FlightInputs& flightInputs, IDomain* domPtr, const Geo3D& backLoc,
+        const FlightInputs& flightInputs, Domain* domPtr, const Geo3D& backLoc,
         const Geo3D& frontLoc, const float length, std::shared_ptr<Params> params);
 
     void integrate(const CMTime& timeStepStart, const CMTime& timeStepEnd) override;

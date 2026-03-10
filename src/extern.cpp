@@ -29,8 +29,9 @@ extern "C" void init_domainlc_extern(ContrailManager* CMptr, int ids, int ide, i
     int jde, int kds, int kde, float lat1, float lon1, float knowni, float knownj, float dx,
     float stdlon, float truelat1, float truelat2) {
 
-    CMptr->domain = std::unique_ptr<Domain<ProjectionLC>>(new Domain<ProjectionLC>(ids, ide, jds,
-        jde, kds, kde, lat1, lon1, knowni, knownj, dx, stdlon, truelat1, truelat2));
+    ProjectionLC proj(lat1, lon1, knowni, knownj, dx, stdlon, truelat1, truelat2);
+
+    CMptr->domain = std::unique_ptr<Domain>(new Domain(ids, ide, jds, jde, kds, kde, proj));
 }
 
 
