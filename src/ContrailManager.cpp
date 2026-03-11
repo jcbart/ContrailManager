@@ -70,14 +70,14 @@ void ContrailManager::read_config() {
 
     maxInitialSegLen = config["Max initial segment length (m)"].as<float>();
     if (maxInitialSegLen <= 0) {
-        CoCiP_RaiseError("Config error: Read maximum initial segment length of "
+        CM_RaiseError("Config error: Read maximum initial segment length of "
             + std::to_string(maxInitialSegLen)
             + " m. Maximum initial segment length must be positive.", __FILE__, __LINE__);
     }
 
     float maxContrailAge_h = config["Max contrail age (h)"].as<float>();
     if (maxContrailAge_h <= 0) {
-        CoCiP_RaiseError("Config error: Read maximum contrail age of "
+        CM_RaiseError("Config error: Read maximum contrail age of "
             + std::to_string(maxContrailAge_h)
             + " h. Maximum contrail age must be positive.", __FILE__, __LINE__);
     }
@@ -85,7 +85,7 @@ void ContrailManager::read_config() {
 
     maxAccumVapRatio = config["Max accumulated vapour ratio ()"].as<float>();
     if (maxAccumVapRatio <= 0) {
-        CoCiP_RaiseError("Config error: Read maximum accumulated vapour ratio of "
+        CM_RaiseError("Config error: Read maximum accumulated vapour ratio of "
             + std::to_string(maxAccumVapRatio)
             + ". Maximum accumulated vapour ratio must be positive.", __FILE__, __LINE__);
     }

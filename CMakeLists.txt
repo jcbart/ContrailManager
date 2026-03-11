@@ -81,6 +81,7 @@ endif()
 
 if(WITH_COCIP)
     set(COCIP_BUILD_EXECUTABLE OFF CACHE BOOL "Build a standalone executable" FORCE)
+    set(COCIP_USE_EXTERNAL_LIBRARIES ON CACHE BOOL "Use external libraries instead of bundled" FORCE)
     add_subdirectory(submodules/CoCiPPlusPlus EXCLUDE_FROM_ALL)
     add_compile_definitions(WITH_COCIP)
     target_link_libraries(contrailmanager PRIVATE cocip)
