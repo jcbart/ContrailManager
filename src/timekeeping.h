@@ -4,8 +4,6 @@
 #include <string>
 #include <sstream>
 
-constexpr int DAYS_IN_MONTH_NO_LEAP[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-
 // Forward declarations
 struct CMTime;
 constexpr long long fullDaysBetween(const CMTime& time1, const CMTime& time2);
@@ -17,6 +15,7 @@ constexpr bool isLeap(int year) {
 
 // Returns number of days in month (with January = 1) accounting for leap days
 constexpr int daysInMonth(int year, int month) {
+    constexpr int DAYS_IN_MONTH_NO_LEAP[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     if (month == 2) {
         return isLeap(year) ? DAYS_IN_MONTH_NO_LEAP[1] + 1 : DAYS_IN_MONTH_NO_LEAP[1];
     }
