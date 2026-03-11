@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(NOT DEFINED ENV{ESMFMKFILE})
     message(FATAL_ERROR "Environment variable ESMFMKFILE was not set.")
 endif()
+
+# Add vcpkg to toolchain
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/submodules/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
 
 # Build options
 
@@ -57,6 +60,9 @@ set(CMAKE_CXX_COMPILER ${ESMF_CXXCOMPILER})
 # Begin project
 project(ContrailManager LANGUAGES CXX)
 
+# Find libraries
+find_package(yaml-cpp CONFIG REQUIRED)
+
 # Source files
 set(SOURCES
     "src/CMLog.cpp"
@@ -72,13 +78,6 @@ add_library(contrailmanager STATIC ${SOURCES})
 
 # Submodules
 
-if(NOT TARGET yaml-cpp)
-    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
-    set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
-    add_subdirectory(submodules/yaml-cpp EXCLUDE_FROM_ALL)
-endif()
-
 if(WITH_COCIP)
     set(COCIP_BUILD_EXECUTABLE OFF CACHE BOOL "Build a standalone executable" FORCE)
     set(COCIP_USE_EXTERNAL_LIBRARIES ON CACHE BOOL "Use external libraries instead of bundled" FORCE)
@@ -93,8 +92,6 @@ endif()
 target_compile_options(contrailmanager PRIVATE ${ESMF_CXXCOMPILEOPTS_LIST})
 target_compile_definitions(contrailmanager PRIVATE ${ESMF_CXXCOMPILECPPFLAGS})
 
-target_link_libraries(contrailmanager PRIVATE yaml-cpp)
-# Force library to be bundled inside
-target_sources(contrailmanager PRIVATE $<TARGET_OBJECTS:yaml-cpp>)
+target_link_libraries(contrailmanager PRIVATE yaml-cpp::yaml-cpp)
 
 target_link_libraries(contrailmanager PUBLIC ${ESMF_CXXLINKLIBS})

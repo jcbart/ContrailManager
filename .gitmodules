@@ -1,3 +1,6 @@
 [submodule "submodules/CoCiPPlusPlus"]
 	path = submodules/CoCiPPlusPlus
 	url = https://github.com/jcbart/CoCiPPlusPlus.git
+[submodule "submodules/vcpkg"]
+	path = submodules/vcpkg
+	url = https://github.com/microsoft/vcpkg.git
