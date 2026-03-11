@@ -4,6 +4,13 @@
   "dependencies": [
     {
       "name": "yaml-cpp"
+    },
+    {
+      "name": "arrow",
+      "default-features": false,
+      "features": [
+        "parquet"
+      ]
     }
   ]
 }

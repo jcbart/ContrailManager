@@ -62,6 +62,8 @@ project(ContrailManager LANGUAGES CXX)
 
 # Find libraries
 find_package(yaml-cpp CONFIG REQUIRED)
+find_package(Arrow CONFIG REQUIRED)
+find_package(Parquet CONFIG REQUIRED)
 
 # Source files
 set(SOURCES
@@ -84,14 +86,93 @@ if(WITH_COCIP)
     add_subdirectory(submodules/CoCiPPlusPlus EXCLUDE_FROM_ALL)
     add_compile_definitions(WITH_COCIP)
     target_link_libraries(contrailmanager PRIVATE cocip)
-    # Force library to be bundled inside
-    target_sources(contrailmanager PRIVATE $<TARGET_OBJECTS:cocip>)
 endif()
 
 # Apply ESMF options and flags
 target_compile_options(contrailmanager PRIVATE ${ESMF_CXXCOMPILEOPTS_LIST})
 target_compile_definitions(contrailmanager PRIVATE ${ESMF_CXXCOMPILECPPFLAGS})
 
-target_link_libraries(contrailmanager PRIVATE yaml-cpp::yaml-cpp)
+target_link_libraries(contrailmanager
+    PRIVATE
+        yaml-cpp::yaml-cpp
+        Arrow::arrow_static
+        Parquet::parquet_static
+)
 
 target_link_libraries(contrailmanager PUBLIC ${ESMF_CXXLINKLIBS})
+
+# Copy default input files if they do not already exist in build directory
+set(CM_INPUT_FILES "CM-config.yaml")
+
+foreach(FILE_NAME ${CM_INPUT_FILES})
+    if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}")
+        configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/inputs/${FILE_NAME}.default"
+            "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}"
+            COPYONLY
+        )
+    endif()
+endforeach()
+
+# Installation
+
+set(INSTALL_TARGETS contrailmanager)
+set(INSTALL_INPUT_FILES ${CMAKE_CURRENT_BINARY_DIR}/CM-config.yaml)
+
+if(WITH_COCIP)
+    list(APPEND INSTALL_TARGETS cocip build_config)
+    list(APPEND INSTALL_INPUT_FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/submodules/CoCiPPlusPlus/CoCiP-config.yaml
+        ${CMAKE_CURRENT_BINARY_DIR}/submodules/CoCiPPlusPlus/CoCiP-params.yaml
+    )
+endif()
+
+# Set install directory if user did not do -DCMAKE_PREFIX_PATH=
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Default install path prefix" FORCE)
+endif()
+
+include(GNUInstallDirs)
+
+install(TARGETS ${INSTALL_TARGETS}
+    EXPORT contrailmanagerTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# If needed later
+#install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(EXPORT contrailmanagerTargets
+    #FILE contrailmanagerTargets.cmake
+    NAMESPACE contrailmanager::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/contrailmanager
+)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/contrailmanagerConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/contrailmanagerConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/contrailmanager
+)
+
+#write_basic_package_version_file(
+#    ${CMAKE_CURRENT_BINARY_DIR}/contrailmanagerConfigVersion.cmake
+#    VERSION "1.0.0"
+#    COMPATIBILITY SameMajorVersion
+#)
+
+# Install cmake files
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/contrailmanagerConfig.cmake
+    #${CMAKE_CURRENT_BINARY_DIR}/contrailmanagerConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/contrailmanager
+)
+
+# Install required files
+install(FILES ${INSTALL_INPUT_FILES}
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/contrailmanager
+)
