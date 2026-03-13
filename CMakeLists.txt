@@ -81,9 +81,10 @@ add_library(contrailmanager STATIC ${SOURCES})
 # Submodules
 
 if(WITH_COCIP)
+    set(COCIP_RELATIVE_PATH submodules/CoCiPPlusPlus)
     set(COCIP_BUILD_EXECUTABLE OFF CACHE BOOL "Build a standalone executable" FORCE)
     set(COCIP_USE_EXTERNAL_LIBRARIES ON CACHE BOOL "Use external libraries instead of bundled" FORCE)
-    add_subdirectory(submodules/CoCiPPlusPlus EXCLUDE_FROM_ALL)
+    add_subdirectory(${COCIP_RELATIVE_PATH} EXCLUDE_FROM_ALL)
     add_compile_definitions(WITH_COCIP)
     target_link_libraries(contrailmanager PRIVATE cocip)
 endif()
@@ -91,6 +92,12 @@ endif()
 # Apply ESMF options and flags
 target_compile_options(contrailmanager PRIVATE ${ESMF_CXXCOMPILEOPTS_LIST})
 target_compile_definitions(contrailmanager PRIVATE ${ESMF_CXXCOMPILECPPFLAGS})
+
+target_include_directories(contrailmanager
+    PUBLIC
+        #$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        #$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 
 target_link_libraries(contrailmanager
     PRIVATE
@@ -122,8 +129,8 @@ set(INSTALL_INPUT_FILES ${CMAKE_CURRENT_BINARY_DIR}/CM-config.yaml)
 if(WITH_COCIP)
     list(APPEND INSTALL_TARGETS cocip build_config)
     list(APPEND INSTALL_INPUT_FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/submodules/CoCiPPlusPlus/CoCiP-config.yaml
-        ${CMAKE_CURRENT_BINARY_DIR}/submodules/CoCiPPlusPlus/CoCiP-params.yaml
+        "${CMAKE_CURRENT_BINARY_DIR}/${COCIP_RELATIVE_PATH}/CoCiP-config.yaml"
+        "${CMAKE_CURRENT_BINARY_DIR}/${COCIP_RELATIVE_PATH}/CoCiP-params.yaml"
     )
 endif()
 
@@ -144,14 +151,22 @@ install(TARGETS ${INSTALL_TARGETS}
 
 # If needed later
 #install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+if(WITH_COCIP)
+    install(
+        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/${COCIP_RELATIVE_PATH}/include/"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
+endif()
 
 install(EXPORT contrailmanagerTargets
-    #FILE contrailmanagerTargets.cmake
     NAMESPACE contrailmanager::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/contrailmanager
 )
 
 include(CMakePackageConfigHelpers)
+
+# Tells consuming projects where to find Contrail Manager's dependencies
+set(CM_DEP_DIR "${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
 
 configure_package_config_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/contrailmanagerConfig.cmake.in
@@ -165,7 +180,7 @@ configure_package_config_file(
 #    COMPATIBILITY SameMajorVersion
 #)
 
-# Install cmake files
+# Install CMake files
 install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/contrailmanagerConfig.cmake
     #${CMAKE_CURRENT_BINARY_DIR}/contrailmanagerConfigVersion.cmake

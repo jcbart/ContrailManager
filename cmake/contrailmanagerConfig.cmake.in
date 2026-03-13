@@ -1,4 +1,13 @@
 @PACKAGE_INIT@
 
+include(CMakeFindDependencyMacro)
+
+set(CM_DEP_DIR "@CM_DEP_DIR@")
+
+list(APPEND CMAKE_PREFIX_PATH "${CM_DEP_DIR}")
+
+find_dependency(yaml-cpp REQUIRED)
+find_dependency(Arrow REQUIRED)
+find_dependency(Parquet REQUIRED)
+
 include("${CMAKE_CURRENT_LIST_DIR}/contrailmanagerTargets.cmake")
-check_required_components(contrailmanager)
