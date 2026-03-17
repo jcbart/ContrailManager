@@ -2,10 +2,14 @@
 #include <format>
 #include <ESMC.h>
 #include "CMLog.h"
-#include "mapUtils.h"
+#include "mapTypes.h"
 
 void CM_LogWrite(const std::string_view msg) {
     int rc = ESMC_LogWrite(std::string(msg).c_str(), ESMC_LOGMSG_INFO);
+}
+
+void CM_LogWarning(const std::string_view msg) {
+    int rc = ESMC_LogWrite(std::string(msg).c_str(), ESMC_LOGMSG_WARN);
 }
 
 void CM_RaiseError(const std::string_view msg, const std::string_view filename, const int line) {

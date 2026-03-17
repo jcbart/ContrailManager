@@ -71,7 +71,9 @@ set(SOURCES
     "src/ContrailManager.cpp"
     "src/Domain.cpp"
     "src/extern.cpp"
-    "src/mapUtils.cpp"
+    "src/FlightContainer_general.cpp"
+    "src/FlightContainer_parquet.cpp"
+    "src/mapFunctions.cpp"
     "src/SegmentCoCiP.cpp"
 )
 

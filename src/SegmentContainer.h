@@ -12,7 +12,7 @@
 #include "SegmentCoCiP.h"
 #endif
 #include "Domain.h"
-#include "mapUtils.h"
+#include "mapTypes.h"
 #include "timekeeping.h"
 #include "FlightInputs.h"
 

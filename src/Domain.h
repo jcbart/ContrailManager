@@ -3,9 +3,10 @@
 
 #include <memory>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <variant>
-#include "mapUtils.h"
+#include "mapTypes.h"
 #include "Projection.h"
 #include "CMLog.h"
 
@@ -19,12 +20,11 @@ private:
 
     const T* get_element_ptr(const int i, const int j) const {
         if (i < ids || i > ide || j < jds || j > jde) {
-            std::string msg = "Variable2D " + name + " error: Index (i,j)=("
-                + std::to_string(i) + "," + std::to_string(j)
-                + ") is out of range for array of size (ids:ide,jds:jde)=("
-                + std::to_string(ids) + ":" + std::to_string(ide) + ","
-                + std::to_string(jds) + ":" + std::to_string(jde) + ")";
-            CM_RaiseError(msg, __FILE__, __LINE__);
+            std::stringstream ss;
+            ss << "Variable2D " << name << " error: Index (i,j)=(" << i << "," << j
+                << ") is out of range for array of size (ids:ide,jds:jde)=("
+                << ids << ":" << ide << "," << jds << ":" << jde << ")";
+            CM_RaiseError(ss.str(), __FILE__, __LINE__);
         }
         return &data[get_1D_index_from_2D(i, j)];
     }
@@ -101,13 +101,11 @@ private:
 
     const T* get_element_ptr(const int i, const int j, const int k) const {
         if (i < ids || i > ide || j < jds || j > jde || k < kds || k > kde) {
-            std::string msg = "Variable3D " + name + " error: Index (i,j,k)=("
-                + std::to_string(i) + "," + std::to_string(j) + "," + std::to_string(k)
-                + ") is out of range for array of size (ids:ide,jds:jde,kds:kde)=("
-                + std::to_string(ids) + ":" + std::to_string(ide) + ","
-                + std::to_string(jds) + ":" + std::to_string(jde) + ")"
-                + std::to_string(kds) + ":" + std::to_string(kde) + ")";
-            CM_RaiseError(msg, __FILE__, __LINE__);
+            std::stringstream ss;
+            ss << "Variable3D " << name << " error: Index (i,j,k)=(" << i << "," << j << "," << k
+                << ") is out of range for array of size (ids:ide,jds:jde,kds:kde)=("
+                << ids << ":" << ide << "," << jds << ":" << jde << "," << kds << ":" << kde << ")";
+            CM_RaiseError(ss.str(), __FILE__, __LINE__);
         }
         return &data[get_1D_index_from_3D(i, j, k)];
     }

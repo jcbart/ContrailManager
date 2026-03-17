@@ -7,7 +7,7 @@
 #include "Segment.h"
 #include "SegmentCoCiP.h"
 #include "thermo.h"
-#include "mapUtils.h"
+#include "mapTypes.h"
 #include "CMLog.h"
 
 SegmentCoCiP::SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
@@ -56,14 +56,7 @@ void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStep
     cocip.longitude = centre.lon;
     cocip.latitude = centre.lat;
     cocip.altitude = centre.alt;
-    cocip.datetime.set(
-        timeStepEnd.yy,
-        timeStepEnd.mm,
-        timeStepEnd.dd,
-        timeStepEnd.h,
-        timeStepEnd.m,
-        timeStepEnd.s
-    );
+    cocip.datetime.set(timeStepEnd.timepoint);
 
     // Get local meteorology
     updateMet();

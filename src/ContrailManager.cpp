@@ -2,6 +2,7 @@
 #include <memory>
 #include <chrono>
 #include <algorithm>
+#include <format>
 #include <yaml-cpp/yaml.h>
 #ifdef WITH_COCIP
 #include <CoCiP++/params.h>
@@ -15,7 +16,7 @@
 #include "Flight.h"
 #include "FlightInputs.h"
 #include "Projection.h"
-#include "mapUtils.h"
+#include "mapFunctions.h"
 #include "CMLog.h"
 
 void ContrailManager::init() {
@@ -45,7 +46,7 @@ void ContrailManager::init() {
             break;
         }
         default: {
-            CM_RaiseError("Plume model " + std::to_string(plumeModelID) + " not recognised",
+            CM_RaiseError(std::format("Plume model {} not recognised", plumeModelID),
                 __FILE__, __LINE__);
         }
     }
@@ -55,7 +56,7 @@ void ContrailManager::init() {
     segments->maxContrailAge_s = maxContrailAge_s;
     segments->maxAccumVapRatio = maxAccumVapRatio;
 
-    read_flight_dataset();
+    flights.read_dataset(flightDataFilepath);
 
     CM_LogWrite("Contrail Manager initialised");
 }
@@ -63,6 +64,8 @@ void ContrailManager::init() {
 // Read config file
 void ContrailManager::read_config() {
     YAML::Node config = YAML::LoadFile("CM-config.yaml");
+
+    flightDataFilepath = config["Flight dataset path"].as<std::string>();
 
     twoWayCoupling = config["Two-way coupling"].as<bool>();
 
@@ -89,40 +92,6 @@ void ContrailManager::read_config() {
             + std::to_string(maxAccumVapRatio)
             + ". Maximum accumulated vapour ratio must be positive.", __FILE__, __LINE__);
     }
-}
-
-void ContrailManager::read_flight_dataset() {
-    // Read flight data etc
-    Flight test_flight;
-    test_flight.ID = "1";
-    CMTime time1 = {2025, 4, 1, 6, 0, 0};
-    CMTime time2 = {2025, 4, 1, 6, 3, 0};
-    test_flight.wpTimes.push_back(time1);
-    test_flight.wpTimes.push_back(time2);
-    Geo3D loc1 = {-9.7, 52.1, 10500};
-    Geo3D loc2 = {-9.1, 52.1, 10500};
-    test_flight.wpLocs.push_back(loc1);
-    test_flight.wpLocs.push_back(loc2);
-    test_flight.numWps = 2;
-    test_flight.engine_efficiency = 0.3;
-    test_flight.ei_h2o = 1.25;
-    test_flight.q_fuel = 43.15e6;
-    test_flight.aircraft_mass = 70e3;
-    test_flight.wingspan = 34;
-    test_flight.true_airspeed = 250;
-    test_flight.fuel_flow = 0.7;
-    test_flight.T_exhaust = 600;
-    test_flight.nvpm_ei_n = 1e15;
-    stagedFlights.push_back(test_flight);
-
-    // Sort stagedFlights by first waypoint time
-    std::sort(
-        stagedFlights.begin(),
-        stagedFlights.end(),
-        [](const Flight& A, const Flight& B) {
-            return A.wpTimes[0] < B.wpTimes[0];
-        }
-    );
 }
 
 // Integrate between times
@@ -153,19 +122,7 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
         domain->QIcontrail.clear_all();
     }
 
-    update_active_flights(startTime, stopTime);
-
-    /*
-    if (readFlightsInChunks) {
-        while (lastFlightAdded == stagedFlights.size()) {
-            // Read new chunk into stagedFlights
-            // Reset lastFlightAdded
-            lastFlightAdded = -1;
-            // Update active flights again
-            update_active_flights(startTime, stopTime);
-        }
-    }
-    */
+    flights.update_active(startTime, stopTime);
         
     // 1. Create segments
     create_segments(startTime, stopTime);
@@ -182,7 +139,7 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     // 5. Update currTime
     currTime = stopTime;
     CM_LogWrite("Current time: " + currTime.asString());
-    CM_LogWrite("Number of live contrail segments: " + std::to_string(segments->getSize()));
+    CM_LogWrite(std::format("Number of live contrail segments: {}", segments->getSize()));
 
     if (domain->twoWayCoupling) {
         // Update deltaQV field
@@ -197,8 +154,7 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     // Elapsed time in run (seconds)
     std::chrono::duration<double> computeTime = computeTimeEnd - computeTimeStart;
 
-    CM_LogWrite("Computation time for coupling interval: "
-        + std::to_string(computeTime.count()) + " s");
+    CM_LogWrite(std::format("Computation time for coupling interval: {} s", computeTime.count()));
 }
 
 
@@ -217,39 +173,13 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
     CM_LogWrite("Contrail Manager current time set to " + currTime.asString());
 }
 
-void ContrailManager::update_active_flights(const CMTime& startTime, const CMTime& stopTime) {
-    // Remove flights whose last waypoint is before startTime
-    std::erase_if(
-        activeFlights,
-        [startTime](const Flight& flight) {
-            return flight.wpTimes[flight.numWps-1] <= startTime;
-        }
-    );
-
-    // Add flights whose first waypoint is between startTime and stopTime
-    for (size_t i = lastFlightAdded + 1; i < stagedFlights.size(); i++) {
-        // Add if wanted
-        if ((stagedFlights[i].wpTimes[0] >= startTime)
-            && (stagedFlights[i].wpTimes[0] < stopTime)) {
-            
-            activeFlights.push_back(stagedFlights[i]);
-            // Update last flight added (so far)
-            lastFlightAdded = i;
-        }
-        // Break if this (and thus everything after) is not wanted
-        else {
-            break;
-        }
-    }
-}
-
 // Create new segments from flights
 void ContrailManager::create_segments(const CMTime& startTime, const CMTime& stopTime) {
-    CM_LogWrite("Creating segments for " + std::to_string(activeFlights.size())
+    CM_LogWrite("Creating segments for " + std::to_string(flights.active.size())
         + " active flights");
     
     size_t num_created = 0;
-    for (const Flight& flight : activeFlights) {
+    for (const Flight& flight : flights.active) {
         CM_LogWrite("Creating segments for flight: " + flight.ID);
 
         // Find last waypoint passed at start and end of time interval
@@ -258,49 +188,48 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
 
         // Iterate through each leg (sectioned by waypoints) between start and end locations
         for (int n = lastWpStart; n <= lastWpEnd; n++) {
-            // Find start and end locs and times for leg
-            Geo3D legStartloc, legEndLoc;
-            CMTime legStartTime, legEndTime;
+            // Find start and end waypoints of leg
+            Waypoint legStart, legEnd;
             // If leg is before first or after last waypoint, cannot find flight loc
-            if (n == -1 || n == flight.numWps-1) {
+            if (n == -1 || n == flight.numWaypoints() - 1) {
                 continue;
             }
             // If first leg, start from flight start loc (not wp)
             if (n == lastWpStart) {
                 // Safe to ignore return value
-                bool startFound = find_flight_loc(flight, startTime, legStartloc);
-                legStartTime = startTime;
+                bool startFound = find_flight_loc(flight, startTime, legStart.loc);
+                legStart.time = startTime;
             }
             // Else, leg starts at wp
             else {
-                legStartloc = flight.wpLocs[n];
-                legStartTime = flight.wpTimes[n];
+                legStart.loc = flight.waypoints[n].loc;
+                legStart.time = flight.waypoints[n].time;
             }
             // If last leg, end at flight end loc (not wp)
             if (n == lastWpEnd) {
                 // Safe to ignore return value
-                bool endFound = find_flight_loc(flight, stopTime, legEndLoc);
-                legEndTime = stopTime;
+                bool endFound = find_flight_loc(flight, stopTime, legEnd.loc);
+                legEnd.time = stopTime;
             }
             // Else, leg ends at wp
             else {
-                legEndLoc = flight.wpLocs[n+1];
-                legEndTime = flight.wpTimes[n+1];
+                legEnd.loc = flight.waypoints[n+1].loc;
+                legEnd.time = flight.waypoints[n+1].time;
             }
 
             // Create as many segments as needed between
-            double distInLeg = great_circle_dist(legStartloc, legEndLoc);
+            double distInLeg = great_circle_dist(legStart.loc, legEnd.loc);
             int numNewSegments = ceil(distInLeg / maxInitialSegLen);
             double segLen = distInLeg / numNewSegments;
-            Geo3D backLoc = legStartloc;
+            Geo3D backLoc = legStart.loc;
             Geo3D frontLoc;
             for (int i = 0; i < numNewSegments; i++) {
-                CM_LogWrite("Segment " + std::to_string(i) + ":");
+                CM_LogWrite(std::format("Segment {}:", i));
 
                 // Find new front loc
                 // Fraction of the total distance where the front of the segment is
-                double f_front = (i+1.)/numNewSegments;
-                frontLoc = great_circle_interp(f_front, legStartloc, legEndLoc);
+                double f_front = (i + 1.)/numNewSegments;
+                frontLoc = great_circle_interp(f_front, legStart.loc, legEnd.loc);
 
                 // Find if interpolation is possible
                 // If interpolation is not possible for any segment location, don't add the segment
@@ -313,10 +242,10 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
                 // Find birth time
                 // Fraction of leg duration passed at centre of segment
                 double f_centre = (i + 0.5) / numNewSegments;
-                CMTime birthTime = legStartTime + f_centre * (legEndTime - legStartTime);
+                CMTime birthTime = legStart.time + f_centre * (legEnd.time - legStart.time);
 
                 // Add emissions info
-                FlightInputs flightInputs = flight.createFlightInputs();
+                FlightInputs flightInputs = flight.createFlightInputs(legStart, legEnd, f_centre);
 
                 // Add segment to container
                 segments->addItem(flight.ID, birthTime, flightInputs, backLoc, frontLoc, segLen);
@@ -335,19 +264,19 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
 // If before the 0th waypoint, lastWp = -1
 int ContrailManager::find_last_wp(const Flight& flight, const CMTime& time) {
     int lastWp;
-    if (time < flight.wpTimes[0]) {
+    if (time < flight.waypoints[0].time) {
         // Flight is before first waypoint
         lastWp = -1;
     }
-    else if (time >= flight.wpTimes[flight.numWps-1]) {
+    else if (time >= flight.waypoints[flight.numWaypoints() - 1].time) {
         // Flight is after last waypoint
-        lastWp = flight.numWps-1;
+        lastWp = flight.numWaypoints() - 1;
     }
     // Else, flight is within waypoint route
     // Find last waypoint passed
     else {
-        for (int i = 0; i < flight.numWps-1; i++) {
-            if (time < flight.wpTimes[i+1]) {
+        for (int i = 0; i < flight.numWaypoints() - 1; i++) {
+            if (time < flight.waypoints[i+1].time) {
                 lastWp = i;
                 break;
             }
@@ -362,12 +291,11 @@ int ContrailManager::find_last_wp(const Flight& flight, const CMTime& time) {
 // Returns false if flight is before first or after last waypoint at time
 bool ContrailManager::find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc) {
     int lastWp = find_last_wp(flight, time);
-    if (lastWp == -1 || lastWp == flight.numWps-1) {
+    if (lastWp == -1 || lastWp == flight.numWaypoints() - 1) {
         // Flight is before first or after last waypoint
         return false;
     }
-    // Flight is between lastWp and lastWp+1
-    loc = great_circle_interp(time, flight.wpTimes[lastWp], flight.wpLocs[lastWp],
-                              flight.wpTimes[lastWp+1], flight.wpLocs[lastWp+1]);
+    // Flight is between lastWp and lastWp + 1
+    loc = great_circle_interp(time, flight.waypoints[lastWp], flight.waypoints[lastWp + 1]);
     return true;
 }

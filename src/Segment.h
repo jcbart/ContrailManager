@@ -5,7 +5,7 @@
 #include <string>
 #include "timekeeping.h"
 #include "Domain.h"
-#include "mapUtils.h"
+#include "mapFunctions.h"
 #include "FlightInputs.h"
 
 // Virtual contrail segment structure

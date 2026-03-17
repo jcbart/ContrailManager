@@ -1,7 +1,6 @@
-#include <string>
-#include <vector>
+#include <format>
 #include "Domain.h"
-#include "mapUtils.h"
+#include "mapFunctions.h"
 
 template <typename ProjType>
 Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
@@ -29,10 +28,8 @@ Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
       proj(std::move(p)) {
 
     CM_LogWrite("Contrail Manager variables initialised with dimensions:");
-    CM_LogWrite("ids = " + std::to_string(ids) + ", jds = " + std::to_string(jds) + ", kds = "
-                + std::to_string(kds));
-    CM_LogWrite("ide = " + std::to_string(ide) + ", jde = " + std::to_string(jde) + ", kde = "
-                + std::to_string(kde));
+    CM_LogWrite(std::format("ids = {}, jds = {}, kds = {}", ids, jds, kds));
+    CM_LogWrite(std::format("ide = {}, jde = {}, kde = {}", ide, jde, kde));
     CM_LogWrite("Note: Contrail Manager does not use a staggered grid except for Z_AT_W where kde += 1.");
 }
 

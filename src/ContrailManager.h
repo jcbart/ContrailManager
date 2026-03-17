@@ -1,9 +1,11 @@
 #ifndef CONTRAILMANAGER_H
 #define CONTRAILMANAGER_H
 
+#include <string>
 #include <vector>
 #include <memory>
 #include "Domain.h"
+#include "FlightContainer.h"
 #include "SegmentContainer.h"
 #include "Flight.h"
 
@@ -17,6 +19,7 @@ private:
 
     bool firstRunCall = true; // Determines whether to call setup_on_first_run
 
+    std::string flightDataFilepath;
     int plumeModelID = 0; // ID of the plume model to use
     bool twoWayCoupling = true; // True for two-way coupling (feedback to NWP)
     float maxInitialSegLen = 2500; // Maximum length of a new segment (m)
@@ -25,15 +28,7 @@ private:
     // grid cell ()
     float maxAccumVapRatio = 1e-2;
 
-    // Vector of flights loaded in memory
-    std::vector<Flight> stagedFlights;
-
-    // Vector of flights currently in their trajectory
-    std::vector<Flight> activeFlights;
-
-    // Index of the last flight in stagedFlights added to activeFlights
-    // Must start at -1 so that 0 is the first index checked
-    size_t lastFlightAdded = -1;
+    FlightContainer flights;
 
     // Pointer to the contrail segment container (is given a pointer to a
     // SegmentContainer<SegmentType> during initialisation)
@@ -41,11 +36,7 @@ private:
 
     void read_config();
 
-    void read_flight_dataset();
-
     void setup_on_first_run(const CMTime& startTime);
-
-    void update_active_flights(const CMTime& startTime, const CMTime& stopTime);
 
     void create_segments(const CMTime& startTime, const CMTime& stopTime);
 

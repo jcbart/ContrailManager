@@ -1,5 +1,8 @@
 # Contrail Manager config
 
+# Path to flight dataset file; set to NONE for idle Contrail Manager
+Flight dataset path: 
+
 # Do two-way coupling?
 Two-way coupling: true
 
