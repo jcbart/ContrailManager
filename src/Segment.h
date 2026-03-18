@@ -20,7 +20,7 @@ struct Segment {
     Geo3D centre; // Location of centre of segment; derived from back and front
     double heading; // Angle between segment and North increasing clockwise (degrees)
     double length; // Segment length (m)
-    double lengthRatio = 1; // Ratio of old length to new length; set in advect, used in integrate
+    double lengthRatio = 1; // Ratio of old length to new length; set in advect, used in evolve
     double M_v_accum = 0; // Mass of ambient accumulated (double-counted) vapour (kg)
 
     bool outOfBounds = false; // Flag updated by SegmentContainer if out of domain bounds; segment is not dumped
@@ -41,7 +41,7 @@ struct Segment {
     virtual ~Segment() = default;
 
     // Virtual integration method; must be overridden by plume model-specific method
-    virtual void integrate(const CMTime& startTime, const CMTime& stopTime) = 0;
+    virtual void evolve(const CMTime& startTime, const CMTime& stopTime) = 0;
 
     // Returns true if segment should be dumped (i.e. if flags raised for isOld, isTooMassive, or
     // isDead)
@@ -64,7 +64,7 @@ struct Segment {
     // Advect front and back locations of segment and flag outOfBounds if out of bounds
     void advect(const CMTime& startTime, const CMTime& stopTime) {
         float duration_s;
-        // If birthTime > startTime, integrate from birthTime to stopTime
+        // If birthTime > startTime, evolve from birthTime to stopTime
         if (birthTime > startTime) {
             duration_s = (stopTime - birthTime).to_s();
         }

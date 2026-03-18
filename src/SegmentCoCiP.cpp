@@ -51,7 +51,7 @@ void SegmentCoCiP::updateMet() {
     cocip.met->olr = domPtr->OLR.get_value(ijkCurr);
 }
 
-void SegmentCoCiP::integrate(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
+void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
     // Give CoCiP current location and datetime
     cocip.longitude = centre.lon;
     cocip.latitude = centre.lat;

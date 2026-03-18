@@ -34,7 +34,7 @@ struct SegmentCoCiP : public Segment {
         const FlightInputs& flightInputs, Domain* domPtr, const Geo3D& backLoc,
         const Geo3D& frontLoc, const float length, std::shared_ptr<Params> params);
 
-    void integrate(const CMTime& timeStepStart, const CMTime& timeStepEnd) override;
+    void evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd) override;
 
     void dump() override;
 

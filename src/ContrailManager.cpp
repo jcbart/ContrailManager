@@ -127,8 +127,8 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     // 1. Create segments
     create_segments(startTime, stopTime);
 
-    // 2. Integrate plumes
-    segments->integratePlumes(startTime, stopTime);
+    // 2. Evolve plumes
+    segments->evolvePlumes(startTime, stopTime);
 
     // 3. Advect segments
     segments->advectSegments(startTime, stopTime);

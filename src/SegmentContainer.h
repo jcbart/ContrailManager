@@ -42,7 +42,7 @@ struct ISegmentContainer {
         const float length) = 0;
     
     // Evolve all segment plumes
-    virtual void integratePlumes(const CMTime& startTime, const CMTime& stopTime) = 0;
+    virtual void evolvePlumes(const CMTime& startTime, const CMTime& stopTime) = 0;
 
     // Advect all segments and remove if out of bounds
     virtual void advectSegments(const CMTime& startTime, const CMTime& stopTime) = 0;
@@ -121,9 +121,9 @@ public:
     }
 
     // Evolve all segment plumes
-    void integratePlumes(const CMTime& startTime, const CMTime& stopTime) override {
+    void evolvePlumes(const CMTime& startTime, const CMTime& stopTime) override {
         for (SegmentType& seg : vec) {
-            seg.integrate(startTime, stopTime);
+            seg.evolve(startTime, stopTime);
         }
     }
 
