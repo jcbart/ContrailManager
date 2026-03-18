@@ -45,21 +45,13 @@ void FlightContainer::read_dataset(const std::string& filepath) {
 
     // Sort waypoints in each loaded flight by time
     for (Flight& flight : loaded) {
-        std::sort(
-            flight.waypoints.begin(),
-            flight.waypoints.end(),
-            [](const Waypoint& A, const Waypoint& B) {
-                return A.time < B.time;
-            }
-        );
+        std::ranges::sort(flight.waypoints, {}, &Waypoint::time);
     }
 
     // Sort loaded flights by first waypoint time
-    std::sort(
-        loaded.begin(),
-        loaded.end(),
-        [](const Flight& A, const Flight& B) {
-            return A.waypoints[0].time < B.waypoints[0].time;
+    std::ranges::sort(loaded, {},
+        [](const Flight& flight) {
+            return flight.waypoints.front().time;
         }
     );
 

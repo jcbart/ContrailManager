@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <algorithm>
 #include "Waypoint.h"
 #include "FlightInputs.h"
 #include "mapFunctions.h"
@@ -36,6 +37,39 @@ struct Flight {
 
     size_t numWaypoints() const {
         return waypoints.size();
+    }
+
+    // Find the last waypoint passed by the flight at the given time (e.g. 0 for 0th waypoint)
+    // If before the 0th waypoint, lastWp = -1
+    constexpr size_t find_last_wp(const CMTime& time) const {
+        if (time < waypoints.front().time) {
+            // Flight is before first waypoint
+            return -1;
+        }
+        if (time >= waypoints.back().time) {
+            // Flight is after last waypoint
+            return numWaypoints() - 1;
+        }
+        // Else, flight is within waypoint route
+        // Iterator pointing to first waypoint after time
+        auto it = std::ranges::upper_bound(waypoints, time, {}, &Waypoint::time);
+        // Return distance to iterator - 1 (last waypoint passed)
+        return std::distance(waypoints.begin(), it) - 1;
+    }
+
+    // Finds the flight location at the given time with a great circle interpolation between
+    // neighbouring waypoints
+    // loc is given the location
+    // Returns false if flight is before first or after last waypoint at time
+    constexpr bool find_loc(const CMTime& time, Geo3D& loc) const {
+        size_t lastWp = find_last_wp(time);
+        if (lastWp == -1 || lastWp == numWaypoints() - 1) {
+            // Flight is before first or after last waypoint
+            return false;
+        }
+        // Flight is between lastWp and lastWp + 1
+        loc = great_circle_interp(time, waypoints[lastWp], waypoints[lastWp + 1]);
+        return true;
     }
 
     // Returns a FlightInputs object based on current flight attributes

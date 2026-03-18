@@ -157,8 +157,6 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     CM_LogWrite(std::format("Computation time for coupling interval: {} s", computeTime.count()));
 }
 
-
-// Completes the setup required on the first run call (i.e. after getting external data)
 void ContrailManager::setup_on_first_run(const CMTime& startTime) {
     if (domain == nullptr) {
         CM_RaiseError("ContrailManager run called before domain has been initialised",
@@ -173,7 +171,6 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
     CM_LogWrite("Contrail Manager current time set to " + currTime.asString());
 }
 
-// Create new segments from flights
 void ContrailManager::create_segments(const CMTime& startTime, const CMTime& stopTime) {
     CM_LogWrite("Creating segments for " + std::to_string(flights.active.size())
         + " active flights");
@@ -183,11 +180,11 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
         CM_LogWrite("Creating segments for flight: " + flight.ID);
 
         // Find last waypoint passed at start and end of time interval
-        int lastWpStart = find_last_wp(flight, startTime);
-        int lastWpEnd = find_last_wp(flight, stopTime);
+        size_t lastWpStart = flight.find_last_wp(startTime);
+        size_t lastWpEnd = flight.find_last_wp(stopTime);
 
         // Iterate through each leg (sectioned by waypoints) between start and end locations
-        for (int n = lastWpStart; n <= lastWpEnd; n++) {
+        for (size_t n = lastWpStart; n <= lastWpEnd; n++) {
             // Find start and end waypoints of leg
             Waypoint legStart, legEnd;
             // If leg is before first or after last waypoint, cannot find flight loc
@@ -197,7 +194,7 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
             // If first leg, start from flight start loc (not wp)
             if (n == lastWpStart) {
                 // Safe to ignore return value
-                bool startFound = find_flight_loc(flight, startTime, legStart.loc);
+                bool startFound = flight.find_loc(startTime, legStart.loc);
                 legStart.time = startTime;
             }
             // Else, leg starts at wp
@@ -208,7 +205,7 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
             // If last leg, end at flight end loc (not wp)
             if (n == lastWpEnd) {
                 // Safe to ignore return value
-                bool endFound = find_flight_loc(flight, stopTime, legEnd.loc);
+                bool endFound = flight.find_loc(stopTime, legEnd.loc);
                 legEnd.time = stopTime;
             }
             // Else, leg ends at wp
@@ -258,44 +255,4 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
         }
     }
     CM_LogWrite("Number of segments created: " + std::to_string(num_created));
-}
-
-// Find the last waypoint passed by the flight at time (e.g. 0 for 0th waypoint)
-// If before the 0th waypoint, lastWp = -1
-int ContrailManager::find_last_wp(const Flight& flight, const CMTime& time) {
-    int lastWp;
-    if (time < flight.waypoints[0].time) {
-        // Flight is before first waypoint
-        lastWp = -1;
-    }
-    else if (time >= flight.waypoints[flight.numWaypoints() - 1].time) {
-        // Flight is after last waypoint
-        lastWp = flight.numWaypoints() - 1;
-    }
-    // Else, flight is within waypoint route
-    // Find last waypoint passed
-    else {
-        for (int i = 0; i < flight.numWaypoints() - 1; i++) {
-            if (time < flight.waypoints[i+1].time) {
-                lastWp = i;
-                break;
-            }
-        }
-    }
-    return lastWp;
-}
-
-// Finds the flight location at the given time with a great circle interpolation between
-// neighbouring waypoints
-// loc is given the location
-// Returns false if flight is before first or after last waypoint at time
-bool ContrailManager::find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc) {
-    int lastWp = find_last_wp(flight, time);
-    if (lastWp == -1 || lastWp == flight.numWaypoints() - 1) {
-        // Flight is before first or after last waypoint
-        return false;
-    }
-    // Flight is between lastWp and lastWp + 1
-    loc = great_circle_interp(time, flight.waypoints[lastWp], flight.waypoints[lastWp + 1]);
-    return true;
 }

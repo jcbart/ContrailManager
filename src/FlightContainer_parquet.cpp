@@ -58,31 +58,31 @@ ParquetColumn find_parquet_field(std::shared_ptr<arrow::Table>& table,
     return ParquetColumn(-1, "", nullptr);
 }
 
-// Converts an Arrow timestamp value given its unit to std::chrono::sys_time<std::chrono::milliseconds>
-std::chrono::sys_time<std::chrono::milliseconds> arrow_timestamp_to_sys_time(
+// Converts an Arrow timestamp value given its unit to CMTime
+inline CMTime arrow_timestamp_to_CMTime(
     int64_t timestamp_value, arrow::TimeUnit::type unit
 ) {
     using namespace std::chrono;
     switch (unit) {
         case arrow::TimeUnit::SECOND:
-            return sys_time<milliseconds>{
+            return CMTime(sys_time<milliseconds>{
                 duration_cast<milliseconds>(seconds{timestamp_value})
-            };
+            });
         case arrow::TimeUnit::MILLI:
-            return sys_time<milliseconds>{
+            return CMTime(sys_time<milliseconds>{
                 duration_cast<milliseconds>(milliseconds{timestamp_value})
-            };
+            });
         case arrow::TimeUnit::MICRO:
-            return sys_time<milliseconds>{
+            return CMTime(sys_time<milliseconds>{
                 duration_cast<milliseconds>(microseconds{timestamp_value})
-            };
+            });
         case arrow::TimeUnit::NANO:
-            return sys_time<milliseconds>{
+            return CMTime(sys_time<milliseconds>{
                 duration_cast<milliseconds>(nanoseconds{timestamp_value})
-            };
+            });
         default:
             // For safety, though Arrow defines no other type
-            return sys_time<milliseconds>{milliseconds{0}};
+            return CMTime(sys_time<milliseconds>{milliseconds{0}});
     }
 }
 
@@ -247,11 +247,9 @@ void FlightContainer::read_parquet(const std::string& filepath) {
                 
                 // Convert timestamp and location to CMTime and Geo3D and add to flight
                 flight.waypoints.emplace_back(
-                    CMTime(
-                        arrow_timestamp_to_sys_time(
-                            timestamp_array->Value(row_idx),
-                            time_unit
-                        )
+                    arrow_timestamp_to_CMTime(
+                        timestamp_array->Value(row_idx),
+                        time_unit
                     ),
                     Geo3D(
                         lon_array->Value(row_idx),

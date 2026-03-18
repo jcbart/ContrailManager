@@ -36,22 +36,20 @@ private:
 
     void read_config();
 
+    // Completes the setup required on the first run call (i.e. after getting external data)
     void setup_on_first_run(const CMTime& startTime);
 
+    // Create new segments from flights
     void create_segments(const CMTime& startTime, const CMTime& stopTime);
-
-    int find_last_wp(const Flight& flight, const CMTime& time);
-
-    bool find_flight_loc(const Flight& flight, const CMTime& time, Geo3D& loc);
 
 public:
     // Pointer to domain
     std::unique_ptr<Domain> domain;
 
-    // External functions
-
+    // Initialise Contrail Manager
     void init();
 
+    // Run Contrail Manager between times
     void run(const CMTime& startTime, const CMTime& stopTime);
     
 };
