@@ -90,7 +90,7 @@ void FlightContainer::update_active(const CMTime& startTime, const CMTime& stopT
     std::erase_if(
         active,
         [startTime](const Flight& flight) {
-            return flight.waypoints[flight.numWaypoints() - 1].time <= startTime;
+            return flight.waypoints.back().time <= startTime;
         }
     );
 
@@ -99,12 +99,12 @@ void FlightContainer::update_active(const CMTime& startTime, const CMTime& stopT
         // If flight starts before startTime, skip it
         // (this path should only be taken the first time the method is called to skip past
         // flights which start before startTime)
-        if (loaded[nextFlightToCheck].waypoints[0].time < startTime) {
+        if (loaded[nextFlightToCheck].waypoints.front().time < startTime) {
             nextFlightToCheck++;
             continue;
         }
         // If flight starts at or after startTime, but before stopTime, add it
-        if (loaded[nextFlightToCheck].waypoints[0].time < stopTime) {
+        if (loaded[nextFlightToCheck].waypoints.front().time < stopTime) {
             active.push_back(loaded[nextFlightToCheck]);
             nextFlightToCheck++;
         }
