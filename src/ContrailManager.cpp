@@ -3,7 +3,6 @@
 #include <chrono>
 #include <algorithm>
 #include <format>
-#include <yaml-cpp/yaml.h>
 #ifdef WITH_COCIP
 #include <CoCiP++/params.h>
 #endif
@@ -22,15 +21,15 @@
 void ContrailManager::init() {
     CM_LogWrite("Initialising Contrail Manager:");
     
-    read_config();
+    config.read();
 
-    CM_LogWrite("Online coupling: " + std::string(twoWayCoupling ? "true" : "false"));
+    CM_LogWrite("Online coupling: " + std::string(config.twoWayCoupling ? "true" : "false"));
 
     // Determine plume model
     // Sets pointer to specialised segment container
 
     std::string plumeModelStr;
-    switch (plumeModelID) {
+    switch (config.plumeModelID) {
         case MODEL_ID_COCIP: {
             plumeModelStr = MODEL_STR_COCIP;
 #ifdef WITH_COCIP
@@ -46,52 +45,19 @@ void ContrailManager::init() {
             break;
         }
         default: {
-            CM_RaiseError(std::format("Plume model {} not recognised", plumeModelID),
+            CM_RaiseError(std::format("Plume model {} not recognised", config.plumeModelID),
                 __FILE__, __LINE__);
         }
     }
     CM_LogWrite("Plume model: " + plumeModelStr);
 
     // After the segments pointer has been set
-    segments->maxContrailAge_s = maxContrailAge_s;
-    segments->maxAccumVapRatio = maxAccumVapRatio;
+    segments->maxContrailAge_s = config.maxContrailAge_s;
+    segments->maxAccumVapRatio = config.maxAccumVapRatio;
 
-    flights.read_dataset(flightDataFilepath);
+    flights.read_datasets(config.flightDatasetPaths);
 
     CM_LogWrite("Contrail Manager initialised");
-}
-
-// Read config file
-void ContrailManager::read_config() {
-    YAML::Node config = YAML::LoadFile("CM-config.yaml");
-
-    flightDataFilepath = config["Flight dataset path"].as<std::string>();
-
-    twoWayCoupling = config["Two-way coupling"].as<bool>();
-
-    plumeModelID = config["Plume model"].as<int>();
-
-    maxInitialSegLen = config["Max initial segment length (m)"].as<float>();
-    if (maxInitialSegLen <= 0) {
-        CM_RaiseError("Config error: Read maximum initial segment length of "
-            + std::to_string(maxInitialSegLen)
-            + " m. Maximum initial segment length must be positive.", __FILE__, __LINE__);
-    }
-
-    float maxContrailAge_h = config["Max contrail age (h)"].as<float>();
-    if (maxContrailAge_h <= 0) {
-        CM_RaiseError("Config error: Read maximum contrail age of "
-            + std::to_string(maxContrailAge_h)
-            + " h. Maximum contrail age must be positive.", __FILE__, __LINE__);
-    }
-    maxContrailAge_s = 3600 * maxContrailAge_h;
-
-    maxAccumVapRatio = config["Max accumulated vapour ratio ()"].as<float>();
-    if (maxAccumVapRatio <= 0) {
-        CM_RaiseError("Config error: Read maximum accumulated vapour ratio of "
-            + std::to_string(maxAccumVapRatio)
-            + ". Maximum accumulated vapour ratio must be positive.", __FILE__, __LINE__);
-    }
 }
 
 // Integrate between times
@@ -154,7 +120,7 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     // Elapsed time in run (seconds)
     std::chrono::duration<double> computeTime = computeTimeEnd - computeTimeStart;
 
-    CM_LogWrite(std::format("Computation time for coupling interval: {} s", computeTime.count()));
+    CM_LogWrite(std::format("Computation time for coupling interval: {:.3f} s", computeTime.count()));
 }
 
 void ContrailManager::setup_on_first_run(const CMTime& startTime) {
@@ -163,7 +129,7 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
             __FILE__, __LINE__);
     }
 
-    domain->twoWayCoupling = twoWayCoupling;
+    domain->twoWayCoupling = config.twoWayCoupling;
     segments->domPtr = domain.get();
 
     currTime = startTime;
@@ -216,7 +182,7 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
 
             // Create as many segments as needed between
             double distInLeg = great_circle_dist(legStart.loc, legEnd.loc);
-            int numNewSegments = ceil(distInLeg / maxInitialSegLen);
+            int numNewSegments = ceil(distInLeg / config.maxInitialSegLen);
             double segLen = distInLeg / numNewSegments;
             Geo3D backLoc = legStart.loc;
             Geo3D frontLoc;
@@ -254,5 +220,5 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
             }
         }
     }
-    CM_LogWrite("Number of segments created: " + std::to_string(num_created));
+    CM_LogWrite(std::format("Number of segments created: {}", num_created));
 }

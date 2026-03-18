@@ -67,6 +67,7 @@ find_package(Parquet CONFIG REQUIRED)
 
 # Source files
 set(SOURCES
+    "src/CMConfig.cpp"
     "src/CMLog.cpp"
     "src/ContrailManager.cpp"
     "src/Domain.cpp"

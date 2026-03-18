@@ -1,11 +1,12 @@
 #include <filesystem>
 #include <algorithm>
 #include <format>
+#include <chrono>
 #include "FlightContainer.h"
 #include "timekeeping.h"
 #include "CMLog.h"
 
-void FlightContainer::read_dataset() {
+void FlightContainer::read_datasets() {
     // Read flight data etc
     Flight test_flight("1");
     CMTime time1 = {2025, 4, 1, 6, 0, 0};
@@ -17,30 +18,36 @@ void FlightContainer::read_dataset() {
     loaded.push_back(test_flight);
 }
 
-void FlightContainer::read_dataset(const std::string& filepath) {
-    // Special case for idle Contrail Manager
-    if (filepath == "NONE") {
-        CM_LogWarning("Provided flight dataset is 'NONE'. Contrail Manager running idle.");
-        return;
-    }
+void FlightContainer::read_datasets(const std::vector<std::string>& filepaths) {
+    // Time at start of reading
+    std::chrono::steady_clock::time_point readTimeStart = std::chrono::steady_clock::now();
 
-    // Check file exists
-    if (!std::filesystem::exists(filepath)) {
-        CM_RaiseError("File not found: " + filepath, __FILE__, __LINE__);
-    }
+    for (const std::string& filepath : filepaths) {
+        // Ignore NONE used for idle Contrail Manager
+        if (filepath == "NONE") {
+            continue;
+        }
 
-    // File path
-    std::filesystem::path path(filepath);
-    // File extension
-    std::string extension = path.extension().string();
+        CM_LogWrite("Reading flight dataset: " + filepath);
 
-    // Read file according to its extension
-    if (extension == ".parquet" || extension == ".pq") {
-        read_parquet(filepath);
-    }
-    else {
-        CM_RaiseError("Flight dataset '" + filepath + "' has unsupported file extension.",
-            __FILE__, __LINE__);
+        // Check file exists
+        if (!std::filesystem::exists(filepath)) {
+            CM_RaiseError("File not found: " + filepath, __FILE__, __LINE__);
+        }
+
+        // File path
+        std::filesystem::path path(filepath);
+        // File extension
+        std::string extension = path.extension().string();
+
+        // Read file according to its extension
+        if (extension == ".parquet" || extension == ".pq") {
+            read_parquet(filepath);
+        }
+        else {
+            CM_RaiseError("Flight dataset '" + filepath + "' has unsupported file extension.",
+                __FILE__, __LINE__);
+        }
     }
 
     // Sort waypoints in each loaded flight by time
@@ -55,7 +62,20 @@ void FlightContainer::read_dataset(const std::string& filepath) {
         }
     );
 
-    CM_LogWrite(std::format("Loaded {} flights from file.", loaded.size()));
+    // Time at end of reading
+    std::chrono::steady_clock::time_point readTimeEnd = std::chrono::steady_clock::now();
+
+    // Elapsed time for reading (seconds)
+    std::chrono::duration<double> readTime = readTimeEnd - readTimeStart;
+
+    CM_LogWrite(
+        std::format("Loaded {} flights from file in {:.3f} s.", loaded.size(), readTime.count())
+    );
+
+    // Warn if no flights have been read
+    if (loaded.empty()) {
+        CM_LogWarning("No flights read from file. Contrail Manager running idle.");
+    }
 
     for (const Flight& flight : loaded) {
         CM_LogWrite("Flight ID: " + flight.ID);

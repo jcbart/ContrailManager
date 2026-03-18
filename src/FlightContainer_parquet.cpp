@@ -1,5 +1,4 @@
 #include <memory>
-#include <unordered_map>
 #include <arrow/api.h>
 #include <arrow/io/api.h>
 #include <parquet/arrow/reader.h>
@@ -184,9 +183,6 @@ void FlightContainer::read_parquet(const std::string& filepath) {
         }
     );
 
-    // Map of flight ID to index in FlightContainer::loaded
-    std::unordered_map<std::string, size_t> flight_id_index_map;
-
     // Arrow DataType of timestamp column
     std::shared_ptr<arrow::TimestampType> timestamp_type
         = std::static_pointer_cast<arrow::TimestampType>(timestamp.column->type());
@@ -219,20 +215,21 @@ void FlightContainer::read_parquet(const std::string& filepath) {
                 continue; // Ignore null
             }
 
+            // Flight ID
             std::string id = flight_id_array->GetString(row_idx);
 
             // Check if id is in map
-            auto it = flight_id_index_map.find(id);
+            auto it = flightIDIndexMap.find(id);
             // Index of flight in FlightContainer::loaded
             size_t loaded_idx;
 
-            if (it == flight_id_index_map.end()) {
+            if (it == flightIDIndexMap.end()) {
                 // New flight - add to vector
                 loaded.emplace_back(id);
                 // Get index
                 loaded_idx = loaded.size() - 1;
                 // Add to index map
-                flight_id_index_map[id] = loaded_idx;
+                flightIDIndexMap[id] = loaded_idx;
             }
             else {
                 // Existing flight - get its index

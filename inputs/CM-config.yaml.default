@@ -1,8 +1,5 @@
 # Contrail Manager config
 
-# Path to flight dataset file; set to NONE for idle Contrail Manager
-Flight dataset path: 
-
 # Do two-way coupling?
 Two-way coupling: true
 
@@ -19,3 +16,9 @@ Max contrail age (h): 2
 # Maximum ratio of water vapour mass in contrail plume to water vapour mass in the grid cell it is
 # inside; above this, the contrail is dumped into the NWP's native grid
 Max accumulated vapour ratio (): 1e-2
+
+# Paths to flight dataset files separated by commas within square brackets
+# Add only NONE for idle Contrail Manager
+Flight dataset paths: [
+
+]
