@@ -14,7 +14,7 @@ struct CMConfig {
     // grid cell ()
     float maxAccumVapRatio = 1e-2;
 
-    std::vector<std::string> flightDatasetPaths;
+    std::vector<std::string> flightDatasetPaths; // Flight dataset file paths
 
     // Read config file
     void read();

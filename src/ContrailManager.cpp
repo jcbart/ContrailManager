@@ -60,7 +60,6 @@ void ContrailManager::init() {
     CM_LogWrite("Contrail Manager initialised");
 }
 
-// Integrate between times
 void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     // Current time at start of run
     std::chrono::steady_clock::time_point computeTimeStart = std::chrono::steady_clock::now();
@@ -73,10 +72,10 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     // Check startTime matches expected time
     if (currTime != startTime) {
         CM_RaiseError("currTime (" + currTime.asString() + ") does not match "
-            + "integration startTime (" + startTime.asString() + ")", __FILE__, __LINE__);
+            + "run startTime (" + startTime.asString() + ")", __FILE__, __LINE__);
     }
 
-    CM_LogWrite("Integrating between " + startTime.asString() + " and " + stopTime.asString());
+    CM_LogWrite("Running between " + startTime.asString() + " and " + stopTime.asString());
 
     if (domain->twoWayCoupling) {
         // Save QV and set all delta variables and contrail ice mass to zero
