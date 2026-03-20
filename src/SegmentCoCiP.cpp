@@ -1,5 +1,6 @@
 #ifdef WITH_COCIP
 
+#include <omp.h>
 #include <CoCiP++/CoCiP.h>
 #include <CoCiP++/met.h>
 #include <CoCiP++/params.h>
@@ -30,25 +31,23 @@ SegmentCoCiP::SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
 }
 
 void SegmentCoCiP::updateMet() {
-    IDX3<int> ijkCurr;
-    bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-    if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
+    IDX3<int> ijkCurr = domPtr->loc_to_ijk(centre);
 
     // Indices at surface of column containing contrail
     IDX3<int> ijkSurface = ijkCurr;
     ijkSurface.k = domPtr->get_kds();
 
-    cocip.met->T_POT = domPtr->T_POT.get(ijkSurface);
-    cocip.met->P = domPtr->P.get(ijkSurface);
-    cocip.met->QV = domPtr->QV.get(ijkSurface);
-    cocip.met->U = domPtr->U.get(ijkSurface);
-    cocip.met->V = domPtr->V.get(ijkSurface);
-    cocip.met->CIWC = domPtr->QI.get(ijkSurface);
-    cocip.met->Z = domPtr->Z.get(ijkSurface);
-    cocip.met->Z_AT_W = domPtr->Z_AT_W.get(ijkSurface);
+    cocip.met->T_POT = domPtr->T_POT.get_ptr(ijkSurface);
+    cocip.met->P = domPtr->P.get_ptr(ijkSurface);
+    cocip.met->QV = domPtr->QV.get_ptr(ijkSurface);
+    cocip.met->U = domPtr->U.get_ptr(ijkSurface);
+    cocip.met->V = domPtr->V.get_ptr(ijkSurface);
+    cocip.met->CIWC = domPtr->QI.get_ptr(ijkSurface);
+    cocip.met->Z = domPtr->Z.get_ptr(ijkSurface);
+    cocip.met->Z_AT_W = domPtr->Z_AT_W.get_ptr(ijkSurface);
 
-    cocip.met->tnsr = domPtr->TNSR.get_value(ijkCurr);
-    cocip.met->olr = domPtr->OLR.get_value(ijkCurr);
+    cocip.met->tnsr = domPtr->TNSR.get(ijkCurr);
+    cocip.met->olr = domPtr->OLR.get(ijkCurr);
 }
 
 void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
@@ -76,14 +75,12 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
             // If two-way coupling, return water vapour to atmosphere
             if (domPtr->twoWayCoupling) {
                 // Get dry mass of grid cell contrail is inside
-                IDX3<int> ijkCurr;
-                bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-                if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
+                IDX3<int> ijkCurr = domPtr->loc_to_ijk(centre);
 
-                double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
+                double gridDryMass = domPtr->DRYMASS.get(ijkCurr);
 
                 // Add M_v_exhaust to current grid cell
-                *domPtr->deltaQV.get(ijkCurr) += M_v_exhaust / gridDryMass;
+                domPtr->deltaQV.add(ijkCurr,  M_v_exhaust / gridDryMass);
             }
             return;
         }
@@ -99,14 +96,12 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
             // is because IWC -> 0
             if (domPtr->twoWayCoupling) {
                 // Get dry mass of grid cell contrail is inside
-                IDX3<int> ijkCurr;
-                bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-                if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
+                IDX3<int> ijkCurr = domPtr->loc_to_ijk(centre);
 
-                double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
+                double gridDryMass = domPtr->DRYMASS.get(ijkCurr);
 
                 // Add M_v_exhaust to current grid cell
-                *domPtr->deltaQV.get(ijkCurr) += M_v_exhaust / gridDryMass;
+                domPtr->deltaQV.add(ijkCurr,  M_v_exhaust / gridDryMass);
             }
             return;
         }
@@ -194,50 +189,44 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
                          * area_swept * length;
         
         // Get dry mass of grid cell contrail is inside
-        IDX3<int> ijkCurr;
-        bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-        if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
+        IDX3<int> ijkCurr = domPtr->loc_to_ijk(centre);
 
-        double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
+        double gridDryMass = domPtr->DRYMASS.get(ijkCurr);
 
         // Remove M_v_sed from current grid cell
-        *domPtr->deltaQV.get(ijkCurr) -= M_v_sed / gridDryMass;
+        domPtr->deltaQV.subtract(ijkCurr,  M_v_sed / gridDryMass);
     }
 }
 
 void SegmentCoCiP::dump() {
-    IDX3<int> ijkCurr;
-    bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-    if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
+    IDX3<int> ijkCurr = domPtr->loc_to_ijk(centre);
 
-    double gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
+    double gridDryMass = domPtr->DRYMASS.get(ijkCurr);
 
     // Specific humidity inside contrail
     double q_sat = thermo::q_sat_ice(cocip.met->air_temperature, cocip.met->air_pressure);
     // Water vapour mass (returned is mass inside minus that double-counted from atmosphere)
     // Do q_to_r as long as plume_mass_per_m is actually dry air mass
     double M_v = thermo::q_to_r(q_sat) * cocip.plume_mass_per_m * length;
-    *domPtr->deltaQV.get(ijkCurr) += (M_v - M_v_accum) / gridDryMass;
+    domPtr->deltaQV.add(ijkCurr, (M_v - M_v_accum) / gridDryMass);
 
     // Ice mass
     // Do q_to_r as long as plume_mass_per_m is actually dry air mass
     double M_ice = thermo::q_to_r(cocip.iwc) * cocip.plume_mass_per_m * length;
-    *domPtr->deltaQI.get(ijkCurr) += M_ice / gridDryMass;
+    domPtr->deltaQI.add(ijkCurr, M_ice / gridDryMass);
 
     // Ice number
     double N_ice = cocip.n_ice_per_m * length;
-    *domPtr->deltaNI.get(ijkCurr) += N_ice / gridDryMass;
+    domPtr->deltaNI.add(ijkCurr, N_ice / gridDryMass);
 }
 
 void SegmentCoCiP::addToQIcontrail() {
-    IDX3<int> ijkCurr;
-    bool inGrid = domPtr->loc_to_ijk(centre, ijkCurr);
-    if (!inGrid) { CM_RaiseUnexpectedOutOfBounds(centre, __FILE__, __LINE__); }
+    IDX3<int> ijkCurr = domPtr->loc_to_ijk(centre);
 
     // Do q_to_r as long as plume_mass_per_m is actually dry air mass
     float M_ice = thermo::q_to_r(cocip.iwc) * cocip.plume_mass_per_m * length;
-    float gridDryMass = domPtr->DRYMASS.get_value(ijkCurr);
-    *domPtr->QIcontrail.get(ijkCurr) += M_ice / gridDryMass;
+    float gridDryMass = domPtr->DRYMASS.get(ijkCurr);
+    domPtr->QIcontrail.add(ijkCurr, M_ice / gridDryMass);
 }
 
 #endif

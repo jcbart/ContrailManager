@@ -31,7 +31,7 @@ private:
     // Completes the setup required on the first run call (i.e. after getting external data)
     void setup_on_first_run(const CMTime& startTime);
 
-    // Create new segments from flights
+    // Create new segments from flights (parallelised)
     void create_segments(const CMTime& startTime, const CMTime& stopTime);
 
 public:

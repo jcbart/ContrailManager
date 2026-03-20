@@ -6,6 +6,8 @@
 #include <sstream>
 #include <vector>
 #include <variant>
+#include <algorithm>
+#include <ranges>
 #include "mapTypes.h"
 #include "Projection.h"
 #include "CMLog.h"
@@ -18,36 +20,36 @@ private:
     const int i_size, j_size;
     const size_t num_elements;
 
-    const T* get_element_ptr(const int i, const int j) const {
-        if (i < ids || i > ide || j < jds || j > jde) {
+    T* data; // Raw, contiguous data
+
+    // Checks indices are valid
+    constexpr void check_valid(const int i, const int j) const {
+        if (i < ids || i > ide || j < jds || j > jde) [[unlikely]] {
             std::stringstream ss;
             ss << "Variable2D " << name << " error: Index (i,j)=(" << i << "," << j
                 << ") is out of range for array of size (ids:ide,jds:jde)=("
                 << ids << ":" << ide << "," << jds << ":" << jde << ")";
             CM_RaiseError(ss.str(), __FILE__, __LINE__);
         }
-        return &data[get_1D_index_from_2D(i, j)];
     }
 
 public:
-    T* data = nullptr;
+    // Constructor
+    Variable2D(std::string name, int ids, int ide, int jds, int jde)
+        : name(name), ids(ids), ide(ide), jds(jds), jde(jde),
+          i_size(ide - ids + 1), j_size(jde - jds + 1),
+          num_elements(i_size * j_size) {
+        
+        // Allocate a 1D block of memory
+        data = new T[num_elements];
+        clear_all();
+    }
 
     // Destructor
     ~Variable2D() {
         if (data != nullptr) {
             delete[] data;
         }
-    }
-
-    // Constructor
-    Variable2D(std::string name, int ids, int ide, int jds, int jde)
-        : name(name), ids(ids), ide(ide), jds(jds), jde(jde),
-          i_size(ide-ids+1), j_size(jde-jds+1),
-          num_elements(i_size*j_size) {
-        
-        // Allocate a 1D block of memory
-        data = new T[num_elements];
-        clear_all();
     }
 
     int get_ids() const { return ids; };
@@ -57,33 +59,102 @@ public:
     int get_i_size() const { return i_size; };
     int get_j_size() const { return j_size; };
     size_t get_num_elements() const { return num_elements; };
+    // Returns a pointer to the first element of data
+    // Operations on this pointer are NOT thread-safe
+    T* get_data() const { return data; };
 
     // Flatten 2D indices
-    inline size_t get_1D_index_from_2D(const int i, const int j) const {
-        return static_cast<size_t>((i-ids)*j_size + (j-jds));
+    constexpr size_t get_1D_index_from_2D(const int i, const int j) const {
+        check_valid(i, j);
+        return (static_cast<size_t>(i) - ids) * j_size +
+               (static_cast<size_t>(j) - jds);
     }
 
-    // Returns a reference to the value, so can be used to set and get
-    inline T* get(const int i, const int j) {
-        return const_cast<T*>(get_element_ptr(i, j));
+    // Returns the value at indices; thread-safe
+    constexpr T get(const int i, const int j) const {
+        T result;
+        #pragma omp atomic read
+        result = data[get_1D_index_from_2D(i, j)];
+        return result;
     }
 
-    // Returns a reference to the value, so can be used to set and get
-    inline T* get(const IDX2<int>& ij) {
+    // Returns the value at indices; thread-safe
+    constexpr T get(const IDX2<int>& ij) const {
         return get(ij.i, ij.j);
     }
 
-    // Returns the value at indices
-    inline T get_value(const int i, const int j) const {
-        return *get_element_ptr(i, j);
+    // Returns a pointer to the element at indices
+    // Operations on this pointer are NOT thread-safe
+    constexpr T* get_ptr(const int i, const int j) const {
+        return &data[get_1D_index_from_2D(i, j)];
     }
 
-    // Returns the value at indices
-    inline T get_value(const IDX2<int>& ij) const {
-        return get_value(ij.i, ij.j);
+    // Returns a pointer to the element at indices
+    // Operations on this pointer are NOT thread-safe
+    constexpr T* get_ptr(const IDX2<int>& ij) const {
+        return get_ptr(ij.i, ij.j);
     }
 
-    // Set all values to zero; only works if initialised
+    // Sets the value at indices; thread-safe
+    constexpr void set(const int i, const int j, T value) {
+        #pragma omp atomic write
+        data[get_1D_index_from_2D(i, j)] = value;
+    }
+
+    // Sets the value at indices; thread-safe
+    constexpr void set(const IDX2<int>& ij, T value) {
+        set(ij.i, ij.j, value);
+    }
+
+    // Adds to the value at indices; thread-safe
+    constexpr void add(const int i, const int j, T value) {
+        #pragma omp atomic update
+        data[get_1D_index_from_2D(i, j)] += value;
+    }
+
+    // Adds to the value at indices; thread-safe
+    constexpr void add(const IDX2<int>& ij, T value) {
+        add(ij.i, ij.j, value);
+    }
+
+    // Subtracts from the value at indices; thread-safe
+    constexpr void subtract(const int i, const int j, T value) {
+        #pragma omp atomic update
+        data[get_1D_index_from_2D(i, j)] -= value;
+    }
+
+    // Subtracts from the value at indices; thread-safe
+    constexpr void subtract(const IDX2<int>& ij, T value) {
+        subtract(ij.i, ij.j, value);
+    }
+
+    // Multiplies the value at indices; thread-safe
+    template <typename type>
+    constexpr void multiply(const int i, const int j, type scalar) {
+        #pragma omp atomic update
+        data[get_1D_index_from_2D(i, j)] *= scalar;
+    }
+
+    // Multiplies the value at indices; thread-safe
+    template <typename type>
+    constexpr void multiply(const IDX2<int>& ij, type scalar) {
+        multiply(ij.i, ij.j, scalar);
+    }
+
+    // Divides the value at indices; thread-safe
+    template <typename type>
+    constexpr void divide(const int i, const int j, type scalar) {
+        #pragma omp atomic update
+        data[get_1D_index_from_2D(i, j)] /= scalar;
+    }
+
+    // Divides the value at indices; thread-safe
+    template <typename type>
+    constexpr void divide(const IDX2<int>& ij, type scalar) {
+        divide(ij.i, ij.j, scalar);
+    }
+
+    // Set all values to zero
     void clear_all() {
         for (size_t i = 0; i < num_elements; i++) {
             data[i] = 0;
@@ -99,36 +170,36 @@ private:
     const int i_size, j_size, k_size;
     const size_t num_elements;
 
-    const T* get_element_ptr(const int i, const int j, const int k) const {
-        if (i < ids || i > ide || j < jds || j > jde || k < kds || k > kde) {
+    T* data; // Raw, contiguous data
+
+    // Checks indices are valid
+    constexpr void check_valid(const int i, const int j, const int k) const {
+        if (i < ids || i > ide || j < jds || j > jde || k < kds || k > kde) [[unlikely]] {
             std::stringstream ss;
             ss << "Variable3D " << name << " error: Index (i,j,k)=(" << i << "," << j << "," << k
                 << ") is out of range for array of size (ids:ide,jds:jde,kds:kde)=("
                 << ids << ":" << ide << "," << jds << ":" << jde << "," << kds << ":" << kde << ")";
             CM_RaiseError(ss.str(), __FILE__, __LINE__);
         }
-        return &data[get_1D_index_from_3D(i, j, k)];
     }
 
 public:
-    T* data = nullptr;
+    // Constructor
+    Variable3D(std::string name, int ids, int ide, int jds, int jde, int kds, int kde)
+        : name(name), ids(ids), ide(ide), jds(jds), jde(jde), kds(kds), kde(kde),
+          i_size(ide - ids + 1), j_size(jde - jds + 1), k_size(kde - kds + 1),
+          num_elements(i_size * j_size * k_size) {
+        
+        // Allocate a 1D block of memory
+        data = new T[num_elements];
+        clear_all();
+    }
     
     // Destructor
     ~Variable3D() {
         if (data != nullptr) {
             delete[] data;
         }
-    }
-
-    // Constructor
-    Variable3D(std::string name, int ids, int ide, int jds, int jde, int kds, int kde)
-        : name(name), ids(ids), ide(ide), jds(jds), jde(jde), kds(kds), kde(kde),
-          i_size(ide-ids+1), j_size(jde-jds+1), k_size(kde-kds+1),
-          num_elements(i_size*j_size*k_size) {
-        
-        // Allocate a 1D block of memory
-        data = new T[num_elements];
-        clear_all();
     }
 
     int get_ids() const { return ids; };
@@ -141,32 +212,103 @@ public:
     int get_j_size() const { return j_size; };
     int get_k_size() const { return k_size; };
     size_t get_num_elements() const { return num_elements; };
+    // Returns a pointer to the first element of data
+    // Operations on this pointer are NOT thread-safe
+    T* get_data() const { return data; };
 
-    inline size_t get_1D_index_from_3D(const int i, const int j, const int k) const {
-        return static_cast<size_t>((i-ids)*j_size*k_size + (j-jds)*k_size + (k-kds));
+    // Flatten 3D indices
+    constexpr size_t get_1D_index_from_3D(const int i, const int j, const int k) const {
+        check_valid(i, j, k);
+        return (static_cast<size_t>(i) - ids) * j_size * k_size +
+               (static_cast<size_t>(j) - jds) * k_size +
+               (static_cast<size_t>(k) - kds);
     }
 
-    // Returns a reference to the value, so can be used to set and get
-    inline T* get(const int i, const int j, const int k) {
-        return const_cast<T*>(get_element_ptr(i, j, k));
+    // Returns the value at indices; thread-safe
+    constexpr T get(const int i, const int j, const int k) const {
+        T result;
+        #pragma omp atomic read
+        result = data[get_1D_index_from_3D(i, j, k)];
+        return result;
     }
 
-    // Returns a reference to the value, so can be used to set and get
-    inline T* get(const IDX3<int>& ijk) {
+    // Returns the value at indices; thread-safe
+    constexpr T get(const IDX3<int>& ijk) const {
         return get(ijk.i, ijk.j, ijk.k);
     }
 
-    // Returns the value at indices
-    inline T get_value(const int i, const int j, const int k) const {
-        return *get_element_ptr(i, j, k);
+    // Returns a pointer to the element at indices
+    // Operations on this pointer are NOT thread-safe
+    constexpr T* get_ptr(const int i, const int j, const int k) const {
+        return &data[get_1D_index_from_3D(i, j, k)];
     }
 
-    // Returns the value at indices
-    inline T get_value(const IDX3<int>& ijk) const {
-        return get_value(ijk.i, ijk.j, ijk.k);
+    // Returns a pointer to the element at indices
+    // Operations on this pointer are NOT thread-safe
+    constexpr T* get_ptr(const IDX3<int>& ijk) const {
+        return get_ptr(ijk.i, ijk.j, ijk.k);
     }
 
-    // Set all values to zero; only works if initialised
+    // Sets the value at indices; thread-safe
+    constexpr void set(const int i, const int j, const int k, T value) {
+        #pragma omp atomic write
+        data[get_1D_index_from_3D(i, j, k)] = value;
+    }
+
+    // Sets the value at indices; thread-safe
+    constexpr void set(const IDX3<int>& ijk, T value) {
+        set(ijk.i, ijk.j, ijk.k, value);
+    }
+
+    // Adds to the value at indices; thread-safe
+    constexpr void add(const int i, const int j, const int k, T value) {
+        #pragma omp atomic update
+        data[get_1D_index_from_3D(i, j, k)] += value;
+    }
+
+    // Adds to the value at indices; thread-safe
+    constexpr void add(const IDX3<int>& ijk, T value) {
+        add(ijk.i, ijk.j, ijk.k, value);
+    }
+
+    // Subtracts from the value at indices; thread-safe
+    constexpr void subtract(const int i, const int j, const int k, T value) {
+        #pragma omp atomic update
+        data[get_1D_index_from_3D(i, j, k)] -= value;
+    }
+
+    // Subtracts from the value at indices; thread-safe
+    constexpr void subtract(const IDX3<int>& ijk, T value) {
+        subtract(ijk.i, ijk.j, ijk.k, value);
+    }
+
+    // Multiplies the value at indices; thread-safe
+    template <typename type>
+    constexpr void multiply(const int i, const int j, const int k, type scalar) {
+        #pragma omp atomic update
+        data[get_1D_index_from_3D(i, j, k)] *= scalar;
+    }
+
+    // Multiplies the value at indices; thread-safe
+    template <typename type>
+    constexpr void multiply(const IDX3<int>& ijk, type scalar) {
+        multiply(ijk.i, ijk.j, ijk.k, scalar);
+    }
+
+    // Divides the value at indices; thread-safe
+    template <typename type>
+    constexpr void divide(const int i, const int j, const int k, type scalar) {
+        #pragma omp atomic update
+        data[get_1D_index_from_3D(i, j, k)] /= scalar;
+    }
+
+    // Divides the value at indices; thread-safe
+    template <typename type>
+    constexpr void divide(const IDX3<int>& ijk, type scalar) {
+        divide(ijk.i, ijk.j, ijk.k, scalar);
+    }
+
+    // Set all values to zero
     void clear_all() {
         for (size_t i = 0; i < num_elements; i++) {
             data[i] = 0;
@@ -230,14 +372,14 @@ public:
     // Copy contents of QV to QVsave
     void save_QV() {
         for (size_t i = 0; i < QV.get_num_elements(); i++) {
-            QVsave.data[i] = QV.data[i];
+            QVsave.get_data()[i] = QV.get_data()[i];
         }
     }
 
     // Update deltaQV with deltaQV = QV - QVsave
     void find_deltaQV() {
         for (size_t i = 0; i < deltaQV.get_num_elements(); i++) {
-            deltaQV.data[i] = QV.data[i] - QVsave.data[i];
+            deltaQV.get_data()[i] = QV.get_data()[i] - QVsave.get_data()[i];
         }
     }
 
@@ -245,15 +387,26 @@ public:
     // Updates k in argument
     // Returns false if no valid k found
     inline bool find_k_inside(const Geo3D& loc, const IDX2<int>& ij, int& k) const {
-        // Check if below first boundary
-        if (loc.alt < Z_AT_W.get_value(ij.i, ij.j, kds)) {
+        // Check if below first or above last boundary
+        if (loc.alt < Z_AT_W.get(ij.i, ij.j, kds) ||
+            loc.alt >= Z_AT_W.get(ij.i, ij.j, kde + 1)) {
             return false;
         }
-        for (int kTrial = kds; kTrial <= kde; kTrial++) {
-            if (loc.alt < Z_AT_W.get_value(ij.i, ij.j, kTrial+1)) {
-                k = kTrial;
-                return true;
+        // Binary search within range
+        int left = kds, right = kde + 1;
+        while (left < right) {
+            int mid = left + (right - left) / 2;
+            if (loc.alt < Z_AT_W.get(ij.i, ij.j, mid + 1)) {
+                right = mid;
             }
+            else {
+                left = mid + 1;
+            }
+        }
+        // If valid k found, set and return
+        if (left <= kde) {
+            k = left;
+            return true;
         }
         // Else, no valid k found
         return false;
@@ -264,15 +417,26 @@ public:
     // Updates k in argument
     // Returns false if no valid k found
     inline bool find_k_below(const Geo3D& loc, const IDX2<int>& ij, int& k) const {
-        // Check if below first centre
-        if (loc.alt < Z.get_value(ij.i, ij.j, kds)) {
+        // Check if below first or above last centre
+        if (loc.alt < Z.get(ij.i, ij.j, kds) ||
+            loc.alt >= Z.get(ij.i, ij.j, kde)) {
             return false;
         }
-        for (int kTrial = kds; kTrial < kde; kTrial++) {
-            if (loc.alt < Z.get_value(ij.i, ij.j, kTrial+1)) {
-                k = kTrial;
-                return true;
+        // Binary search within range
+        int left = kds, right = kde;
+        while (left < right) {
+            int mid = left + (right - left) / 2;
+            if (loc.alt < Z.get(ij.i, ij.j, mid + 1)) {
+                right = mid;
             }
+            else {
+                left = mid + 1;
+            }
+        }
+        // If valid k found, set and return
+        if (left < kde) {
+            k = left;
+            return true;
         }
         // Else, no valid k found
         return false;
@@ -296,6 +460,20 @@ public:
         return true;
     }
 
+    // Returns the lon/lat grid cell indices which loc lies within
+    // Return may include fractions depending on its type
+    // Calls the method in Domain::proj and removes ids = jds = 0 assumption
+    // Exits if loc is not in grid
+    // If exiting is not desired, use alternative loc_to_ij method
+    template <typename dtype>
+    inline IDX2<dtype> loc_to_ij(const Geo2D& loc) const {
+        IDX2<dtype> ij;
+        if (!loc_to_ij(loc, ij)) [[unlikely]] {
+            CM_RaiseUnexpectedOutOfBounds(loc, __FILE__, __LINE__);
+        }
+        return ij;
+    }
+
     // Updates ijk with the lon/lat/alt grid cell indices which loc lies within
     // Returns false if loc is not in grid
     inline bool loc_to_ijk(const Geo3D& loc, IDX3<int>& ijk) const {
@@ -309,6 +487,17 @@ public:
         // Get k
         inGrid = find_k_inside(loc, ijk, ijk.k);
         return inGrid;
+    }
+
+    // Returns the lon/lat/alt grid cell indices which loc lies within
+    // Exits if loc is not in grid
+    // If exiting is not desired, use alternative loc_to_ijk method
+    inline IDX3<int> loc_to_ijk(const Geo3D& loc) const {
+        IDX3<int> ijk;
+        if (!loc_to_ijk(loc, ijk)) [[unlikely]] {
+            CM_RaiseUnexpectedOutOfBounds(loc, __FILE__, __LINE__);
+        }
+        return ijk;
     }
 
     // Given a location (loc), find the grid cell ij and its diagonal ijDiag which, alongside
@@ -334,17 +523,17 @@ public:
     // Returns the lon/lat grid values at indices ij
     inline Geo2D ij_to_loc(const IDX2<int>& ij) const {
         Geo2D loc;
-        loc.lon = XLONG.get_value(ij.i, ij.j);
-        loc.lat = XLAT.get_value(ij.i, ij.j);
+        loc.lon = XLONG.get(ij);
+        loc.lat = XLAT.get(ij);
         return loc;
     }
 
     // Returns the lat/lon/alt grid values at indices ijk
     inline Geo3D ijk_to_loc(const IDX3<int>& ijk) const {
         Geo3D loc;
-        loc.lon = XLONG.get_value(ijk.i, ijk.j);
-        loc.lat = XLAT.get_value(ijk.i, ijk.j);
-        loc.alt = Z.get_value(ijk);
+        loc.lon = XLONG.get(ijk);
+        loc.lat = XLAT.get(ijk);
+        loc.alt = Z.get(ijk);
         return loc;
     }
 
@@ -352,8 +541,7 @@ public:
     // Currently, this means that loc is not outside the outermost layer of grid cell centres
     inline bool can_do_interp(const Geo3D& loc) const {
         IDX2<int> ij, ijDiag;
-        bool canDoInterp = loc_to_ij_and_diag(loc, ij, ijDiag);
-        return canDoInterp;
+        return loc_to_ij_and_diag(loc, ij, ijDiag);
     }
 
     // Finds interpolation points for a location and resizes and updates interpPoints

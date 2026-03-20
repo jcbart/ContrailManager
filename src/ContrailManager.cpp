@@ -3,6 +3,7 @@
 #include <chrono>
 #include <algorithm>
 #include <format>
+#include <omp.h>
 #ifdef WITH_COCIP
 #include <CoCiP++/params.h>
 #endif
@@ -20,6 +21,15 @@
 
 void ContrailManager::init() {
     CM_LogWrite("Initialising Contrail Manager:");
+
+    // Find number of threads (using parallel region - more reliable)
+    int num_threads = 0;
+    #pragma omp parallel
+    {
+        #pragma omp master
+        num_threads = omp_get_num_threads();
+    }
+    CM_LogWrite(std::format("Number of threads: {}", num_threads));
     
     config.read();
 
@@ -141,6 +151,7 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
         + " active flights");
     
     size_t num_created = 0;
+    #pragma omp parallel for schedule(guided) reduction(+ : num_created)
     for (const Flight& flight : flights.active) {
         CM_LogWrite("Creating segments for flight: " + flight.ID);
 
@@ -175,8 +186,8 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
             }
             // Else, leg ends at wp
             else {
-                legEnd.loc = flight.waypoints[n+1].loc;
-                legEnd.time = flight.waypoints[n+1].time;
+                legEnd.loc = flight.waypoints[n + 1].loc;
+                legEnd.time = flight.waypoints[n + 1].time;
             }
 
             // Create as many segments as needed between

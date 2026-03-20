@@ -6,6 +6,7 @@ set(CM_DEP_DIR "@CM_DEP_DIR@")
 
 list(APPEND CMAKE_PREFIX_PATH "${CM_DEP_DIR}")
 
+find_dependency(OpenMP REQUIRED)
 find_dependency(yaml-cpp REQUIRED)
 find_dependency(Arrow REQUIRED)
 find_dependency(Parquet REQUIRED)

@@ -1,22 +1,32 @@
 #include <iostream>
 #include <format>
+#include <omp.h>
 #include <ESMC.h>
 #include "CMLog.h"
 #include "mapTypes.h"
 
 void CM_LogWrite(const std::string_view msg) {
-    int rc = ESMC_LogWrite(std::string(msg).c_str(), ESMC_LOGMSG_INFO);
+    #pragma critical
+    {
+        int rc = ESMC_LogWrite(std::string(msg).c_str(), ESMC_LOGMSG_INFO);
+    }
 }
 
 void CM_LogWarning(const std::string_view msg) {
-    int rc = ESMC_LogWrite(std::string(msg).c_str(), ESMC_LOGMSG_WARN);
+    #pragma critical
+    {
+        int rc = ESMC_LogWrite(std::string(msg).c_str(), ESMC_LOGMSG_WARN);
+    }
 }
 
 void CM_RaiseError(const std::string_view msg, const std::string_view filename, const int line) {
     std::string error = std::format("CM error in {}, line {}: {}", filename, line, msg);
 
     int rc = ESMC_LogWrite(error.c_str(), ESMC_LOGMSG_ERROR);
-    std::cerr << error << std::endl;
+    #pragma critical
+    {
+        std::cerr << error << std::endl;
+    }
     exit(EXIT_FAILURE);
 }
 

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <format>
 #include <chrono>
+#include <omp.h>
 #include "FlightContainer.h"
 #include "timekeeping.h"
 #include "CMLog.h"
@@ -51,6 +52,7 @@ void FlightContainer::read_datasets(const std::vector<std::string>& filepaths) {
     }
 
     // Sort waypoints in each loaded flight by time
+    #pragma omp parallel for
     for (Flight& flight : loaded) {
         std::ranges::sort(flight.waypoints, {}, &Waypoint::time);
     }

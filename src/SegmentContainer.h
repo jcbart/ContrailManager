@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <omp.h>
 #ifdef WITH_COCIP
 #include <CoCiP++/CoCiP.h>
 #include <CoCiP++/params.h>
@@ -15,6 +16,7 @@
 #include "mapTypes.h"
 #include "timekeeping.h"
 #include "FlightInputs.h"
+#include "CMLog.h"
 
 // Virtual contrail segment container structure
 struct ISegmentContainer {
@@ -66,9 +68,10 @@ private:
         const FlightInputs& flightInputs, const Geo3D& backLoc, const Geo3D& frontLoc,
         const float length);
 
-    // Update isOld flag for each segment if past age threshold (maxContrailAge_s) at a given
-    // time
+    // Update isOld flag for each segment if past age threshold (maxContrailAge_s) at a given time
+    // (parallelised)
     void flagOldSegments(const CMTime& time) {
+        #pragma omp parallel for
         for (SegmentType& seg : vec) {
             if ((time - seg.birthTime).to_s() > maxContrailAge_s) {
                 seg.isOld = true;
@@ -76,15 +79,14 @@ private:
         }
     }
 
-    // Updates isTooMassive flag for each segment if past size threshold
+    // Updates isTooMassive flag for each segment if past size threshold (parallelised)
     void flagTooMassiveSegments() {
+        #pragma omp parallel for
         for (SegmentType& seg : vec) {
-            IDX3<int> ijkCurr;
-            // Should be safe to ignore return value
-            bool inGrid = domPtr->loc_to_ijk(seg.centre, ijkCurr);
+            IDX3<int> ijkCurr = domPtr->loc_to_ijk(seg.centre);
 
-            double gridVapourMass = domPtr->QV.get_value(ijkCurr)
-                                    * domPtr->DRYMASS.get_value(ijkCurr);
+            double gridVapourMass = domPtr->QV.get(ijkCurr)
+                                    * domPtr->DRYMASS.get(ijkCurr);
 
             if (seg.M_v_accum / gridVapourMass > maxAccumVapRatio) {
                 seg.isTooMassive = true;
@@ -113,25 +115,32 @@ public:
         );
 
         // Add to vector; use move to support segments which have unique_ptr
-        vec.push_back(std::move(newSeg));
+        #pragma omp critical
+        {
+            vec.push_back(std::move(newSeg));
+        }
 
         CM_LogWrite("Segment created with birth time: " + newSeg.birthTime.asString());
         CM_LogWrite("Centre location: " + newSeg.centre.asString());
         CM_LogWrite("Length: " + std::to_string(newSeg.length));
     }
 
-    // Evolve all segment plumes
+    // Evolve all segment plumes (parallelised)
     void evolvePlumes(const CMTime& startTime, const CMTime& stopTime) override {
+        // Using schedule(guided) to balance work when segments take different computational time
+        // to evolve
+        #pragma omp parallel for schedule(guided)
         for (SegmentType& seg : vec) {
             seg.evolve(startTime, stopTime);
         }
     }
 
-    // Advect all segments and remove if out of bounds
+    // Advect all segments and remove if out of bounds (parallelised)
     void advectSegments(const CMTime& startTime, const CMTime& stopTime) override {
         CM_LogWrite("Advecting segments");
         
         size_t numOOB = 0;
+        #pragma omp parallel for reduction(+ : numOOB)
         for (SegmentType& seg : vec) {
             seg.advect(startTime, stopTime);
             if (seg.outOfBounds) {
@@ -149,7 +158,7 @@ public:
         );
     }
 
-    // Dump old, massive, or dead segments
+    // Dump old, massive, or dead segments (parallelised)
     void dump(const CMTime& stopTime) override {
         CM_LogWrite("Dumping old, massive, and dead segments");
         
@@ -160,6 +169,7 @@ public:
         flagTooMassiveSegments();
 
         size_t numOld = 0, numMassive = 0, numDead = 0;
+        #pragma omp parallel for reduction(+ : numOld, numMassive, numDead)
         for (const SegmentType& seg : vec) {
             if (seg.isOld) {
                 numOld++;
@@ -177,6 +187,7 @@ public:
 
         if (domPtr->twoWayCoupling) {
             // Dump if old, massive, or dead
+            #pragma omp parallel for
             for (SegmentType& seg : vec) {
                 if (seg.shouldBeDumped()) {
                     seg.dump();
@@ -199,8 +210,9 @@ public:
         CM_LogWrite("Number of old/massive/dead: " + std::to_string(numBefore - numAfter));
     }
 
-    // Construct QIcontrail using live segment data
+    // Construct QIcontrail using live segment data (parallelised)
     void constructQIcontrail() override {
+        #pragma omp parallel for
         for (SegmentType& seg : vec) {
             seg.addToQIcontrail();
         }

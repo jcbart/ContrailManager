@@ -6,6 +6,7 @@ The **Contrail Manager** is a library for simulating contrails with online feedb
 
 System requirements:
 - C++ compiler supporting C++20
+- OpenMP (likely included with compiler)
 - CMake
 - Git
 - [ESMF](https://earthsystemmodeling.org/)

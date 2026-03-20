@@ -39,90 +39,90 @@ extern "C" void init_domainlc_extern(ContrailManager* CMptr, int ids, int ide, i
 
 // Returns a pointer to the XLAT data
 extern "C" float* get_XLAT_extern(ContrailManager* CMptr) {
-    return CMptr->domain->XLAT.data;
+    return CMptr->domain->XLAT.get_data();
 }
 
 // Returns a pointer to the XLONG data
 extern "C" float* get_XLONG_extern(ContrailManager* CMptr) {
-    return CMptr->domain->XLONG.data;
+    return CMptr->domain->XLONG.get_data();
 }
 
 // Returns a pointer to the Z data
 extern "C" float* get_Z_extern(ContrailManager* CMptr) {
-    return CMptr->domain->Z.data;
+    return CMptr->domain->Z.get_data();
 }
 
 // Returns a pointer to the Z_AT_W data
 extern "C" float* get_Z_AT_W_extern(ContrailManager* CMptr) {
-    return CMptr->domain->Z_AT_W.data;
+    return CMptr->domain->Z_AT_W.get_data();
 }
 
 // Returns a pointer to the DRYMASS data
 extern "C" float* get_DRYMASS_extern(ContrailManager* CMptr) {
-    return CMptr->domain->DRYMASS.data;
+    return CMptr->domain->DRYMASS.get_data();
 }
 
 // Returns a pointer to the T_POT data
 extern "C" float* get_T_POT_extern(ContrailManager* CMptr) {
-    return CMptr->domain->T_POT.data;
+    return CMptr->domain->T_POT.get_data();
 }
 
 // Returns a pointer to the P data
 extern "C" float* get_P_extern(ContrailManager* CMptr) {
-    return CMptr->domain->P.data;
+    return CMptr->domain->P.get_data();
 }
 
 // Returns a pointer to the U data
 extern "C" float* get_U_extern(ContrailManager* CMptr) {
-    return CMptr->domain->U.data;
+    return CMptr->domain->U.get_data();
 }
 
 // Returns a pointer to the V data
 extern "C" float* get_V_extern(ContrailManager* CMptr) {
-    return CMptr->domain->V.data;
+    return CMptr->domain->V.get_data();
 }
 
 // Returns a pointer to the W data
 extern "C" float* get_W_extern(ContrailManager* CMptr) {
-    return CMptr->domain->W.data;
+    return CMptr->domain->W.get_data();
 }
 
 // Returns a pointer to the TNSR data
 extern "C" float* get_TNSR_extern(ContrailManager* CMptr) {
-    return CMptr->domain->TNSR.data;
+    return CMptr->domain->TNSR.get_data();
 }
 
 // Returns a pointer to the OLR data
 extern "C" float* get_OLR_extern(ContrailManager* CMptr) {
-    return CMptr->domain->OLR.data;
+    return CMptr->domain->OLR.get_data();
 }
 
 // Returns a pointer to the QV data
 extern "C" float* get_QV_extern(ContrailManager* CMptr) {
-    return CMptr->domain->QV.data;
+    return CMptr->domain->QV.get_data();
 }
 
 // Returns a pointer to the deltaQV data
 extern "C" float* get_deltaQV_extern(ContrailManager* CMptr) {
-    return CMptr->domain->deltaQV.data;
+    return CMptr->domain->deltaQV.get_data();
 }
 
 // Returns a pointer to the QI data
 extern "C" float* get_QI_extern(ContrailManager* CMptr) {
-    return CMptr->domain->QI.data;
+    return CMptr->domain->QI.get_data();
 }
 
 // Returns a pointer to the deltaQI data
 extern "C" float* get_deltaQI_extern(ContrailManager* CMptr) {
-    return CMptr->domain->deltaQI.data;
+    return CMptr->domain->deltaQI.get_data();
 }
 
 // Returns a pointer to the deltaNI data
 extern "C" float* get_deltaNI_extern(ContrailManager* CMptr) {
-    return CMptr->domain->deltaNI.data;
+    return CMptr->domain->deltaNI.get_data();
 }
 
 // Returns a pointer to the QIcontrail data
 extern "C" float* get_QIcontrail_extern(ContrailManager* CMptr) {
-    return CMptr->domain->QIcontrail.data;
+    return CMptr->domain->QIcontrail.get_data();
 }

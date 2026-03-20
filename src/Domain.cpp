@@ -132,9 +132,9 @@ bool Domain::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const {
     w = 0;
     // Find values at loc
     for (int i = 0; i < interpPoints.size(); i++) {
-        u += U.get_value(interpPoints[i]) * interpWeights[i];
-        v += V.get_value(interpPoints[i]) * interpWeights[i];
-        w += W.get_value(interpPoints[i]) * interpWeights[i];
+        u += U.get(interpPoints[i]) * interpWeights[i];
+        v += V.get(interpPoints[i]) * interpWeights[i];
+        w += W.get(interpPoints[i]) * interpWeights[i];
     }
     return true;
 }

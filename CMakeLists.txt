@@ -61,6 +61,7 @@ set(CMAKE_CXX_COMPILER ${ESMF_CXXCOMPILER})
 project(ContrailManager LANGUAGES CXX)
 
 # Find libraries
+find_package(OpenMP REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
 find_package(Arrow CONFIG REQUIRED)
 find_package(Parquet CONFIG REQUIRED)
@@ -104,6 +105,7 @@ target_include_directories(contrailmanager
 
 target_link_libraries(contrailmanager
     PRIVATE
+        OpenMP::OpenMP_CXX
         yaml-cpp::yaml-cpp
         Arrow::arrow_static
         Parquet::parquet_static
