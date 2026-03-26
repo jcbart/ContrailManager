@@ -30,9 +30,7 @@ struct SegmentCoCiP : public Segment {
     bool doneFormation = false;
 
     // Constructor
-    SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
-        const FlightInputs& flightInputs, Domain* domPtr, const Geo3D& backLoc,
-        const Geo3D& frontLoc, const float length, std::shared_ptr<Params> params);
+    SegmentCoCiP(const FlightInputs& flightInputs, Domain* domPtr, std::shared_ptr<Params> params);
 
     void evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd) override;
 
@@ -41,8 +39,9 @@ struct SegmentCoCiP : public Segment {
     void addToQIcontrail() override;
 
 private:
-    // Update CoCiP's internal local meteorology
-    void updateMet();
+    // Update CoCiP's internal local meteorology; return false if interpolation requirement
+    // is not satisfied (i.e. too low altitude)
+    bool updateMet();
 };
 #endif
 

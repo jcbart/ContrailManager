@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <omp.h>
 #include "Flight.h"
 
 // Forward declarations
@@ -18,14 +19,17 @@ private:
     // Only valid (and used) during dataset reading
     std::unordered_map<std::string, size_t> flightIDIndexMap;
 
+    void read_file(const std::string& filepath);
+
+    void read_parquet(const std::string& filepath);
+
 public:
     // Flights loaded in memory, sorted by first waypoint time
     std::vector<Flight> loaded;
     // Flights currently in their trajectory
     std::vector<Flight> active;
 
-    // Read dataset
-    void read_datasets();
+    float maxInitialSegLen; // Maximum length of a new segment (m)
 
     // Read datasets from paths
     void read_datasets(const std::vector<std::string>& filepaths);
@@ -34,8 +38,17 @@ public:
     // flights starting their trajectory from FlightContainer::loaded
     void update_active(const CMTime& startTime, const CMTime& stopTime);
 
-private:
-    void read_parquet(const std::string& filepath);
+    // Create segments from each flight (parallelised)
+    // For each segment, a flight passes the resulting FlightInputs to `emit`
+    template <typename Emit>
+    void create_segments(const CMTime& startTime, const CMTime& stopTime, const Domain& domain,
+        Emit&& emit) {
+        
+        #pragma omp parallel for schedule(guided)
+        for (const Flight& flight : active) {
+            flight.createSegments(startTime, stopTime, domain, maxInitialSegLen, emit);
+        }
+    }
 };
 
 #endif

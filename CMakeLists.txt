@@ -134,7 +134,6 @@ set(INSTALL_INPUT_FILES ${CMAKE_CURRENT_BINARY_DIR}/CM-config.yaml)
 if(WITH_COCIP)
     list(APPEND INSTALL_TARGETS cocip build_config)
     list(APPEND INSTALL_INPUT_FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/${COCIP_RELATIVE_PATH}/CoCiP-config.yaml"
         "${CMAKE_CURRENT_BINARY_DIR}/${COCIP_RELATIVE_PATH}/CoCiP-params.yaml"
     )
 endif()

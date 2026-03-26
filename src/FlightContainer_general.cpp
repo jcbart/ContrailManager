@@ -7,47 +7,80 @@
 #include "timekeeping.h"
 #include "CMLog.h"
 
-void FlightContainer::read_datasets() {
-    // Read flight data etc
-    Flight test_flight("1");
-    CMTime time1 = {2025, 4, 1, 6, 0, 0};
-    CMTime time2 = {2025, 4, 1, 6, 3, 0};
-    Geo3D loc1 = {-9.7, 52.1, 10500};
-    Geo3D loc2 = {-9.1, 52.1, 10500};
-    test_flight.waypoints.emplace_back(time1, loc1);
-    test_flight.waypoints.emplace_back(time2, loc2);
-    loaded.push_back(test_flight);
+void FlightContainer::read_file(const std::string& filepath) {
+    CM_LogWrite("Reading flight dataset: " + filepath);
+
+    // Check file exists
+    if (!std::filesystem::exists(filepath)) {
+        CM_RaiseError("File not found: " + filepath, __FILE__, __LINE__);
+    }
+
+    // File path
+    std::filesystem::path path(filepath);
+    // File extension
+    std::string extension = path.extension().string();
+
+    // Read file according to its extension
+    if (extension == ".parquet" || extension == ".pq") {
+        read_parquet(filepath);
+    }
+    else {
+        CM_RaiseError("Flight dataset '" + filepath + "' has unsupported file extension.",
+            __FILE__, __LINE__);
+    }
 }
 
 void FlightContainer::read_datasets(const std::vector<std::string>& filepaths) {
     // Time at start of reading
     std::chrono::steady_clock::time_point readTimeStart = std::chrono::steady_clock::now();
 
+    constexpr std::string_view PREFIX_TAG = "PREFIX:";
+
     for (const std::string& filepath : filepaths) {
         // Ignore NONE used for idle Contrail Manager
         if (filepath == "NONE") {
-            continue;
+            return;
         }
 
-        CM_LogWrite("Reading flight dataset: " + filepath);
+        // If a prefix path
+        if (filepath.starts_with(PREFIX_TAG)) {
+            const std::filesystem::path prefixPath = filepath.substr(PREFIX_TAG.size());
 
-        // Check file exists
-        if (!std::filesystem::exists(filepath)) {
-            CM_RaiseError("File not found: " + filepath, __FILE__, __LINE__);
+            const std::string filePrefix = prefixPath.filename().string();
+
+            if (filePrefix.empty()) {
+                CM_RaiseError(std::format("No prefix provided after {}", PREFIX_TAG),
+                    __FILE__, __LINE__);
+            }
+
+            // If prefix includes directory path, must search that directory
+            const std::filesystem::path dir = prefixPath.has_parent_path()
+                ? prefixPath.parent_path()
+                : std::filesystem::current_path();
+
+            // Add all matching files in search directory to vector
+            std::vector<std::string> matchedFilepaths;
+            for (const std::filesystem::directory_entry& entry
+                    : std::filesystem::directory_iterator(dir)) {
+                if (entry.path().filename().string().starts_with(filePrefix)) {
+                    matchedFilepaths.push_back(entry.path().string());
+                }
+            }
+
+            CM_LogWrite(std::format("Found {} files matching prefix \"{}\"",
+                matchedFilepaths.size(), prefixPath.string()));
+            
+            // Sort by name since this is likely to result in quicker waypoint and flight
+            // sorting later
+            std::ranges::sort(matchedFilepaths);
+
+            for (const std::string& match : matchedFilepaths) {
+                read_file(match);
+            }
         }
-
-        // File path
-        std::filesystem::path path(filepath);
-        // File extension
-        std::string extension = path.extension().string();
-
-        // Read file according to its extension
-        if (extension == ".parquet" || extension == ".pq") {
-            read_parquet(filepath);
-        }
+        // Else, regular path
         else {
-            CM_RaiseError("Flight dataset '" + filepath + "' has unsupported file extension.",
-                __FILE__, __LINE__);
+            read_file(filepath);
         }
     }
 
@@ -77,13 +110,6 @@ void FlightContainer::read_datasets(const std::vector<std::string>& filepaths) {
     // Warn if no flights have been read
     if (loaded.empty()) {
         CM_LogWarning("No flights read from file. Contrail Manager running idle.");
-    }
-
-    for (const Flight& flight : loaded) {
-        CM_LogWrite("Flight ID: " + flight.ID);
-        for (const Waypoint& wp : flight.waypoints) {
-            CM_LogWrite("Waypoint time: " + wp.time.asString());
-        }
     }
 }
 

@@ -11,31 +11,37 @@
 #include "mapTypes.h"
 #include "CMLog.h"
 
-SegmentCoCiP::SegmentCoCiP(const std::string& parentID, const CMTime& birthTime,
-    const FlightInputs& flightInputs, Domain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc,
-    const float length, std::shared_ptr<Params> params)
-    : Segment(parentID, birthTime, flightInputs, domPtr, backLoc, frontLoc, length) {
+SegmentCoCiP::SegmentCoCiP(const FlightInputs& flightInputs, Domain* domPtr,
+    std::shared_ptr<Params> params)
+    : Segment(flightInputs, domPtr) {
     
-    cocip.met = std::unique_ptr<ArrayMet<float>>(new ArrayMet<float>(params->dz_m, domPtr->get_altSize()));
+    cocip.met = std::make_unique<ArrayMet<float>>(params->dz_m, domPtr->get_kSize());
     cocip.params = params;
-    // give flight inputs
-    cocip.engine_efficiency = flightInputs.engine_efficiency;
-    cocip.ei_h2o = flightInputs.ei_h2o;
-    cocip.q_fuel = flightInputs.q_fuel;
-    cocip.aircraft_mass = flightInputs.aircraft_mass;
-    cocip.wingspan = flightInputs.wingspan;
-    cocip.true_airspeed = flightInputs.true_airspeed;
-    cocip.fuel_flow = flightInputs.fuel_flow;
-    cocip.T_exhaust = flightInputs.T_exhaust;
-    cocip.nvpm_ei_n = flightInputs.nvpm_ei_n;
+    // give flight inputs (flightEmissions is taken from flightInputs)
+    cocip.engine_efficiency = flightEmissions.engine_efficiency;
+    cocip.ei_h2o = flightEmissions.ei_h2o;
+    cocip.q_fuel = flightEmissions.q_fuel;
+    cocip.aircraft_mass = flightEmissions.aircraft_mass;
+    cocip.wingspan = flightEmissions.wingspan;
+    cocip.true_airspeed = flightEmissions.true_airspeed;
+    cocip.fuel_flow = flightEmissions.fuel_flow;
+    cocip.nvpm_ei_n = flightEmissions.nvpm_ei_n;
 }
 
-void SegmentCoCiP::updateMet() {
+bool SegmentCoCiP::updateMet() {
     IDX3<int> ijkCurr = domPtr->loc_to_ijk(centre);
 
     // Indices at surface of column containing contrail
     IDX3<int> ijkSurface = ijkCurr;
     ijkSurface.k = domPtr->get_kds();
+
+    // CoCiP requires that at least one grid cell centre be below the interpolation point
+    // (at alt - dz_m) and at least one grid cell centre be above current altitude,
+    // so return false if not
+    if (centre.alt - cocip.params->dz_m < domPtr->Z.get(ijkSurface)
+        || ijkCurr.k >= domPtr->get_kde()) {
+        return false;
+    }
 
     cocip.met->T_POT = domPtr->T_POT.get_ptr(ijkSurface);
     cocip.met->P = domPtr->P.get_ptr(ijkSurface);
@@ -48,6 +54,7 @@ void SegmentCoCiP::updateMet() {
 
     cocip.met->tnsr = domPtr->TNSR.get(ijkCurr);
     cocip.met->olr = domPtr->OLR.get(ijkCurr);
+    return true;
 }
 
 void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
@@ -58,7 +65,10 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
     cocip.datetime.set(timeStepEnd.timepoint);
 
     // Get local meteorology
-    updateMet();
+    if (!updateMet()) {
+        outOfBounds = true;
+        return;
+    }
     
     if (!doneFormation) {
         cocip.formation();
@@ -70,7 +80,7 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
 
         if (!cocip.sac) {
             isDead = true;
-            CM_LogWrite("CoCiP: no formation");
+            //CM_LogWrite("CoCiP: no formation");
 
             // If two-way coupling, return water vapour to atmosphere
             if (domPtr->twoWayCoupling) {
@@ -90,7 +100,7 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
 
         if (!cocip.persistent) {
             isDead = true;
-            CM_LogWrite("CoCiP: not initially persistent");
+            //CM_LogWrite("CoCiP: not initially persistent");
 
             // If two-way coupling, return water vapour to atmosphere and assume !cocip.persistent
             // is because IWC -> 0
@@ -121,9 +131,9 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
         //    ice mass + vapour mass inside - vapour mass exhausted
         M_v_accum = M_ice + M_v_inside - M_v_exhaust;
 
-        CM_LogWrite("CoCiP M_v_exhaust: " + std::to_string(M_v_exhaust)
-            + ", M_ice (initial): " + std::to_string(M_ice)
-            + ", M_v_accum (initial): " + std::to_string(M_v_accum));
+        //CM_LogWrite("CoCiP M_v_exhaust: " + std::to_string(M_v_exhaust)
+        //    + ", M_ice (initial): " + std::to_string(M_ice)
+        //    + ", M_v_accum (initial): " + std::to_string(M_v_accum));
 
         doneFormation = true;
     }
@@ -152,9 +162,9 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
     // using the interpolated humidity found by CoCiP
     M_v_accum += cocip.met->specific_humidity * (M_air_after - M_air_before);
 
-    CM_LogWrite("CoCiP width: " + std::to_string(cocip.width) + ", depth: "
-        + std::to_string(cocip.depth) + ", IWC: " + std::to_string(cocip.iwc) + ", M_v_accum: "
-        + std::to_string(M_v_accum));
+    //CM_LogWrite("CoCiP width: " + std::to_string(cocip.width) + ", depth: "
+    //    + std::to_string(cocip.depth) + ", IWC: " + std::to_string(cocip.iwc) + ", M_v_accum: "
+    //    + std::to_string(M_v_accum));
 
     // The below is only required for a two-way coupling in which some water vapour is continually
     // exchanged through sedimentation

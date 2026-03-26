@@ -10,6 +10,7 @@
 #include <ranges>
 #include "mapTypes.h"
 #include "Projection.h"
+#include "thermo.h"
 #include "CMLog.h"
 
 template <typename T>
@@ -318,12 +319,14 @@ public:
 
 class Domain {
 private:
-    // End indices are one smaller than in WRF because CM only uses a staggered grid for Z_AT_W
-    // Longitude is i/x/u direction
-    // Latitude is j/y/v direction
-    // Altitude is k/z/w direction
-    const int ids, ide, jds, jde, kds, kde;
-    const int lonSize, latSize, altSize;
+    // CM does not use a staggered grid except for Z_AT_W
+    const int ids; // Grid starting index in dimension i
+    const int ide; // Grid ending index in dimension i
+    const int jds; // Grid starting index in dimension j
+    const int jde; // Grid ending index in dimension j
+    const int kds; // Grid starting index in dimension k
+    const int kde; // Grid ending index in dimension k
+    const int iSize, jSize, kSize;
 
     // Projection (std::variant type defined in Projection.h)
     ProjVariant proj;
@@ -337,6 +340,7 @@ public:
     Variable3D<float> Z_AT_W; // Height above sea level at cell interfaces (staggered in z-direction; m)
     Variable3D<float> DRYMASS; // Dry mass in grid cell (kg)
     Variable3D<float> T_POT; // Potential temperature (K)
+    Variable3D<float> deltaT_POT; // Change in potential temperature (K)
     Variable3D<float> P; // Total air pressure (Pa)
     Variable3D<float> U; // Wind speed in Eastward direction (m s-1)
     Variable3D<float> V; // Wind speed in Northward direction (m s-1)
@@ -358,9 +362,9 @@ public:
     int get_jde() const { return jde; }
     int get_kds() const { return kds; }
     int get_kde() const { return kde; }
-    int get_lonSize() const { return lonSize; };
-    int get_latSize() const { return latSize; };
-    int get_altSize() const { return altSize; };
+    int get_iSize() const { return iSize; };
+    int get_jSize() const { return jSize; };
+    int get_kSize() const { return kSize; };
 
     // Constructor
     template <typename ProjType>
@@ -380,6 +384,17 @@ public:
     void find_deltaQV() {
         for (size_t i = 0; i < deltaQV.get_num_elements(); i++) {
             deltaQV.get_data()[i] = QV.get_data()[i] - QVsave.get_data()[i];
+        }
+    }
+
+    // Calculate deltaT_POT due to deltaQI (sublimation/deposition)
+    void find_deltaT_POT() {
+        for (size_t i = 0; i < deltaT_POT.get_num_elements(); i++) {
+            double slhs = thermo::slh_sublimation_ice(
+                thermo::theta_to_T(T_POT.get_data()[i], P.get_data()[i])
+            );
+            double delta_T = slhs * deltaQI.get_data()[i] / thermo::c_pd;
+            deltaT_POT.get_data()[i] = thermo::T_to_theta(delta_T, P.get_data()[i]);
         }
     }
 
@@ -454,7 +469,7 @@ public:
         // Correct assumption that i and j start at 0
         ij.i += ids;
         ij.j += jds;
-        if (ij.i < ids && ij.i > ide && ij.j < jds && ij.j > jde) {
+        if (ij.i < ids || ij.i > ide || ij.j < jds || ij.j > jde) {
             return false;
         }
         return true;
@@ -477,16 +492,15 @@ public:
     // Updates ijk with the lon/lat/alt grid cell indices which loc lies within
     // Returns false if loc is not in grid
     inline bool loc_to_ijk(const Geo3D& loc, IDX3<int>& ijk) const {
-        bool inGrid;
         // Get ij
         IDX2<int> ij;
-        inGrid = loc_to_ij(loc, ij);
-        if (!inGrid) { return false; }
+        if (!loc_to_ij(loc, ij)) {
+            return false;
+        }
         // Turn IDX2 object into IDX3
         ijk = ij;
         // Get k
-        inGrid = find_k_inside(loc, ijk, ijk.k);
-        return inGrid;
+        return find_k_inside(loc, ijk, ijk.k);
     }
 
     // Returns the lon/lat/alt grid cell indices which loc lies within
@@ -506,14 +520,15 @@ public:
     // Returns false if either ij or ijDiag are not in the grid
     inline bool loc_to_ij_and_diag(const Geo3D& loc, IDX2<int>& ij, IDX2<int>& ijDiag) const {
         IDX2<double> ijD; // ij as a double
-        bool inGrid = loc_to_ij(loc, ijD);
-        if (!inGrid) { return false; }
+        if (!loc_to_ij(loc, ijD)) {
+            return false;
+        }
 
         ij = ijD; // Convert to IDX2<int>
 
         ijDiag.i = (ijD.i - floor(ijD.i) < 0.5) ? (ij.i - 1) : (ij.i + 1);
         ijDiag.j = (ijD.j - floor(ijD.j) < 0.5) ? (ij.j - 1) : (ij.j + 1);
-        if ((ijDiag.i < ids) || (ijDiag.i > ide) || (ijDiag.j < jds) || (ijDiag.j > jde)) {
+        if (ijDiag.i < ids || ijDiag.i > ide || ijDiag.j < jds || ijDiag.j > jde) {
             // Diag grid cell not in grid
             return false;
         }
@@ -540,8 +555,8 @@ public:
     // Returns true if it is possible to do grid interpolation for loc
     // Currently, this means that loc is not outside the outermost layer of grid cell centres
     inline bool can_do_interp(const Geo3D& loc) const {
-        IDX2<int> ij, ijDiag;
-        return loc_to_ij_and_diag(loc, ij, ijDiag);
+        std::vector<IDX3<int>> interPoints;
+        return (find_interp_points(loc, interPoints));
     }
 
     // Finds interpolation points for a location and resizes and updates interpPoints

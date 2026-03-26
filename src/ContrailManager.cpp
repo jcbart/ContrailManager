@@ -1,7 +1,7 @@
 #include <string>
 #include <memory>
 #include <chrono>
-#include <algorithm>
+//#include <algorithm>
 #include <format>
 #include <omp.h>
 #ifdef WITH_COCIP
@@ -65,6 +65,7 @@ void ContrailManager::init() {
     segments->maxContrailAge_s = config.maxContrailAge_s;
     segments->maxAccumVapRatio = config.maxAccumVapRatio;
 
+    flights.maxInitialSegLen = config.maxInitialSegLen;
     flights.read_datasets(config.flightDatasetPaths);
 
     CM_LogWrite("Contrail Manager initialised");
@@ -149,86 +150,18 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
 void ContrailManager::create_segments(const CMTime& startTime, const CMTime& stopTime) {
     CM_LogWrite("Creating segments for " + std::to_string(flights.active.size())
         + " active flights");
-    
-    size_t num_created = 0;
-    #pragma omp parallel for schedule(guided) reduction(+ : num_created)
-    for (const Flight& flight : flights.active) {
-        CM_LogWrite("Creating segments for flight: " + flight.ID);
 
-        // Find last waypoint passed at start and end of time interval
-        size_t lastWpStart = flight.find_last_wp(startTime);
-        size_t lastWpEnd = flight.find_last_wp(stopTime);
+    size_t numBefore = segments->getSize();
 
-        // Iterate through each leg (sectioned by waypoints) between start and end locations
-        for (size_t n = lastWpStart; n <= lastWpEnd; n++) {
-            // Find start and end waypoints of leg
-            Waypoint legStart, legEnd;
-            // If leg is before first or after last waypoint, cannot find flight loc
-            if (n == -1 || n == flight.numWaypoints() - 1) {
-                continue;
-            }
-            // If first leg, start from flight start loc (not wp)
-            if (n == lastWpStart) {
-                // Safe to ignore return value
-                bool startFound = flight.find_loc(startTime, legStart.loc);
-                legStart.time = startTime;
-            }
-            // Else, leg starts at wp
-            else {
-                legStart.loc = flight.waypoints[n].loc;
-                legStart.time = flight.waypoints[n].time;
-            }
-            // If last leg, end at flight end loc (not wp)
-            if (n == lastWpEnd) {
-                // Safe to ignore return value
-                bool endFound = flight.find_loc(stopTime, legEnd.loc);
-                legEnd.time = stopTime;
-            }
-            // Else, leg ends at wp
-            else {
-                legEnd.loc = flight.waypoints[n + 1].loc;
-                legEnd.time = flight.waypoints[n + 1].time;
-            }
-
-            // Create as many segments as needed between
-            double distInLeg = great_circle_dist(legStart.loc, legEnd.loc);
-            int numNewSegments = ceil(distInLeg / config.maxInitialSegLen);
-            double segLen = distInLeg / numNewSegments;
-            Geo3D backLoc = legStart.loc;
-            Geo3D frontLoc;
-            for (int i = 0; i < numNewSegments; i++) {
-                CM_LogWrite(std::format("Segment {}:", i));
-
-                // Find new front loc
-                // Fraction of the total distance where the front of the segment is
-                double f_front = (i + 1.)/numNewSegments;
-                frontLoc = great_circle_interp(f_front, legStart.loc, legEnd.loc);
-
-                // Find if interpolation is possible
-                // If interpolation is not possible for any segment location, don't add the segment
-                bool canDoInterp;
-                canDoInterp = domain->can_do_interp(backLoc);
-                if (!canDoInterp) { continue; }
-                canDoInterp = domain->can_do_interp(frontLoc);
-                if (!canDoInterp) { continue; }
-
-                // Find birth time
-                // Fraction of leg duration passed at centre of segment
-                double f_centre = (i + 0.5) / numNewSegments;
-                CMTime birthTime = legStart.time + f_centre * (legEnd.time - legStart.time);
-
-                // Add emissions info
-                FlightInputs flightInputs = flight.createFlightInputs(legStart, legEnd, f_centre);
-
-                // Add segment to container
-                segments->addItem(flight.ID, birthTime, flightInputs, backLoc, frontLoc, segLen);
-
-                // Set back loc for next segment
-                backLoc = frontLoc;
-
-                num_created++;
-            }
+    // Create segments from each flight using lambda function telling flights what to do with
+    // resulting FlightInputs objects
+    flights.create_segments(startTime, stopTime, *domain,
+        [this](FlightInputs inputs) {
+            segments->addItem(inputs);
         }
-    }
-    CM_LogWrite(std::format("Number of segments created: {}", num_created));
+    );
+
+    size_t numAfter = segments->getSize();
+    
+    CM_LogWrite(std::format("Number of segments created: {}", (numAfter - numBefore)));
 }

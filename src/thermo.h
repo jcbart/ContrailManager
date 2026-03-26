@@ -22,9 +22,14 @@ constexpr double rho_d(double T, double P) {
     return (P / (R_D * T));
 }
 
-// Returns temperature (K) given potential temperature (K) and total air pressure (Pa)
+// Returns temperature (K) given potential temperature (K) and air pressure (Pa)
 constexpr double theta_to_T(double theta, double P) {
     return theta * std::pow(P / P0, R_D / c_pd);
+}
+
+// Returns potential temperature (K) given temperature (K) and air pressure (Pa)
+constexpr double T_to_theta(double T, double P) {
+    return T * std::pow(P0 / P, R_D / c_pd);
 }
 
 // Returns specific humidity (kg (kg air)-1) given water vapour mass mixing ratio
@@ -65,6 +70,11 @@ constexpr double e_sat_ice(double T) {
 // Returns saturation specific humidity over ice (kg (kg air)-1)
 constexpr double q_sat_ice(double T, double P) {
     return (EPS * e_sat_ice(T) / P);
+}
+
+// Returns specific latent heat of sublimation from and of deposition to ice (J kg-1)
+constexpr double slh_sublimation_ice(double T) {
+    return 1e3 * (2834.1 - 0.29 * (T + ABS_ZERO) - 4e-3 * (T + ABS_ZERO) * (T + ABS_ZERO));
 }
 
 }

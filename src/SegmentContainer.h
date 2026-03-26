@@ -39,9 +39,7 @@ struct ISegmentContainer {
     virtual size_t getSize() const = 0;
 
     // Add segment to container; assumes segment has been checked to be inside domain
-    virtual void addItem(const std::string& parentID, const CMTime& birthTime,
-        const FlightInputs& flightInputs, const Geo3D& backLoc, const Geo3D& frontLoc,
-        const float length) = 0;
+    virtual void addItem(const FlightInputs& flightInputs) = 0;
     
     // Evolve all segment plumes
     virtual void evolvePlumes(const CMTime& startTime, const CMTime& stopTime) = 0;
@@ -64,9 +62,7 @@ private:
     std::vector<SegmentType> vec;
 
     // Returns a new object of SegmentType; allows plume model-specific initialisation
-    inline SegmentType newSegmentInstance(const std::string& parentID, const CMTime& birthTime,
-        const FlightInputs& flightInputs, const Geo3D& backLoc, const Geo3D& frontLoc,
-        const float length);
+    inline SegmentType newSegmentInstance(const FlightInputs& flightInputs);
 
     // Update isOld flag for each segment if past age threshold (maxContrailAge_s) at a given time
     // (parallelised)
@@ -101,28 +97,16 @@ public:
     }
 
     // Add segment to container; assumes segment has been checked to be inside domain
-    void addItem(const std::string& parentID, const CMTime& birthTime,
-        const FlightInputs& flightInputs, const Geo3D& backLoc, const Geo3D& frontLoc,
-        const float length) override {
-
-        SegmentType newSeg = newSegmentInstance(
-            parentID,
-            birthTime,
-            flightInputs,
-            backLoc,
-            frontLoc,
-            length
-        );
-
-        // Add to vector; use move to support segments which have unique_ptr
+    void addItem(const FlightInputs& flightInputs) override {
+        // Add to vector
         #pragma omp critical
         {
-            vec.push_back(std::move(newSeg));
+            vec.push_back(newSegmentInstance(flightInputs));
         }
 
-        CM_LogWrite("Segment created with birth time: " + newSeg.birthTime.asString());
-        CM_LogWrite("Centre location: " + newSeg.centre.asString());
-        CM_LogWrite("Length: " + std::to_string(newSeg.length));
+        //CM_LogWrite("Segment created with birth time: " + newSeg.birthTime.asString());
+        //CM_LogWrite("Centre location: " + newSeg.centre.asString());
+        //CM_LogWrite("Length: " + std::to_string(newSeg.length));
     }
 
     // Evolve all segment plumes (parallelised)
@@ -131,7 +115,10 @@ public:
         // to evolve
         #pragma omp parallel for schedule(guided)
         for (SegmentType& seg : vec) {
-            seg.evolve(startTime, stopTime);
+            // Check segment is in bounds in case findDependentLocs failed to find centre
+            if (!seg.outOfBounds) {
+                seg.evolve(startTime, stopTime);
+            }
         }
     }
 
@@ -148,7 +135,7 @@ public:
             }
         }
 
-        CM_LogWrite("Number out of bounds: " + std::to_string(numOOB));
+        CM_LogWrite(std::format("Number out of bounds: {}", numOOB));
 
         std::erase_if(
             vec,
@@ -182,8 +169,8 @@ public:
             }
         }
 
-        CM_LogWrite("Number of old: " + std::to_string(numOld) + ", number of massive: "
-            + std::to_string(numMassive) + ", number of dead: " + std::to_string(numDead));
+        CM_LogWrite(std::format("Number of old: {}, number of massive: {}, number of dead: {}",
+            numOld, numMassive, numDead));
 
         if (domPtr->twoWayCoupling) {
             // Dump if old, massive, or dead
@@ -207,7 +194,7 @@ public:
         
         size_t numAfter = vec.size();
         
-        CM_LogWrite("Number of old/massive/dead: " + std::to_string(numBefore - numAfter));
+        CM_LogWrite("Number removed: " + std::to_string(numBefore - numAfter));
     }
 
     // Construct QIcontrail using live segment data (parallelised)
@@ -221,14 +208,11 @@ public:
 
 #ifdef WITH_COCIP
 template <>
-inline SegmentCoCiP SegmentContainer<SegmentCoCiP>::newSegmentInstance(const std::string& parentID,
-    const CMTime& birthTime, const FlightInputs& flightInputs, const Geo3D& backLoc,
-    const Geo3D& frontLoc, const float length) {
-    
+inline SegmentCoCiP SegmentContainer<SegmentCoCiP>::newSegmentInstance(
+    const FlightInputs& flightInputs
+) {
     // Initialise with additional pointer to common params
-    SegmentCoCiP newSeg(parentID, birthTime, flightInputs, domPtr, backLoc, frontLoc, length,
-        cocipParams);
-    return newSeg;
+    return SegmentCoCiP(flightInputs, domPtr, cocipParams);
 }
 #endif
 

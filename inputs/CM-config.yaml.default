@@ -8,17 +8,18 @@ Two-way coupling: true
 Plume model: 1
 
 # Maximum length with which a contrail segment can be initialised
-Max initial segment length (m): 1000
+Max initial segment length (m): 2000
 
 # Age at which a contrail segment, if it still exists, will be dumped into the NWP's native grid
-Max contrail age (h): 2
+Max contrail age (h): 6
 
 # Maximum ratio of water vapour mass in contrail plume to water vapour mass in the grid cell it is
 # inside; above this, the contrail is dumped into the NWP's native grid
 Max accumulated vapour ratio (): 1e-2
 
 # Paths to flight dataset files separated by commas within square brackets
-# Add only NONE for idle Contrail Manager
+# Read all datasets fulfilling a prefix by writing PREFIX: followed by the prefix
+# Add only NONE or leave list empty for idle Contrail Manager
 Flight dataset paths: [
 
 ]

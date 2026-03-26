@@ -12,7 +12,7 @@
 struct Segment {
     std::string parentID = "none"; // ID of the flight object which created the segment
     CMTime birthTime; // Estimated time at which centre of segment was emitted
-    FlightInputs flightInputs; // Inputs from flight
+    FlightEmissions flightEmissions; // Flight emissions
     Domain* domPtr; // Pointer to the Contrail Manager's domain
 
     Geo3D back; // Location of back (first point created) of segment
@@ -29,12 +29,15 @@ struct Segment {
     bool isTooMassive = false; // Flag updated by SegmentContainer if passed size threshold; segment is dumped
 
     // Constructor
-    Segment(const std::string& parentID, const CMTime& birthTime, const FlightInputs& flightInputs,
-        Domain* domPtr, const Geo3D& backLoc, const Geo3D& frontLoc, const float length)
-        : parentID(parentID), birthTime(birthTime), flightInputs(flightInputs), domPtr(domPtr),
-          back(backLoc), front(frontLoc), length(length) {
+    Segment(const FlightInputs& flightInputs, Domain* domPtr)
+        : parentID(flightInputs.ID),
+          birthTime(flightInputs.birthTime),
+          flightEmissions(flightInputs.emissions),
+          domPtr(domPtr),
+          back(flightInputs.back), front(flightInputs.front) {
         
-        find_dependent_locs();
+        findDependentLocs();
+        length = findLength();
     }
 
     // Virtual destructor
@@ -56,21 +59,30 @@ struct Segment {
     // Virtual method to add the contrail ice mass in the segment to the QIcontrail field
     virtual void addToQIcontrail() = 0;
 
-    inline void find_dependent_locs() {
+    // Calculate segment centre and heading
+    inline void findDependentLocs() {
         centre = great_circle_interp(0.5, back, front);
+        // Ensure centre is in grid
+        IDX3<int> ijkCentre;
+        if (!domPtr->loc_to_ijk(centre, ijkCentre)) {
+            outOfBounds = true;
+        }
         heading = great_circle_bearing(back, front);
+    }
+
+    // Calculate (but not update) segment length
+    constexpr double findLength() {
+        return great_circle_dist(back, front);
     }
     
     // Advect front and back locations of segment and flag outOfBounds if out of bounds
     void advect(const CMTime& startTime, const CMTime& stopTime) {
         float duration_s;
         // If birthTime > startTime, evolve from birthTime to stopTime
-        if (birthTime > startTime) {
-            duration_s = (stopTime - birthTime).to_s();
-        }
-        else {
-            duration_s = (stopTime - startTime).to_s();
-        }
+        duration_s = (birthTime > startTime)
+            ? (stopTime - birthTime).to_s()
+            : (stopTime - startTime).to_s();
+
         bool inGridBack, inGridFront;
 
         inGridBack = advect_loc_RK4(back, duration_s, *domPtr);
@@ -82,12 +94,12 @@ struct Segment {
         }
 
         // Find new length
-        double newLength = great_circle_dist(back, front);
+        double newLength = findLength();
         lengthRatio = length / newLength;
         length = newLength;
 
         // Update dependent locs
-        find_dependent_locs();
+        findDependentLocs();
     }
 };
 

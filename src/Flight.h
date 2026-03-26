@@ -4,33 +4,23 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include "Domain.h"
 #include "Waypoint.h"
 #include "FlightInputs.h"
 #include "mapFunctions.h"
+#include "CMLog.h"
 
 // Flight structure
 struct Flight {
     std::string ID; // ID
     std::vector<Waypoint> waypoints; // Waypoints
-    /*
-    float engine_efficiency = 0; // Engine efficiency ()
-    float ei_h2o = 0; // Emissions index of water vapour (kg (kg fuel)-1)
-    float q_fuel = 0; // Specific combustion heat of fuel (J kg-1)
-    float aircraft_mass = 0; // Aircraft mass (kg)
-    float wingspan = 0; // Aircraft wingspan (m)
-    float true_airspeed = 0; // True airspeed (m s-1)
-    float fuel_flow = 0; // Fuel flow (kg s-1)
-    float T_exhaust = 0; // Exhaust temperature (K)
-    float nvpm_ei_n = 0; // Emissions index of nvPM (# (kg fuel)-1)
-    */
-    float engine_efficiency = 0.3;
-    float ei_h2o = 1.25;
-    float q_fuel = 43.15e6;
-    float aircraft_mass = 70e3;
-    float wingspan = 34;
-    float fuel_flow = 0.7;
-    float T_exhaust = 600;
-    float nvpm_ei_n = 1e15;
+
+    // Read from file
+    float wingspan = 34; // Aircraft wingspan (m)
+    
+    // COnstant for now
+    float ei_h2o = 1.25; // Emissions index of water vapour (kg (kg fuel)-1)
+    float q_fuel = 43.15e6; // Specific combustion heat of fuel (J kg-1)
 
     // Constructor
     Flight(const std::string_view ID) : ID(ID) {}
@@ -72,27 +62,129 @@ struct Flight {
         return true;
     }
 
-    // Returns a FlightInputs object based on current flight attributes
-    // Uses two waypoints (may not both be in Flight::waypoints) and fraction
-    // travelled between that and the next waypoint to calculate and interpolate some values
-    FlightInputs createFlightInputs(const Waypoint& legStart, const Waypoint& legEnd, const double f) const {
-        FlightInputs flightInputs;
+    // Create segments from flight
+    // For each segment, pass the resulting FlightInputs to `emit`
+    template <typename Emit>
+    void createSegments(const CMTime& startTime, const CMTime& stopTime, const Domain& domain,
+        const float maxInitialSegLen, Emit&& emit
+    ) const {
+        //CM_LogWrite("Creating segments for flight: " + ID);
 
-        flightInputs.engine_efficiency = this->engine_efficiency;
-        flightInputs.ei_h2o = this->ei_h2o;
-        flightInputs.q_fuel = this->q_fuel;
-        flightInputs.aircraft_mass = this->aircraft_mass;
-        flightInputs.wingspan = this->wingspan;
-        flightInputs.fuel_flow = this->fuel_flow;
-        flightInputs.T_exhaust = this->T_exhaust;
-        flightInputs.nvpm_ei_n = this->nvpm_ei_n;
+        // Find last waypoint passed at start and end of time interval
+        size_t lastWpStart = find_last_wp(startTime);
+        size_t lastWpEnd = find_last_wp(stopTime);
 
-        flightInputs.true_airspeed = (
-            great_circle_dist(legStart.loc, legEnd.loc)
-            / (legEnd.time - legStart.time).to_s()
+        // Iterate through each leg (sectioned by waypoints) between start and end locations
+        for (size_t n = lastWpStart; n <= lastWpEnd; n++) {
+            // Find start and end locations and times of leg
+            Geo3D legStartLoc, legEndLoc;
+            CMTime legStartTime, legEndTime;
+            // If leg is before first or after last waypoint, cannot find flight loc
+            if (n == -1 || n == numWaypoints() - 1) {
+                continue;
+            }
+            // If first leg, start from flight start loc (not wp)
+            if (n == lastWpStart) {
+                // Safe to ignore return value
+                bool startFound = find_loc(startTime, legStartLoc);
+                legStartTime = startTime;
+            }
+            // Else, leg starts at wp
+            else {
+                legStartLoc = waypoints[n].loc;
+                legStartTime = waypoints[n].time;
+            }
+            // If last leg, end at flight end loc (not wp)
+            if (n == lastWpEnd) {
+                // Safe to ignore return value
+                bool endFound = find_loc(stopTime, legEndLoc);
+                legEndTime = stopTime;
+            }
+            // Else, leg ends at wp
+            else {
+                legEndLoc = waypoints[n + 1].loc;
+                legEndTime = waypoints[n + 1].time;
+            }
+
+            // Create as many segments as needed between
+            double distInLeg = great_circle_dist(legStartLoc, legEndLoc);
+            int numNewSegments = ceil(distInLeg / maxInitialSegLen);
+            Geo3D backLoc = legStartLoc;
+            Geo3D frontLoc;
+            for (int i = 0; i < numNewSegments; i++) {
+                // Find new front loc
+                // Fraction of the total distance where the front of the segment is
+                double f_leg_front = (i + 1.)/numNewSegments;
+                frontLoc = great_circle_interp(f_leg_front, legStartLoc, legEndLoc);
+
+                // Find if interpolation is possible
+                // If interpolation is not possible for any segment location, don't add the segment
+                if (!(domain.can_do_interp(backLoc) && domain.can_do_interp(frontLoc))) {
+                    continue;
+                }
+
+                // Find birth time
+                // Fraction of leg duration passed at centre of segment
+                double f_leg_centre = (i + 0.5) / numNewSegments;
+                CMTime birthTime = legStartTime + f_leg_centre * (legEndTime - legStartTime);
+
+                // Fraction of duration between last and next waypoints passed at centre of segment
+                double f_waypoint = (
+                    (birthTime - waypoints[n].time)
+                    / (waypoints[n + 1].time - waypoints[n].time)
+                );
+
+                FlightInputs inputs(ID, birthTime, backLoc, frontLoc);
+                inputs.emissions = createFlightEmissions(n, f_waypoint);
+
+                // Emit (add segment to container) with FlightInputs object
+                emit(inputs);
+
+                // Set back loc for next segment
+                backLoc = frontLoc;
+            }
+        }
+    }
+
+    // Returns a FlightEmissions object based on current flight attributes
+    // Current flight attributes are determined using the last waypoint index (lastWp) and
+    // the fraction of duration between last and next waypoints passed at centre of segment
+    // (f_waypoint)
+    FlightEmissions createFlightEmissions(const size_t lastWp, const double f_waypoint) const {
+        const Waypoint& lastWaypoint = waypoints[lastWp];
+        const Waypoint& nextWaypoint = waypoints[lastWp + 1];
+
+        FlightEmissions emissions;
+
+        // Interpolate
+        emissions.engine_efficiency = (
+            f_waypoint * lastWaypoint.engine_efficiency
+            + (1 - f_waypoint) * nextWaypoint.engine_efficiency
+        );
+        emissions.aircraft_mass = (
+            f_waypoint * lastWaypoint.aircraft_mass
+            + (1 - f_waypoint) * nextWaypoint.aircraft_mass
+        );
+        emissions.fuel_flow = (
+            f_waypoint * lastWaypoint.fuel_flow
+            + (1 - f_waypoint) * nextWaypoint.fuel_flow
+        );
+        emissions.nvpm_ei_n = (
+            f_waypoint * lastWaypoint.nvpm_ei_n
+            + (1 - f_waypoint) * nextWaypoint.nvpm_ei_n
         );
 
-        return flightInputs;
+        emissions.wingspan = this->wingspan;
+        emissions.ei_h2o = this->ei_h2o;
+        emissions.q_fuel = this->q_fuel;
+
+        // Caluclate speed
+        emissions.true_airspeed = (
+            great_circle_dist(lastWaypoint.loc, nextWaypoint.loc)
+            / (nextWaypoint.time - lastWaypoint.time).to_s()
+        );
+
+        return emissions;
     }
 };
 

@@ -33,7 +33,7 @@ Geo3D great_circle_interp(const double f, const Geo3D& loc1, const Geo3D& loc2) 
 
 Geo3D great_circle_interp(const CMTime& time, const Waypoint& wp1, const Waypoint& wp2) {
     double f = (time - wp1.time) / (wp2.time - wp1.time);
-    return great_circle_interp((time - wp1.time) / (wp2.time - wp1.time), wp1.loc, wp2.loc);
+    return great_circle_interp(f, wp1.loc, wp2.loc);
 }
 
 bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
@@ -64,8 +64,6 @@ bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
 }
 
 bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
-    bool inGrid;
-
     float u1, v1, w1; // Values of k1
     float u2, v2, w2; // Values of k2
     float u3, v3, w3; // Values of k3
@@ -77,8 +75,9 @@ bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
 
     // k1
 
-    inGrid = dom.wind_at_loc(loc, u1, v1, w1);
-    if (!inGrid) { return false; }
+    if (!dom.wind_at_loc(loc, u1, v1, w1)) {
+        return false;
+    }
 
     // Advect in longitude
     loc1.lon = loc.lon + DEG_PER_RAD * u1 * 0.5*duration_s
@@ -96,8 +95,9 @@ bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
 
     // k2
 
-    inGrid = dom.wind_at_loc(loc1, u2, v2, w2);
-    if (!inGrid) { return false; }
+    if (!dom.wind_at_loc(loc1, u2, v2, w2)) {
+        return false;
+    }
 
     // Advect in longitude
     loc2.lon = loc.lon + DEG_PER_RAD * u2 * 0.5*duration_s
@@ -115,8 +115,9 @@ bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
 
     // k3
 
-    inGrid = dom.wind_at_loc(loc2, u3, v3, w3);
-    if (!inGrid) { return false; }
+    if (!dom.wind_at_loc(loc2, u3, v3, w3)) {
+        return false;
+    }
 
     // Advect in longitude
     loc3.lon = loc.lon + DEG_PER_RAD * u3 * duration_s
@@ -134,8 +135,9 @@ bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
 
     // k4
 
-    inGrid = dom.wind_at_loc(loc3, u4, v4, w4);
-    if (!inGrid) { return false; }
+    if (!dom.wind_at_loc(loc3, u4, v4, w4)) {
+        return false;
+    }
 
     // Update loc
 
@@ -154,6 +156,5 @@ bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
     loc.alt += (w1 + 2*w2 + 2*w3 + w4) * duration_s/6.;
 
     // Check if still in grid (able to interp)
-    inGrid = dom.can_do_interp(loc);
-    return inGrid;
+    return dom.can_do_interp(loc);
 }
