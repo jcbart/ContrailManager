@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <atomic>
 #include "timekeeping.h"
 #include "Domain.h"
 #include "mapFunctions.h"
@@ -10,7 +11,8 @@
 
 // Virtual contrail segment structure
 struct Segment {
-    std::string parentID = "none"; // ID of the flight object which created the segment
+    uint64_t ID; // Unique segment ID (not sequential if multi-threaded)
+    std::string parentID; // ID of the flight object which created the segment
     CMTime birthTime; // Estimated time at which centre of segment was emitted
     FlightEmissions flightEmissions; // Flight emissions
     Domain* domPtr; // Pointer to the Contrail Manager's domain
@@ -23,21 +25,27 @@ struct Segment {
     double lengthRatio = 1; // Ratio of old length to new length; set in advect, used in evolve
     double M_v_accum = 0; // Mass of ambient accumulated (double-counted) vapour (kg)
 
-    bool outOfBounds = false; // Flag updated by SegmentContainer if out of domain bounds; segment is not dumped
-    bool isOld = false; // Flag updated by SegmentContainer if passed age threshold; segment is dumped
-    bool isDead = false; // Flag updated by plume model if below survival threshold; segment is dumped
-    bool isTooMassive = false; // Flag updated by SegmentContainer if passed size threshold; segment is dumped
+     // Flag updated by SegmentContainer or plume model if out of domain bounds; segment is not dumped
+    bool outOfBounds = false;
+    // Flag updated by SegmentContainer if passed age threshold; segment is dumped
+    bool isOld = false;
+    // Flag updated by plume model if below survival threshold; segment is dumped
+    bool isDead = false;
+    // Flag updated by SegmentContainer if past size threshold; segment is dumped
+    bool isTooMassive = false;
 
     // Constructor
     Segment(const FlightInputs& flightInputs, Domain* domPtr)
-        : parentID(flightInputs.ID),
+        : ID(nextID()),
+          parentID(flightInputs.ID),
           birthTime(flightInputs.birthTime),
           flightEmissions(flightInputs.emissions),
           domPtr(domPtr),
-          back(flightInputs.back), front(flightInputs.front) {
+          back(flightInputs.back),
+          front(flightInputs.front) {
         
         findDependentLocs();
-        length = findLength();
+        length = calcLength();
     }
 
     // Virtual destructor
@@ -71,7 +79,7 @@ struct Segment {
     }
 
     // Calculate (but not update) segment length
-    constexpr double findLength() {
+    constexpr double calcLength() {
         return great_circle_dist(back, front);
     }
     
@@ -94,12 +102,32 @@ struct Segment {
         }
 
         // Find new length
-        double newLength = findLength();
+        double newLength = calcLength();
         lengthRatio = length / newLength;
         length = newLength;
 
         // Update dependent locs
         findDependentLocs();
+    }
+
+private:
+    // Unique segment ID generator (batched and thread-safe)
+    static uint64_t nextID() {
+        static std::atomic<uint64_t> global_id_counter{0}; // Thread-safe global counter
+        static constexpr uint64_t cache_size = 4096;
+        thread_local uint64_t local_idx = 0; // Next ID to use
+        thread_local uint64_t local_end = 0; // Marks the end of cached block
+
+        // Refill local cache if needed
+        if (local_idx == local_end) {
+            // Get next uncached index
+            local_idx = global_id_counter.fetch_add(cache_size, std::memory_order_relaxed);
+            // Set end of new cache
+            local_end = local_idx + cache_size;
+        }
+
+        // Return local_idx, then add one
+        return local_idx++;
     }
 };
 
