@@ -44,9 +44,8 @@ void ContrailManager::init() {
         case PlumeModels::MODEL_ID_COCIP: {
             plumeModelStr = PlumeModels::MODEL_STR_COCIP;
 #ifdef WITH_COCIP
-            segments = std::unique_ptr<SegmentContainer<SegmentCoCiP>>(
-                new SegmentContainer<SegmentCoCiP>());
-            segments->cocipParams = std::shared_ptr<Params>(new Params);
+            segments = std::make_unique<SegmentContainer<SegmentCoCiP>>();
+            segments->cocipParams = std::make_shared<Params>();
             segments->cocipParams->readYAML();
 #else
             
@@ -141,7 +140,7 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
     }
 
     domain->twoWayCoupling = config.twoWayCoupling;
-    segments->domPtr = domain.get();
+    segments->domain = domain;
 
     currTime = startTime;
 

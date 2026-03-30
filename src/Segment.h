@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <memory>
 #include <atomic>
 #include "timekeeping.h"
 #include "Domain.h"
@@ -15,7 +16,7 @@ struct Segment {
     std::string parentID; // ID of the flight object which created the segment
     CMTime birthTime; // Estimated time at which centre of segment was emitted
     FlightEmissions flightEmissions; // Flight emissions
-    Domain* domPtr; // Pointer to the Contrail Manager's domain
+    std::shared_ptr<Domain> domain; // Pointer to the Contrail Manager's domain
 
     Geo3D back; // Location of back (first point created) of segment
     Geo3D front; // Location of front (last point created) of segment
@@ -35,12 +36,12 @@ struct Segment {
     bool isTooMassive = false;
 
     // Constructor
-    Segment(const FlightInputs& flightInputs, Domain* domPtr)
+    Segment(const FlightInputs& flightInputs, std::shared_ptr<Domain> domain)
         : ID(nextID()),
           parentID(flightInputs.ID),
           birthTime(flightInputs.birthTime),
           flightEmissions(flightInputs.emissions),
-          domPtr(domPtr),
+          domain(domain),
           back(flightInputs.back),
           front(flightInputs.front) {
         
@@ -72,7 +73,7 @@ struct Segment {
         centre = great_circle_interp(0.5, back, front);
         // Ensure centre is in grid
         IDX3<int> ijkCentre;
-        if (!domPtr->loc_to_ijk(centre, ijkCentre)) {
+        if (!domain->loc_to_ijk(centre, ijkCentre)) {
             outOfBounds = true;
         }
         heading = great_circle_bearing(back, front);
@@ -93,8 +94,8 @@ struct Segment {
 
         bool inGridBack, inGridFront;
 
-        inGridBack = advect_loc_RK4(back, duration_s, *domPtr);
-        inGridFront = advect_loc_RK4(front, duration_s, *domPtr);
+        inGridBack = advect_loc_RK4(back, duration_s, *domain);
+        inGridFront = advect_loc_RK4(front, duration_s, *domain);
 
         // If either end of segment has drifted out of grid, remove segment 
         if (!(inGridBack && inGridFront)) {

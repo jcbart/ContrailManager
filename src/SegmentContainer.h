@@ -26,7 +26,7 @@ struct ISegmentContainer {
     // grid cell (); set by ContrailManager
     float maxAccumVapRatio;
 
-    Domain* domPtr = nullptr; // Pointer to the Contrail Manager's domain
+    std::shared_ptr<Domain> domain; // Pointer to the Contrail Manager's domain
 
 #ifdef WITH_COCIP
     std::shared_ptr<Params> cocipParams; // Pointer to CoCiP Params object if using
@@ -79,10 +79,10 @@ private:
     void flagTooMassiveSegments() {
         #pragma omp parallel for
         for (SegmentType& seg : vec) {
-            IDX3<int> ijkCurr = domPtr->loc_to_ijk(seg.centre);
+            IDX3<int> ijkCurr = domain->loc_to_ijk(seg.centre);
 
-            double gridVapourMass = domPtr->QV.get(ijkCurr)
-                                    * domPtr->DRYMASS.get(ijkCurr);
+            double gridVapourMass = domain->QV.get(ijkCurr)
+                                    * domain->DRYMASS.get(ijkCurr);
 
             if (seg.M_v_accum / gridVapourMass > maxAccumVapRatio) {
                 seg.isTooMassive = true;
@@ -172,7 +172,7 @@ public:
         CM_LogWrite(std::format("Number of old: {}, number of massive: {}, number of dead: {}",
             numOld, numMassive, numDead));
 
-        if (domPtr->twoWayCoupling) {
+        if (domain->twoWayCoupling) {
             // Dump if old, massive, or dead
             #pragma omp parallel for
             for (SegmentType& seg : vec) {
@@ -212,7 +212,7 @@ inline SegmentCoCiP SegmentContainer<SegmentCoCiP>::newSegmentInstance(
     const FlightInputs& flightInputs
 ) {
     // Initialise with additional pointer to common params
-    return SegmentCoCiP(flightInputs, domPtr, cocipParams);
+    return SegmentCoCiP(flightInputs, domain, cocipParams);
 }
 #endif
 

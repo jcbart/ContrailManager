@@ -21,7 +21,8 @@ struct SegmentCoCiP : public Segment {
     bool doneFormation = false;
 
     // Constructor
-    SegmentCoCiP(const FlightInputs& flightInputs, Domain* domPtr, std::shared_ptr<Params> params);
+    SegmentCoCiP(const FlightInputs& flightInputs, std::shared_ptr<Domain> domain,
+        std::shared_ptr<Params> params);
 
     void evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd) override;
 
