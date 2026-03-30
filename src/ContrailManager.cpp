@@ -10,6 +10,7 @@
 #include "ContrailManager.h"
 #include "timekeeping.h"
 #include "Domain.h"
+#include "PlumeModels.h"
 #include "SegmentContainer.h"
 #include "Segment.h"
 #include "SegmentCoCiP.h"
@@ -40,8 +41,8 @@ void ContrailManager::init() {
 
     std::string plumeModelStr;
     switch (config.plumeModelID) {
-        case MODEL_ID_COCIP: {
-            plumeModelStr = MODEL_STR_COCIP;
+        case PlumeModels::MODEL_ID_COCIP: {
+            plumeModelStr = PlumeModels::MODEL_STR_COCIP;
 #ifdef WITH_COCIP
             segments = std::unique_ptr<SegmentContainer<SegmentCoCiP>>(
                 new SegmentContainer<SegmentCoCiP>());

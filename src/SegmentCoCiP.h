@@ -9,21 +9,12 @@
 #endif
 #include "Segment.h"
 
-// Forward declarations
-
-struct Params;
-
-// Plume model ID
-
-const int MODEL_ID_COCIP = 1;
-
-// Plume model name
-
-const std::string MODEL_STR_COCIP = "CoCiP";
-
 // Derived segment struct
 
 #ifdef WITH_COCIP
+// Forward declaration
+struct Params;
+
 // Derived CoCiP segment type
 struct SegmentCoCiP : public Segment {
     CoCiP<ArrayMet<float>> cocip;
