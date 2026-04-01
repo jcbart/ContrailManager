@@ -43,7 +43,8 @@ get_esmf_var("ESMF_CXXCOMPILER" ESMF_CXXCOMPILER)
 get_esmf_var("ESMF_CCOMPILER" ESMF_CCOMPILER)
 get_esmf_var("ESMF_CXXCOMPILEOPTS" ESMF_CXXCOMPILEOPTS)
 get_esmf_var("ESMF_CXXCOMPILECPPFLAGS" ESMF_CXXCOMPILECPPFLAGS)
-get_esmf_var("ESMF_CXXLINKLIBS" ESMF_CXXLINKLIBS)
+get_esmf_var("ESMF_CXXESMFLINKLIBS" ESMF_CXXESMFLINKLIBS)
+get_esmf_var("ESMF_CXXESMFLINKPATHS" ESMF_CXXESMFLINKPATHS)
 
 # Remove optimisation flags from ESMF_CXXCOMPILEOPTS
 string(REGEX REPLACE
@@ -62,9 +63,10 @@ project(ContrailManager LANGUAGES CXX)
 
 # Find libraries
 find_package(OpenMP REQUIRED)
-find_package(yaml-cpp CONFIG REQUIRED)
 find_package(Arrow CONFIG REQUIRED)
 find_package(Parquet CONFIG REQUIRED)
+find_package(cereal CONFIG REQUIRED)
+find_package(yaml-cpp CONFIG REQUIRED)
 
 # Source files
 set(SOURCES
@@ -79,8 +81,9 @@ set(SOURCES
     "src/SegmentCoCiP.cpp"
 )
 
-# Target definition
+# Target definitions
 add_library(contrailmanager STATIC ${SOURCES})
+add_executable(bintocsv "src/bintocsv.cpp")
 
 # Submodules
 
@@ -91,11 +94,15 @@ if(WITH_COCIP)
     add_subdirectory(${COCIP_RELATIVE_PATH} EXCLUDE_FROM_ALL)
     add_compile_definitions(WITH_COCIP)
     target_link_libraries(contrailmanager PRIVATE cocip)
+    target_link_libraries(bintocsv PRIVATE cocip)
 endif()
 
 # Apply ESMF options and flags
 target_compile_options(contrailmanager PRIVATE ${ESMF_CXXCOMPILEOPTS_LIST})
 target_compile_definitions(contrailmanager PRIVATE ${ESMF_CXXCOMPILECPPFLAGS})
+
+target_compile_options(bintocsv PRIVATE ${ESMF_CXXCOMPILEOPTS_LIST})
+target_compile_definitions(bintocsv PRIVATE ${ESMF_CXXCOMPILECPPFLAGS})
 
 target_include_directories(contrailmanager
     PUBLIC
@@ -106,12 +113,21 @@ target_include_directories(contrailmanager
 target_link_libraries(contrailmanager
     PRIVATE
         OpenMP::OpenMP_CXX
-        yaml-cpp::yaml-cpp
         Arrow::arrow_static
         Parquet::parquet_static
+        cereal::cereal
+        yaml-cpp::yaml-cpp
 )
 
-target_link_libraries(contrailmanager PUBLIC ${ESMF_CXXLINKLIBS})
+target_link_libraries(bintocsv
+    PRIVATE
+        contrailmanager
+        Arrow::arrow_static
+        cereal::cereal
+)
+
+target_link_libraries(contrailmanager PUBLIC ${ESMF_CXXESMFLINKLIBS} ${ESMF_CXXESMFLINKPATHS})
+target_link_libraries(bintocsv PRIVATE ${ESMF_CXXESMFLINKLIBS} ${ESMF_CXXESMFLINKPATHS})
 
 # Copy default input files if they do not already exist in build directory
 set(CM_INPUT_FILES "CM-config.yaml")
@@ -126,9 +142,9 @@ foreach(FILE_NAME ${CM_INPUT_FILES})
     endif()
 endforeach()
 
-# Installation
+# Library installation
 
-set(INSTALL_TARGETS contrailmanager)
+set(INSTALL_TARGETS contrailmanager bintocsv)
 set(INSTALL_INPUT_FILES ${CMAKE_CURRENT_BINARY_DIR}/CM-config.yaml)
 
 if(WITH_COCIP)

@@ -2,16 +2,20 @@
 #define PLUMEMODELS_H
 
 #include <string_view>
+#include <utility>
 
 namespace PlumeModels {
 
-// Plume model IDs
+// Stores model ID and name
+struct Model {
+    int ID;
+    std::string_view name;
+};
 
-constexpr int MODEL_ID_COCIP = 1;
+//using Model = std::pair<int, std::string_view>;
 
-// Plume model names
-
-constexpr std::string_view MODEL_STR_COCIP = "CoCiP";
+// CoCiP model ID and name
+constexpr Model COCIP = {1, "CoCiP"};
 
 }
 

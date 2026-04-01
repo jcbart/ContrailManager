@@ -1,17 +1,12 @@
 #ifndef SEGMENTCOCIP_H
 #define SEGMENTCOCIP_H
 
-#include <string>
-#include <memory>
 #ifdef WITH_COCIP
+
 #include <CoCiP++/CoCiP.h>
 #include <CoCiP++/met.h>
-#endif
 #include "Segment.h"
 
-// Derived segment struct
-
-#ifdef WITH_COCIP
 // Forward declaration
 struct Params;
 
@@ -19,6 +14,9 @@ struct Params;
 struct SegmentCoCiP : public Segment {
     CoCiP<ArrayMet<float>> cocip;
     bool doneFormation = false;
+
+    // Empty constructor
+    SegmentCoCiP() : Segment() {}
 
     // Constructor
     SegmentCoCiP(const FlightInputs& flightInputs, std::shared_ptr<Domain> domain,
@@ -35,6 +33,7 @@ private:
     // is not satisfied (i.e. too low altitude)
     bool updateMet();
 };
+
 #endif
 
 #endif

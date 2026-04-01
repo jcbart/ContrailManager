@@ -4,6 +4,7 @@
 #include <chrono>
 #include <string>
 #include <format>
+#include <algorithm>
 
 // Time interval structure
 // Wrapper for a std::chrono::duration
@@ -65,7 +66,7 @@ struct CMTimeInterval {
         return duration.count();
     }
 
-    // Return time interval as a string
+    // Return time interval as a string with seconds decimal places given by dp
     std::string asString() const {
         std::chrono::days d = std::chrono::duration_cast<std::chrono::days>(duration);
         std::chrono::hours h = std::chrono::duration_cast<std::chrono::hours>(duration - d);
@@ -188,7 +189,7 @@ struct CMTime {
         return timepoint <= other.timepoint;
     }
 
-    // Return time as a string
+    // Return time as a string with seconds decimal places given by dp
     std::string asString() const {
         auto datepoint = std::chrono::floor<std::chrono::days>(timepoint);
         std::chrono::year_month_day ymd{datepoint};
@@ -198,11 +199,19 @@ struct CMTime {
         std::chrono::duration<double> s = (time_of_day - h - m);
         return std::format(
             "{:04}-{:02}-{:02} {:02}:{:02}:{:06.3f}",
-           static_cast<int>(ymd.year()),
-           static_cast<unsigned>(ymd.month()),
-           static_cast<unsigned>(ymd.day()),
-           h.count(), m.count(), s.count()
+            static_cast<int>(ymd.year()),
+            static_cast<unsigned>(ymd.month()),
+            static_cast<unsigned>(ymd.day()),
+            h.count(), m.count(), s.count()
         );
+    }
+
+    // Return a file name-friendly string (no hyphens or colons)
+    std::string asFileFriendlyString() const {
+        std::string str = asString();
+        std::replace(str.begin(), str.end(), ' ', '_');
+        std::replace(str.begin(), str.end(), ':', '-');
+        return str;
     }
 };
 

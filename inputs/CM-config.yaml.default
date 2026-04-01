@@ -7,6 +7,13 @@ Two-way coupling: true
 # 1 - CoCiP
 Plume model: 1
 
+# Is this a restart run?
+# The Contrail Manager will attempt to initialise from a corresponding output file if so
+Restart: false
+
+# Output interval
+Output interval (min): 180
+
 # Maximum length with which a contrail segment can be initialised
 Max initial segment length (m): 2000
 

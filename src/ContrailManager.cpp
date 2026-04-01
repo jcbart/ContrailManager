@@ -1,7 +1,6 @@
 #include <string>
 #include <memory>
 #include <chrono>
-//#include <algorithm>
 #include <format>
 #include <omp.h>
 #ifdef WITH_COCIP
@@ -13,7 +12,6 @@
 #include "PlumeModels.h"
 #include "SegmentContainer.h"
 #include "Segment.h"
-#include "SegmentCoCiP.h"
 #include "Flight.h"
 #include "FlightInputs.h"
 #include "Projection.h"
@@ -37,19 +35,17 @@ void ContrailManager::init() {
     CM_LogWrite("Online coupling: " + std::string(config.twoWayCoupling ? "true" : "false"));
 
     // Determine plume model
-    // Sets pointer to specialised segment container
-
-    std::string plumeModelStr;
+    // Sets pointer to specialised segment container    
     switch (config.plumeModelID) {
-        case PlumeModels::MODEL_ID_COCIP: {
-            plumeModelStr = PlumeModels::MODEL_STR_COCIP;
+        case PlumeModels::COCIP.ID: {
+            plumeModel = PlumeModels::COCIP;
 #ifdef WITH_COCIP
             segments = std::make_unique<SegmentContainer<SegmentCoCiP>>();
             segments->cocipParams = std::make_shared<Params>();
             segments->cocipParams->readYAML();
 #else
             
-            CM_RaiseError("Contrail Manager has not been built with " + plumeModelStr,
+            CM_RaiseError("Contrail Manager has not been built with " + plumeModel.name,
                 __FILE__, __LINE__);
 #endif
             break;
@@ -59,11 +55,13 @@ void ContrailManager::init() {
                 __FILE__, __LINE__);
         }
     }
-    CM_LogWrite("Plume model: " + plumeModelStr);
+    CM_LogWrite(std::format("Plume model: {}", plumeModel.name));
 
     // After the segments pointer has been set
     segments->maxContrailAge_s = config.maxContrailAge_s;
     segments->maxAccumVapRatio = config.maxAccumVapRatio;
+
+    outputInterval.set(std::chrono::duration<float>(config.outputInterval_s));
 
     flights.maxInitialSegLen = config.maxInitialSegLen;
     flights.read_datasets(config.flightDatasetPaths);
@@ -117,6 +115,12 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     CM_LogWrite("Current time: " + currTime.asString());
     CM_LogWrite(std::format("Number of live contrail segments: {}", segments->getSize()));
 
+    if (currTime >= nextOutputTime) {
+        // Time to output
+        segments->save(currTime, plumeModel);
+        nextOutputTime += outputInterval;
+    }
+
     if (domain->twoWayCoupling) {
         // Update deltaQV field
         //domain->find_deltaQV();
@@ -139,12 +143,20 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
             __FILE__, __LINE__);
     }
 
+    // Set domain-related variables now that domain is initialised
     domain->twoWayCoupling = config.twoWayCoupling;
     segments->domain = domain;
 
     currTime = startTime;
 
+    nextOutputTime = startTime + outputInterval;
+
     CM_LogWrite("Contrail Manager current time set to " + currTime.asString());
+
+    if (config.restartRun) {
+        // Load segments from file
+        segments->load(currTime, plumeModel);
+    }
 }
 
 void ContrailManager::create_segments(const CMTime& startTime, const CMTime& stopTime) {

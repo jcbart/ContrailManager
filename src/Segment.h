@@ -35,6 +35,9 @@ struct Segment {
     // Flag updated by SegmentContainer if past size threshold; segment is dumped
     bool isTooMassive = false;
 
+    // Empty constructor
+    Segment() {}
+
     // Constructor
     Segment(const FlightInputs& flightInputs, std::shared_ptr<Domain> domain)
         : ID(nextID()),
@@ -111,20 +114,26 @@ struct Segment {
         findDependentLocs();
     }
 
+    // Sets the ID counter to value (after restarting from file)
+    static void setIDCounter(uint64_t value) {
+        global_id_counter.store(value, std::memory_order_seq_cst);
+    }
+
 private:
+    inline static std::atomic<uint64_t> global_id_counter{0}; // Thread-safe global counter
+    static constexpr uint64_t id_cache_size = 4096; // ID cache size
+
     // Unique segment ID generator (batched and thread-safe)
     static uint64_t nextID() {
-        static std::atomic<uint64_t> global_id_counter{0}; // Thread-safe global counter
-        static constexpr uint64_t cache_size = 4096;
         thread_local uint64_t local_idx = 0; // Next ID to use
         thread_local uint64_t local_end = 0; // Marks the end of cached block
 
         // Refill local cache if needed
         if (local_idx == local_end) {
             // Get next uncached index
-            local_idx = global_id_counter.fetch_add(cache_size, std::memory_order_relaxed);
+            local_idx = global_id_counter.fetch_add(id_cache_size, std::memory_order_relaxed);
             // Set end of new cache
-            local_end = local_idx + cache_size;
+            local_end = local_idx + id_cache_size;
         }
 
         // Return local_idx, then add one

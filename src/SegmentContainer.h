@@ -6,16 +6,22 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <fstream>
 #include <omp.h>
+#include <cereal/archives/binary.hpp>
+#include <cereal/types/vector.hpp>
 #ifdef WITH_COCIP
 #include <CoCiP++/CoCiP.h>
 #include <CoCiP++/params.h>
 #include "SegmentCoCiP.h"
+#include "SerializeCoCiP.h"
 #endif
+#include "PlumeModels.h"
 #include "Domain.h"
 #include "mapTypes.h"
 #include "timekeeping.h"
 #include "FlightInputs.h"
+#include "SerializeSegment.h"
 #include "CMLog.h"
 
 // Virtual contrail segment container structure
@@ -52,6 +58,12 @@ struct ISegmentContainer {
 
     // Construct QIcontrail using live segment data
     virtual void constructQIcontrail() = 0;
+
+    // Save segments to file with currTime in name
+    virtual void save(const CMTime& currTime, const PlumeModels::Model plumeModel) = 0;
+
+    // Load segments from file with time in name
+    virtual void load(const CMTime& time, const PlumeModels::Model plumeModel) = 0;
 };
 
 // Plume model-specific segment container structure
@@ -194,7 +206,7 @@ public:
         
         size_t numAfter = vec.size();
         
-        CM_LogWrite("Number removed: " + std::to_string(numBefore - numAfter));
+        CM_LogWrite(std::format("Number removed: {}", numBefore - numAfter));
     }
 
     // Construct QIcontrail using live segment data (parallelised)
@@ -203,6 +215,93 @@ public:
         for (SegmentType& seg : vec) {
             seg.addToQIcontrail();
         }
+    }
+
+    // Save segments to file with currTime in name
+    void save(const CMTime& currTime, const PlumeModels::Model plumeModel) override {
+        std::string filename = "ContrailManagerSegments_" + currTime.asFileFriendlyString() + ".bin";
+
+        CM_LogWrite("Saving segments to " + filename);
+
+        {
+            std::ofstream os(filename, std::ios::binary);
+            if (!os) {
+                CM_RaiseError("Cannot open file for writing: " + filename, __FILE__, __LINE__);
+            }
+            cereal::BinaryOutputArchive archive(os);
+            // Write plume model ID
+            archive(plumeModel.ID);
+            // Then vector
+            archive(vec);
+        }
+    }
+
+    // Load segments from file with time in name
+    void load(const CMTime& time, const PlumeModels::Model plumeModel) {
+        std::string filename = "ContrailManagerSegments_" + time.asFileFriendlyString() + ".bin";
+
+        CM_LogWrite("Loading segments from " + filename);
+
+        int loadedPlumeModelID;
+
+        {
+            std::ifstream is(filename, std::ios::binary);
+            if (!is) {
+                CM_RaiseError("Cannot open file for reading: " + filename, __FILE__, __LINE__);
+            }
+            cereal::BinaryInputArchive archive(is);
+            archive(loadedPlumeModelID);
+
+            if (loadedPlumeModelID != plumeModel.ID) {
+                CM_RaiseError(
+                    std::format(
+                        "File was written with plume model ID {}, but config specifies {}",
+                        loadedPlumeModelID, plumeModel.name
+                    ),
+                    __FILE__, __LINE__
+                );
+            }
+
+            archive(vec);
+        }
+
+        size_t numLoaded = vec.size();
+
+        CM_LogWrite(std::format("Loaded {} segments from file.", numLoaded));
+
+        // Set domain pointer for each segment, then check if out of bounds
+        #pragma omp parallel for
+        for (SegmentType& seg : vec) {
+            seg.domain = domain;
+
+            IDX3<int> ijk;
+            if (!(domain->loc_to_ijk(seg.centre, ijk)
+                  && domain->can_do_interp(seg.front)
+                  && domain->can_do_interp(seg.back))) {
+                seg.outOfBounds = true;
+            }
+        }
+
+        std::erase_if(
+            vec,
+            [](const SegmentType& seg) {
+                return seg.outOfBounds;
+            }
+        );
+
+        size_t numAfter = vec.size();
+
+        CM_LogWrite(std::format("Number out of bounds: {}", numLoaded - numAfter));
+
+        // Find highest ID
+        uint64_t maxID = 0;
+        if (!vec.empty()) {
+            auto it = std::ranges::max_element(vec, {}, &SegmentType::ID);
+            maxID = it->ID;
+        }
+        // Set Segment struct ID counter to the next value
+        Segment::setIDCounter(maxID + 1);
+
     }
 };
 

@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include "CMConfig.h"
+#include "PlumeModels.h"
 #include "Domain.h"
 #include "FlightContainer.h"
 #include "SegmentContainer.h"
@@ -16,7 +17,11 @@ struct Geo3D;
 
 class ContrailManager {
 private:
-    CMTime currTime;
+    CMTime currTime; // Current simulation time
+    CMTimeInterval outputInterval; // Time interval between outputs
+    CMTime nextOutputTime; // Next time to output
+
+    PlumeModels::Model plumeModel; // Plume model
 
     bool firstRunCall = true; // Determines whether to call setup_on_first_run
 

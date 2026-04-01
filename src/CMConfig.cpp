@@ -9,6 +9,11 @@ void CMConfig::read() {
 
     plumeModelID = config["Plume model"].as<int>();
 
+    restartRun = config["Restart"].as<bool>();
+
+    float outputInterval_min = config["Output interval (min)"].as<float>();
+    outputInterval_s = 60 * outputInterval_min;
+
     maxInitialSegLen = config["Max initial segment length (m)"].as<float>();
     if (maxInitialSegLen <= 0) {
         CM_RaiseError("Config error: Read maximum initial segment length of "
