@@ -12,6 +12,8 @@ arrow::Status table_to_csv(const std::shared_ptr<arrow::Table>& table,
     const std::string& filename) {
 
     auto outfilename = std::filesystem::path(filename).replace_extension(".csv").string();
+
+    std::cout << "Saving to " << outfilename << std::endl;
     
     ARROW_ASSIGN_OR_RAISE(auto outstream, arrow::io::FileOutputStream::Open(outfilename));
 

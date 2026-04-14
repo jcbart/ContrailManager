@@ -29,9 +29,8 @@ private:
 
     FlightContainer flights;
 
-    // Pointer to the contrail segment container (is given a pointer to a
-    // SegmentContainer<SegmentType> during initialisation)
-    std::unique_ptr<ISegmentContainer> segments;
+    // Contrail segment container (is given a specific type during initialisation)
+    SegmentContainerVariant segments;
 
     // Completes the setup required on the first run call (i.e. after getting external data)
     void setup_on_first_run(const CMTime& startTime);

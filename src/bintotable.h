@@ -185,6 +185,7 @@ arrow::Result<std::shared_ptr<arrow::Table>> bin_to_table(const std::string& fil
         switch (loadedPlumeModelID) {
             case PlumeModels::COCIP.ID: {
 #ifdef WITH_COCIP
+                std::cout << "Archived segment type: " << PlumeModels::COCIP.name << std::endl;
                 std::vector<SegmentCoCiP> vec;
                 // Load vector
                 archive(vec);

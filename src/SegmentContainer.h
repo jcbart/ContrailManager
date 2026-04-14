@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <fstream>
+#include <variant>
 #include <omp.h>
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/vector.hpp>
@@ -24,8 +25,10 @@
 #include "SerializeSegment.h"
 #include "CMLog.h"
 
-// Virtual contrail segment container structure
-struct ISegmentContainer {
+// Plume model-specific segment container structure
+// Holds segments in a private vector of SegmentType
+template <typename SegmentType>
+struct SegmentContainer {
     // Maximum age of a contrail segment (s); set by ContrailManager
     float maxContrailAge_s;
     // Maximum ratio of double-counted water vapour mass in contrail plume to water vapour mass in
@@ -38,38 +41,6 @@ struct ISegmentContainer {
     std::shared_ptr<Params> cocipParams; // Pointer to CoCiP Params object if using
 #endif
 
-    // Virtual destructor
-    virtual ~ISegmentContainer() = default;
-
-    // Return number of segments in container
-    virtual size_t getSize() const = 0;
-
-    // Add segment to container; assumes segment has been checked to be inside domain
-    virtual void addItem(const FlightInputs& flightInputs) = 0;
-    
-    // Evolve all segment plumes
-    virtual void evolvePlumes(const CMTime& startTime, const CMTime& stopTime) = 0;
-
-    // Advect all segments and remove if out of bounds
-    virtual void advectSegments(const CMTime& startTime, const CMTime& stopTime) = 0;
-
-    // Dump old, massive, or dead segments
-    virtual void dump(const CMTime& stopTime) = 0;
-
-    // Construct QIcontrail using live segment data
-    virtual void constructQIcontrail() = 0;
-
-    // Save segments to file with currTime in name
-    virtual void save(const CMTime& currTime, const PlumeModels::Model plumeModel) = 0;
-
-    // Load segments from file with time in name
-    virtual void load(const CMTime& time, const PlumeModels::Model plumeModel) = 0;
-};
-
-// Plume model-specific segment container structure
-// Holds segments in a private vector of SegmentType
-template <typename SegmentType>
-struct SegmentContainer : public ISegmentContainer {
 private:
     std::vector<SegmentType> vec;
 
@@ -104,12 +75,12 @@ private:
 
 public:
     // Return number of segments in container
-    size_t getSize() const override {
+    size_t getSize() const {
         return vec.size();
     }
 
     // Add segment to container; assumes segment has been checked to be inside domain
-    void addItem(const FlightInputs& flightInputs) override {
+    void addItem(const FlightInputs& flightInputs) {
         // Add to vector
         #pragma omp critical
         {
@@ -122,7 +93,7 @@ public:
     }
 
     // Evolve all segment plumes (parallelised)
-    void evolvePlumes(const CMTime& startTime, const CMTime& stopTime) override {
+    void evolvePlumes(const CMTime& startTime, const CMTime& stopTime) {
         // Using schedule(guided) to balance work when segments take different computational time
         // to evolve
         #pragma omp parallel for schedule(guided)
@@ -135,7 +106,7 @@ public:
     }
 
     // Advect all segments and remove if out of bounds (parallelised)
-    void advectSegments(const CMTime& startTime, const CMTime& stopTime) override {
+    void advectSegments(const CMTime& startTime, const CMTime& stopTime) {
         CM_LogWrite("Advecting segments");
         
         size_t numOOB = 0;
@@ -158,7 +129,7 @@ public:
     }
 
     // Dump old, massive, or dead segments (parallelised)
-    void dump(const CMTime& stopTime) override {
+    void dump(const CMTime& stopTime) {
         CM_LogWrite("Dumping old, massive, and dead segments");
         
         // Flag old segments
@@ -210,7 +181,7 @@ public:
     }
 
     // Construct QIcontrail using live segment data (parallelised)
-    void constructQIcontrail() override {
+    void constructQIcontrail() {
         #pragma omp parallel for
         for (SegmentType& seg : vec) {
             seg.addToQIcontrail();
@@ -218,8 +189,8 @@ public:
     }
 
     // Save segments to file with currTime in name
-    void save(const CMTime& currTime, const PlumeModels::Model plumeModel) override {
-        std::string filename = "ContrailManagerSegments_" + currTime.asFileFriendlyString() + ".bin";
+    void save(const CMTime& currTime, const PlumeModels::Model plumeModel) {
+        std::string filename = "segments_" + currTime.asFileFriendlyString() + ".bin";
 
         CM_LogWrite("Saving segments to " + filename);
 
@@ -238,7 +209,7 @@ public:
 
     // Load segments from file with time in name
     void load(const CMTime& time, const PlumeModels::Model plumeModel) {
-        std::string filename = "ContrailManagerSegments_" + time.asFileFriendlyString() + ".bin";
+        std::string filename = "segments_" + time.asFileFriendlyString() + ".bin";
 
         CM_LogWrite("Loading segments from " + filename);
 
@@ -314,5 +285,10 @@ inline SegmentCoCiP SegmentContainer<SegmentCoCiP>::newSegmentInstance(
     return SegmentCoCiP(flightInputs, domain, cocipParams);
 }
 #endif
+
+// Define SegmentContainer variant alias
+using SegmentContainerVariant = std::variant<
+    SegmentContainer<SegmentCoCiP>
+>;
 
 #endif

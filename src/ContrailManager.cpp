@@ -35,16 +35,17 @@ void ContrailManager::init() {
     CM_LogWrite("Online coupling: " + std::string(config.twoWayCoupling ? "true" : "false"));
 
     // Determine plume model
-    // Sets pointer to specialised segment container    
+    // Sets variant to specific segment container
     switch (config.plumeModelID) {
         case PlumeModels::COCIP.ID: {
             plumeModel = PlumeModels::COCIP;
 #ifdef WITH_COCIP
-            segments = std::make_unique<SegmentContainer<SegmentCoCiP>>();
-            segments->cocipParams = std::make_shared<Params>();
-            segments->cocipParams->readYAML();
+            segments = SegmentContainer<SegmentCoCiP>{};
+            std::visit([](auto& s) {
+                s.cocipParams = std::make_shared<Params>();
+                s.cocipParams->readYAML();
+            }, segments);
 #else
-            
             CM_RaiseError("Contrail Manager has not been built with " + plumeModel.name,
                 __FILE__, __LINE__);
 #endif
@@ -57,9 +58,11 @@ void ContrailManager::init() {
     }
     CM_LogWrite(std::format("Plume model: {}", plumeModel.name));
 
-    // After the segments pointer has been set
-    segments->maxContrailAge_s = config.maxContrailAge_s;
-    segments->maxAccumVapRatio = config.maxAccumVapRatio;
+    // After the segment container has been set
+    std::visit([&](auto& s) {
+        s.maxContrailAge_s = config.maxContrailAge_s;
+        s.maxAccumVapRatio = config.maxAccumVapRatio;
+    }, segments);
 
     outputInterval.set(std::chrono::duration<float>(config.outputInterval_s));
 
@@ -102,22 +105,35 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     create_segments(startTime, stopTime);
 
     // 2. Evolve plumes
-    segments->evolvePlumes(startTime, stopTime);
+    std::visit([&](auto& s) {
+        s.evolvePlumes(startTime, stopTime);
+    }, segments);
 
     // 3. Advect segments
-    segments->advectSegments(startTime, stopTime);
+    std::visit([&](auto& s) {
+        s.advectSegments(startTime, stopTime);
+    }, segments);
 
     // 4. Dump old or dead segments in their new location
-    segments->dump(stopTime);
+    std::visit([&](auto& s) {
+        s.dump(stopTime);
+    }, segments);
 
     // 5. Update currTime
     currTime = stopTime;
+
+    size_t numSegments = std::visit([](auto& s) -> size_t {
+        return s.getSize();
+    }, segments);
+
     CM_LogWrite("Current time: " + currTime.asString());
-    CM_LogWrite(std::format("Number of live contrail segments: {}", segments->getSize()));
+    CM_LogWrite(std::format("Number of live contrail segments: {}", numSegments));
 
     if (currTime >= nextOutputTime) {
         // Time to output
-        segments->save(currTime, plumeModel);
+        std::visit([&](auto& s) {
+            s.save(currTime, plumeModel);
+        }, segments);
         nextOutputTime += outputInterval;
     }
 
@@ -125,7 +141,9 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
         // Update deltaQV field
         //domain->find_deltaQV();
         // Construct QIcontrail field from the live contrail ice mass
-        segments->constructQIcontrail();
+        std::visit([](auto& s) {
+            s.constructQIcontrail();
+        }, segments);
     }
 
     // Current time at end of run
@@ -145,7 +163,9 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
 
     // Set domain-related variables now that domain is initialised
     domain->twoWayCoupling = config.twoWayCoupling;
-    segments->domain = domain;
+    std::visit([&](auto& s) {
+        s.domain = domain;
+    }, segments);
 
     currTime = startTime;
 
@@ -155,7 +175,9 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
 
     if (config.restartRun) {
         // Load segments from file
-        segments->load(currTime, plumeModel);
+        std::visit([&](auto& s) {
+            s.load(currTime, plumeModel);
+        }, segments);
     }
 }
 
@@ -163,17 +185,23 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
     CM_LogWrite("Creating segments for " + std::to_string(flights.active.size())
         + " active flights");
 
-    size_t numBefore = segments->getSize();
+    size_t numBefore = std::visit([](auto& s) -> size_t {
+        return s.getSize();
+    }, segments);
 
     // Create segments from each flight using lambda function telling flights what to do with
     // resulting FlightInputs objects
     flights.create_segments(startTime, stopTime, *domain,
         [this](FlightInputs inputs) {
-            segments->addItem(inputs);
+            std::visit([&inputs](auto& s) {
+                s.addItem(inputs);
+            }, segments);
         }
     );
 
-    size_t numAfter = segments->getSize();
+    size_t numAfter = std::visit([](auto& s) -> size_t {
+        return s.getSize();
+    }, segments);
     
     CM_LogWrite(std::format("Number of segments created: {}", (numAfter - numBefore)));
 }

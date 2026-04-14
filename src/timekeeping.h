@@ -209,6 +209,13 @@ struct CMTime {
     // Return a file name-friendly string (no hyphens or colons)
     std::string asFileFriendlyString() const {
         std::string str = asString();
+        // Find (final) .
+        auto pos = str.rfind('.');
+        // Remove it and everything after
+        if (pos != std::string::npos) {
+            str.erase(pos);
+        }
+        // Replace spaces and colons
         std::replace(str.begin(), str.end(), ' ', '_');
         std::replace(str.begin(), str.end(), ':', '-');
         return str;
