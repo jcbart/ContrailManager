@@ -1,22 +1,16 @@
-#ifndef BINTOTABLE_H
-#define BINTOTABLE_H
-
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <vector>
-#include <arrow/api.h>
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/vector.hpp>
 #include "PlumeModels.h"
 #include "SerializeSegment.h"
 #ifdef WITH_COCIP
-#include "SegmentCoCiP.h"
 #include "SerializeCoCiP.h"
 #endif
+#include "readbin.h"
 
 #ifdef WITH_COCIP
-// Turn a vector of SegmentCoCiP into an Arrow table
 arrow::Result<std::shared_ptr<arrow::Table>> CoCiP_to_table(const std::vector<SegmentCoCiP>& vec) {
     arrow::UInt64Builder ID_builder;
     arrow::StringBuilder parentID_builder;
@@ -165,7 +159,6 @@ arrow::Result<std::shared_ptr<arrow::Table>> CoCiP_to_table(const std::vector<Se
 }
 #endif
 
-// Read file and convert archived segments to Arrow table
 arrow::Result<std::shared_ptr<arrow::Table>> bin_to_table(const std::string& filename) {
     arrow::Result<std::shared_ptr<arrow::Table>> result;
 
@@ -204,5 +197,3 @@ arrow::Result<std::shared_ptr<arrow::Table>> bin_to_table(const std::string& fil
 
     return result;
 }
-
-#endif

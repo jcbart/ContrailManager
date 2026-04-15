@@ -83,7 +83,9 @@ set(SOURCES
 
 # Target definitions
 add_library(contrailmanager STATIC ${SOURCES})
+add_library(readbin STATIC "src/readbin.cpp")
 add_executable(bintocsv "src/bintocsv.cpp")
+add_executable(bintopq "src/bintopq.cpp")
 
 # Submodules
 
@@ -94,15 +96,16 @@ if(WITH_COCIP)
     add_subdirectory(${COCIP_RELATIVE_PATH} EXCLUDE_FROM_ALL)
     add_compile_definitions(WITH_COCIP)
     target_link_libraries(contrailmanager PRIVATE cocip)
-    target_link_libraries(bintocsv PRIVATE cocip)
+    target_link_libraries(readbin PUBLIC cocip)
 endif()
 
 # Apply ESMF options and flags
+
 target_compile_options(contrailmanager PRIVATE ${ESMF_CXXCOMPILEOPTS_LIST})
 target_compile_definitions(contrailmanager PRIVATE ${ESMF_CXXCOMPILECPPFLAGS})
 
-target_compile_options(bintocsv PRIVATE ${ESMF_CXXCOMPILEOPTS_LIST})
-target_compile_definitions(bintocsv PRIVATE ${ESMF_CXXCOMPILECPPFLAGS})
+target_compile_options(readbin PUBLIC ${ESMF_CXXCOMPILEOPTS_LIST})
+target_compile_definitions(readbin PUBLIC ${ESMF_CXXCOMPILECPPFLAGS})
 
 target_include_directories(contrailmanager
     PUBLIC
@@ -119,15 +122,21 @@ target_link_libraries(contrailmanager
         yaml-cpp::yaml-cpp
 )
 
-target_link_libraries(bintocsv
+target_link_libraries(readbin
     PRIVATE
         contrailmanager
-        Arrow::arrow_static
         cereal::cereal
+    # Make public libraries which are needed by any executable which depends on readbin
+    PUBLIC
+        Arrow::arrow_static
+        Parquet::parquet_static
 )
 
 target_link_libraries(contrailmanager PUBLIC ${ESMF_CXXESMFLINKLIBS} ${ESMF_CXXESMFLINKPATHS})
-target_link_libraries(bintocsv PRIVATE ${ESMF_CXXESMFLINKLIBS} ${ESMF_CXXESMFLINKPATHS})
+target_link_libraries(readbin PUBLIC ${ESMF_CXXESMFLINKLIBS} ${ESMF_CXXESMFLINKPATHS})
+
+target_link_libraries(bintocsv PRIVATE readbin)
+target_link_libraries(bintopq PRIVATE readbin)
 
 # Copy default input files if they do not already exist in build directory
 set(CM_INPUT_FILES "CM-config.yaml")
@@ -144,7 +153,12 @@ endforeach()
 
 # Library installation
 
-set(INSTALL_TARGETS contrailmanager bintocsv)
+set(INSTALL_TARGETS
+    contrailmanager
+    bintocsv
+    bintopq
+)
+
 set(INSTALL_INPUT_FILES ${CMAKE_CURRENT_BINARY_DIR}/CM-config.yaml)
 
 if(WITH_COCIP)
