@@ -34,7 +34,7 @@ public:
     Variable3D<float> Z_AT_W; // Height above sea level at cell interfaces (staggered in z-direction; m)
     Variable3D<float> DRYMASS; // Dry mass in grid cell (kg)
     Variable3D<float> T_POT; // Potential temperature (K)
-    Variable3D<float> deltaT_POT; // Change in potential temperature (K)
+    //Variable3D<float> deltaT_POT; // Change in potential temperature (K)
     Variable3D<float> P; // Total air pressure (Pa)
     Variable3D<float> U; // Wind speed in Eastward direction (m s-1)
     Variable3D<float> V; // Wind speed in Northward direction (m s-1)
@@ -42,7 +42,7 @@ public:
     Variable2D<float> TNSR; // Net (downwards) shortwave radiation at TOA (W m-2)
     Variable2D<float> OLR; // Outgoing longwave radiation at TOA (W m-2)
     Variable3D<float> QV; // Water vapour mass mixing ratio (kg (kg dry air-1))
-    Variable3D<float> QVsave; // Water vapour mass mixing ratio saved at start of coupling interval (kg (kg dry air-1))
+    //Variable3D<float> QVsave; // Water vapour mass mixing ratio saved at start of coupling interval (kg (kg dry air-1))
     Variable3D<float> deltaQV; // Change in water vapour mass mixing ratio over coupling interval (kg (kg dry air-1))
     Variable3D<float> QI; // Ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
     Variable3D<float> deltaQI; // Change in ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
@@ -67,20 +67,25 @@ public:
     // Destructor
     ~Domain() = default;
 
+    /*
     // Copy contents of QV to QVsave
     void save_QV() {
         for (size_t i = 0; i < QV.get_num_elements(); i++) {
             QVsave.get_data()[i] = QV.get_data()[i];
         }
     }
+    */
 
+    /*
     // Update deltaQV with deltaQV = QV - QVsave
     void find_deltaQV() {
         for (size_t i = 0; i < deltaQV.get_num_elements(); i++) {
             deltaQV.get_data()[i] = QV.get_data()[i] - QVsave.get_data()[i];
         }
     }
+    */
 
+    /*
     // Calculate deltaT_POT due to deltaQI (sublimation/deposition)
     void find_deltaT_POT() {
         for (size_t i = 0; i < deltaT_POT.get_num_elements(); i++) {
@@ -91,7 +96,11 @@ public:
             deltaT_POT.get_data()[i] = thermo::T_to_theta(delta_T, P.get_data()[i]);
         }
     }
+    */
 
+    // Checks the export fields have valid values; raises an error if not
+    void check_valid_exports() const;
+    
     // Finds the index k such that loc.alt is inside grid cell ijk
     // Updates k in argument
     // Returns false if no valid k found

@@ -64,7 +64,7 @@ void ContrailManager::init() {
         s.maxAccumVapRatio = config.maxAccumVapRatio;
     }, segments);
 
-    outputInterval.set(std::chrono::duration<float>(config.outputInterval_s));
+    outputInterval.set(std::chrono::duration<double>(config.outputInterval_s));
 
     flights.maxInitialSegLen = config.maxInitialSegLen;
     flights.readDatasets(config.flightDatasetPaths);
@@ -145,6 +145,9 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
             s.constructQIcontrail();
         }, segments);
     }
+
+    // Check exported fields are valid
+    domain->check_valid_exports();
 
     // Current time at end of run
     std::chrono::steady_clock::time_point computeTimeEnd = std::chrono::steady_clock::now();

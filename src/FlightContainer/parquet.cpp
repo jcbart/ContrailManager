@@ -3,7 +3,7 @@
 #include <arrow/io/api.h>
 #include <arrow/compute/api.h>
 #include <parquet/arrow/reader.h>
-#include "FlightContainer.h"
+#include "FlightContainer/FlightContainer.h"
 #include "timekeeping.h"
 #include "CMLog.h"
 

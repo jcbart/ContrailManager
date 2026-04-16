@@ -6,7 +6,7 @@
 #include <CoCiP++/params.h>
 #include <CoCiP++/CoCiPTime.h>
 #include "Segment.h"
-#include "SegmentCoCiP.h"
+#include "segments/SegmentCoCiP.h"
 #include "thermo.h"
 #include "map/types.h"
 #include "CMLog.h"
@@ -131,10 +131,6 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
         //    ice mass + vapour mass inside - vapour mass exhausted
         M_v_accum = M_ice + M_v_inside - M_v_exhaust;
 
-        //CM_LogWrite("CoCiP M_v_exhaust: " + std::to_string(M_v_exhaust)
-        //    + ", M_ice (initial): " + std::to_string(M_ice)
-        //    + ", M_v_accum (initial): " + std::to_string(M_v_accum));
-
         doneFormation = true;
     }
 
@@ -161,10 +157,6 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
     // Add to mass of accumulated ambient water vapour
     // using the interpolated humidity found by CoCiP
     M_v_accum += cocip.met->specific_humidity * (M_air_after - M_air_before);
-
-    //CM_LogWrite("CoCiP width: " + std::to_string(cocip.width) + ", depth: "
-    //    + std::to_string(cocip.depth) + ", IWC: " + std::to_string(cocip.iwc) + ", M_v_accum: "
-    //    + std::to_string(M_v_accum));
 
     // The below is only required for a two-way coupling in which some water vapour is continually
     // exchanged through sedimentation

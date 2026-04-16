@@ -3,9 +3,18 @@
 
 #include <string>
 #include <sstream>
+#include <format>
+#include <concepts>
+#include <functional>
 #include <omp.h>
 #include "map/types.h"
 #include "CMLog.h"
+
+// Define a condition function F which takes a value of type T and returns a bool and can be passed
+// to the check_condition method of a variable of type T
+template<typename F, typename T>
+concept VariableConditionFunction = std::invocable<F, T>
+    && std::same_as<std::invoke_result_t<F, T>, bool>;
 
 template <typename T>
 class Variable2D {
@@ -18,7 +27,7 @@ private:
     T* data; // Raw, contiguous data
 
     // Checks indices are valid
-    constexpr void check_valid(const int i, const int j) const {
+    constexpr void check_valid_idxs(const int i, const int j) const {
         if (i < ids || i > ide || j < jds || j > jde) [[unlikely]] {
             std::stringstream ss;
             ss << "Variable2D " << name << " error: Index (i,j)=(" << i << "," << j
@@ -58,11 +67,19 @@ public:
     // Operations on this pointer are NOT thread-safe
     T* get_data() const { return data; };
 
-    // Flatten 2D indices
+    // Flatten 2D indices; checks indices are valid
     constexpr size_t get_1D_index_from_2D(const int i, const int j) const {
-        check_valid(i, j);
+        check_valid_idxs(i, j);
         return (static_cast<size_t>(i) - ids) * j_size +
                (static_cast<size_t>(j) - jds);
+    }
+
+    // Returns (i,j) from a flattened 1D index; does not check if index is valid
+    constexpr IDX2<int> get_2D_indices_from_1D(size_t idx) const {
+        return IDX2<int>(
+            idx / j_size + ids,
+            idx % j_size + jds
+        );
     }
 
     // Returns the value at indices; thread-safe
@@ -155,6 +172,21 @@ public:
             data[i] = 0;
         }
     }
+
+    // Checks each of the values against a condition; raises an error if the condition is false
+    template<typename F>
+    requires VariableConditionFunction<F, T>
+    void check_condition(F&& condition) const {
+        for (size_t i = 0; i < num_elements; i++) {
+            if(!condition(data[i])) [[unlikely]] {
+                CM_RaiseError(
+                    std::format("Variable2D {} error: value at {} = {} is invalid",
+                        name, get_2D_indices_from_1D(i).asString(), data[i]
+                    ), __FILE__, __LINE__
+                );
+            }
+        }
+    }
 };
 
 template <typename T>
@@ -168,7 +200,7 @@ private:
     T* data; // Raw, contiguous data
 
     // Checks indices are valid
-    constexpr void check_valid(const int i, const int j, const int k) const {
+    constexpr void check_valid_idxs(const int i, const int j, const int k) const {
         if (i < ids || i > ide || j < jds || j > jde || k < kds || k > kde) [[unlikely]] {
             std::stringstream ss;
             ss << "Variable3D " << name << " error: Index (i,j,k)=(" << i << "," << j << "," << k
@@ -211,12 +243,21 @@ public:
     // Operations on this pointer are NOT thread-safe
     T* get_data() const { return data; };
 
-    // Flatten 3D indices
+    // Flatten 3D indices; checks indices are valid
     constexpr size_t get_1D_index_from_3D(const int i, const int j, const int k) const {
-        check_valid(i, j, k);
+        check_valid_idxs(i, j, k);
         return (static_cast<size_t>(i) - ids) * j_size * k_size +
                (static_cast<size_t>(j) - jds) * k_size +
                (static_cast<size_t>(k) - kds);
+    }
+
+    // Returns (i,j,k) from a flattened 1D index; does not check if index is valid
+    constexpr IDX3<int> get_3D_indices_from_1D(size_t idx) const {
+        return IDX3<int>(
+            idx / (j_size * k_size) + ids,
+            (idx % (j_size * k_size)) / k_size + jds,
+            idx % k_size + kds
+        );
     }
 
     // Returns the value at indices; thread-safe
@@ -307,6 +348,21 @@ public:
     void clear_all() {
         for (size_t i = 0; i < num_elements; i++) {
             data[i] = 0;
+        }
+    }
+
+    // Checks each of the values against a condition; raises an error if the condition is false
+    template<typename F>
+    requires VariableConditionFunction<F, T>
+    void check_condition(F&& condition) const {
+        for (size_t i = 0; i < num_elements; i++) {
+            if(!condition(data[i])) [[unlikely]] {
+                CM_RaiseError(
+                    std::format("Variable3D {} error: value at {} = {} is invalid",
+                        name, get_3D_indices_from_1D(i).asString(), data[i]
+                    ), __FILE__, __LINE__
+                );
+            }
         }
     }
 };

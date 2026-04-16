@@ -15,17 +15,18 @@ struct CMConfig {
     // True if the Contrail Manager should initialise from an output file
     bool restartRun = false;
 
-    float outputInterval_s = 3*3600;
+    double outputInterval_s = 3*3600;
 
     // Maximum length of a new segment (m)
-    float maxInitialSegLen = 2500;
+    double maxInitialSegLen = 2500;
 
     // Maximum age of a contrail segment (s)
-    float maxContrailAge_s = 12*3600;
+    double maxContrailAge_s = 12*3600;
 
     // Maximum ratio of double-counted water vapour mass in contrail plume to water vapour mass in
     // grid cell ()
-    float maxAccumVapRatio = 1e-2;
+    // Irrelevant (set to infinity) if coupling is one-way so that segments are never too massive
+    double maxAccumVapRatio = 1e-2;
 
     std::vector<std::string> flightDatasetPaths; // Flight dataset file paths
 

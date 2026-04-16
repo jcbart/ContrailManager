@@ -55,7 +55,7 @@ void SegmentContainer<SegmentType>::advectSegments(const CMTime& startTime,
 
 template<typename SegmentType>
 void SegmentContainer<SegmentType>::dump(const CMTime& stopTime) {
-    CM_LogWrite("Dumping old, massive, and dead segments");
+    CM_LogWrite("Dumping segments");
     
     // Flag old segments
     flagOldSegments(stopTime);
@@ -81,7 +81,7 @@ void SegmentContainer<SegmentType>::dump(const CMTime& stopTime) {
         numOld, numMassive, numDead));
 
     if (domain->twoWayCoupling) {
-        // Dump if old, massive, or dead
+        // Dump flagged segments
         #pragma omp parallel for
         for (SegmentType& seg : vec) {
             if (seg.shouldBeDumped()) {
@@ -92,7 +92,7 @@ void SegmentContainer<SegmentType>::dump(const CMTime& stopTime) {
 
     size_t numBefore = vec.size();
 
-    // Remove old or dead
+    // Remove flagged segments
     std::erase_if(
         vec,
         [](const SegmentType& seg) {

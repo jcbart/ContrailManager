@@ -12,7 +12,7 @@ Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
       Z_AT_W("Z_AT_W", ids, ide, jds, jde, kds, kde + 1),
       DRYMASS("DRYMASS", ids, ide, jds, jde, kds, kde),
       T_POT("T_POT", ids, ide, jds, jde, kds, kde),
-      deltaT_POT("deltaT_POT", ids, ide, jds, jde, kds, kde),
+      //deltaT_POT("deltaT_POT", ids, ide, jds, jde, kds, kde),
       P("P", ids, ide, jds, jde, kds, kde),
       U("U", ids, ide, jds, jde, kds, kde),
       V("V", ids, ide, jds, jde, kds, kde),
@@ -20,7 +20,7 @@ Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
       TNSR("TNSR", ids, ide, jds, jde),
       OLR("OLR", ids, ide, jds, jde),
       QV("QV", ids, ide, jds, jde, kds, kde),
-      QVsave("QV", ids, ide, jds, jde, kds, kde),
+      //QVsave("QV", ids, ide, jds, jde, kds, kde),
       deltaQV("deltaQV", ids, ide, jds, jde, kds, kde),
       QI("QI", ids, ide, jds, jde, kds, kde),
       deltaQI("deltaQI", ids, ide, jds, jde, kds, kde),
@@ -31,11 +31,24 @@ Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
     CM_LogWrite("Contrail Manager variables initialised with dimensions:");
     CM_LogWrite(std::format("ids = {}, jds = {}, kds = {}", ids, jds, kds));
     CM_LogWrite(std::format("ide = {}, jde = {}, kde = {}", ide, jde, kde));
-    CM_LogWrite("Note: Contrail Manager does not use a staggered grid except for Z_AT_W where kde += 1.");
+    CM_LogWrite("Note: Contrail Manager does not use a staggered grid except for Z_AT_W where "
+        "kde += 1.");
 }
 
 // Methods to compile
 template Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjectionLC p);
+
+void Domain::check_valid_exports() const {
+    // Define lambda functions
+    constexpr auto isNotNegative = [](float x) -> bool { return x >= 0; };
+    constexpr auto isFinite = [](float x) -> bool { return std::isfinite(x); }; // includes NaN
+
+    deltaQV.check_condition(isFinite);
+    deltaQI.check_condition(isFinite);
+    deltaNI.check_condition(isFinite);
+    QIcontrail.check_condition(isFinite);
+    QIcontrail.check_condition(isNotNegative);
+}
 
 bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interpPoints) const {
     // Find grid cell and relevant diagonal

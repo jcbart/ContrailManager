@@ -20,10 +20,10 @@
 template <typename SegmentType>
 struct SegmentContainer {
     // Maximum age of a contrail segment (s); set by ContrailManager
-    float maxContrailAge_s;
+    double maxContrailAge_s;
     // Maximum ratio of double-counted water vapour mass in contrail plume to water vapour mass in
     // grid cell (); set by ContrailManager
-    float maxAccumVapRatio;
+    double maxAccumVapRatio;
 
     std::shared_ptr<Domain> domain; // Pointer to the Contrail Manager's domain
 

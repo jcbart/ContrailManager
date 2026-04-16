@@ -22,6 +22,8 @@ Max contrail age (h): 6
 
 # Maximum ratio of water vapour mass in contrail plume to water vapour mass in the grid cell it is
 # inside; above this, the contrail is dumped into the NWP's native grid
+# If using a one-way coupling, this value is overwritten as infinity so that segments are never
+# dumped for being too massive
 Max accumulated vapour ratio (): 1e-2
 
 # Paths to flight dataset files separated by commas within square brackets
