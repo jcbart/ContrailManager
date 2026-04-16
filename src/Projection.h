@@ -2,7 +2,8 @@
 #define PROJECTION_H
 
 #include <cmath>
-#include "mapFunctions.h"
+#include <variant>
+#include "map/functions.h"
 #include "CMLog.h"
 
 class IProjection {

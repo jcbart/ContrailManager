@@ -8,7 +8,7 @@
 #include "Segment.h"
 #include "SegmentCoCiP.h"
 #include "thermo.h"
-#include "mapTypes.h"
+#include "map/types.h"
 #include "CMLog.h"
 
 SegmentCoCiP::SegmentCoCiP(const FlightInputs& flightInputs, std::shared_ptr<Domain> domain,

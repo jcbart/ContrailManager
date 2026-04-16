@@ -2,7 +2,7 @@
 #define WAYPOINT_H
 
 #include "timekeeping.h"
-#include "mapTypes.h"
+#include "map/types.h"
 
 // Flight waypoint structure (holds a time, location, and some aircraft values)
 struct Waypoint {

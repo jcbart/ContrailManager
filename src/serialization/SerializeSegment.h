@@ -4,7 +4,7 @@
 #include <cereal/types/memory.hpp>
 #include "Segment.h"
 #include "timekeeping.h"
-#include "mapTypes.h"
+#include "map/types.h"
 #include "FlightInputs.h"
 
 namespace cereal {

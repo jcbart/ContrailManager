@@ -1,6 +1,6 @@
 #include <format>
 #include "Domain.h"
-#include "mapFunctions.h"
+#include "map/functions.h"
 
 template <typename ProjType>
 Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)

@@ -2,8 +2,8 @@
 #define MAPFUNCTIONS_H
 
 #include <cmath>
-#include "mapConsts.h"
-#include "mapTypes.h"
+#include "map/constants.h"
+#include "map/types.h"
 
 // Forward declarations
 class Domain;

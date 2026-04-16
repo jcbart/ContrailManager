@@ -14,15 +14,15 @@
 #ifdef WITH_COCIP
 #include <CoCiP++/CoCiP.h>
 #include <CoCiP++/params.h>
-#include "SegmentCoCiP.h"
-#include "SerializeCoCiP.h"
+#include "segments/SegmentCoCiP.h"
+#include "serialization/SerializeCoCiP.h"
 #endif
 #include "PlumeModels.h"
 #include "Domain.h"
-#include "mapTypes.h"
+#include "map/types.h"
 #include "timekeeping.h"
 #include "FlightInputs.h"
-#include "SerializeSegment.h"
+#include "serialization/SerializeSegment.h"
 #include "CMLog.h"
 
 // Plume model-specific segment container structure

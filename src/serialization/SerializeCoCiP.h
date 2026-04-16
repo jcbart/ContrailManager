@@ -9,8 +9,8 @@
 #include <CoCiP++/met.h>
 #include <CoCiP++/params.h>
 #include <CoCiP++/CoCiPTime.h>
-#include "SegmentCoCiP.h"
-#include "SerializeSegment.h"
+#include "segments/SegmentCoCiP.h"
+#include "serialization/SerializeSegment.h"
 
 namespace cereal {
 

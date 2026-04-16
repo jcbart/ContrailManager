@@ -7,7 +7,7 @@
 #include "CMConfig.h"
 #include "PlumeModels.h"
 #include "Domain.h"
-#include "FlightContainer.h"
+#include "FlightContainer/FlightContainer.h"
 #include "SegmentContainer.h"
 #include "Flight.h"
 

@@ -1,4 +1,4 @@
-#include "mapFunctions.h"
+#include "map/functions.h"
 #include "Waypoint.h"
 #include "Domain.h"
 

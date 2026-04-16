@@ -7,7 +7,7 @@
 #include <atomic>
 #include "timekeeping.h"
 #include "Domain.h"
-#include "mapFunctions.h"
+#include "map/functions.h"
 #include "FlightInputs.h"
 
 // Virtual contrail segment structure

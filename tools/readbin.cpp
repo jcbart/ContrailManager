@@ -4,9 +4,9 @@
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/vector.hpp>
 #include "PlumeModels.h"
-#include "SerializeSegment.h"
+#include "serialization/SerializeSegment.h"
 #ifdef WITH_COCIP
-#include "SerializeCoCiP.h"
+#include "serialization/SerializeCoCiP.h"
 #endif
 #include "readbin.h"
 

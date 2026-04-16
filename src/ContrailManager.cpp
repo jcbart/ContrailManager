@@ -15,7 +15,7 @@
 #include "Flight.h"
 #include "FlightInputs.h"
 #include "Projection.h"
-#include "mapFunctions.h"
+#include "map/functions.h"
 #include "CMLog.h"
 
 void ContrailManager::init() {

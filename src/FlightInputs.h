@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 #include "timekeeping.h"
-#include "mapTypes.h"
+#include "map/types.h"
 
 // Flight emission-related inputs to contrail segment
 struct FlightEmissions {

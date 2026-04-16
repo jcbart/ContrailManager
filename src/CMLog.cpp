@@ -3,7 +3,7 @@
 #include <omp.h>
 #include <ESMC.h>
 #include "CMLog.h"
-#include "mapTypes.h"
+#include "map/types.h"
 
 void CM_LogWrite(const std::string_view msg) {
     #pragma critical
