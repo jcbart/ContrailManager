@@ -8,6 +8,7 @@ add_library(contrailmanager STATIC
     ContrailManager.cpp
     Domain.cpp
     extern.cpp
+    SegmentContainer.cpp
 )
 
 target_link_libraries(contrailmanager

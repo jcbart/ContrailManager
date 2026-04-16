@@ -1,29 +1,19 @@
 #ifndef SEGMENTCONTAINER_H
 #define SEGMENTCONTAINER_H
 
-#include <string>
 #include <vector>
-#include <algorithm>
-#include <functional>
 #include <memory>
-#include <fstream>
 #include <variant>
 #include <omp.h>
-#include <cereal/archives/binary.hpp>
-#include <cereal/types/vector.hpp>
-#ifdef WITH_COCIP
-#include <CoCiP++/CoCiP.h>
-#include <CoCiP++/params.h>
-#include "segments/SegmentCoCiP.h"
-#include "serialization/SerializeCoCiP.h"
-#endif
 #include "PlumeModels.h"
 #include "Domain.h"
 #include "map/types.h"
 #include "timekeeping.h"
 #include "FlightInputs.h"
-#include "serialization/SerializeSegment.h"
-#include "CMLog.h"
+#ifdef WITH_COCIP
+#include <CoCiP++/params.h>
+#include "segments/SegmentCoCiP.h"
+#endif
 
 // Plume model-specific segment container structure
 // Holds segments in a private vector of SegmentType
@@ -86,99 +76,16 @@ public:
         {
             vec.push_back(newSegmentInstance(flightInputs));
         }
-
-        //CM_LogWrite("Segment created with birth time: " + newSeg.birthTime.asString());
-        //CM_LogWrite("Centre location: " + newSeg.centre.asString());
-        //CM_LogWrite("Length: " + std::to_string(newSeg.length));
     }
 
     // Evolve all segment plumes (parallelised)
-    void evolvePlumes(const CMTime& startTime, const CMTime& stopTime) {
-        // Using schedule(guided) to balance work when segments take different computational time
-        // to evolve
-        #pragma omp parallel for schedule(guided)
-        for (SegmentType& seg : vec) {
-            // Check segment is in bounds in case findDependentLocs failed to find centre
-            if (!seg.outOfBounds) {
-                seg.evolve(startTime, stopTime);
-            }
-        }
-    }
+    void evolvePlumes(const CMTime& startTime, const CMTime& stopTime);
 
     // Advect all segments and remove if out of bounds (parallelised)
-    void advectSegments(const CMTime& startTime, const CMTime& stopTime) {
-        CM_LogWrite("Advecting segments");
-        
-        size_t numOOB = 0;
-        #pragma omp parallel for reduction(+ : numOOB)
-        for (SegmentType& seg : vec) {
-            seg.advect(startTime, stopTime);
-            if (seg.outOfBounds) {
-                numOOB += 1;
-            }
-        }
-
-        CM_LogWrite(std::format("Number out of bounds: {}", numOOB));
-
-        std::erase_if(
-            vec,
-            [](const SegmentType& seg) {
-                return seg.outOfBounds;
-            }
-        );
-    }
+    void advectSegments(const CMTime& startTime, const CMTime& stopTime);
 
     // Dump old, massive, or dead segments (parallelised)
-    void dump(const CMTime& stopTime) {
-        CM_LogWrite("Dumping old, massive, and dead segments");
-        
-        // Flag old segments
-        flagOldSegments(stopTime);
-
-        // Flag massive segments
-        flagTooMassiveSegments();
-
-        size_t numOld = 0, numMassive = 0, numDead = 0;
-        #pragma omp parallel for reduction(+ : numOld, numMassive, numDead)
-        for (const SegmentType& seg : vec) {
-            if (seg.isOld) {
-                numOld++;
-            }
-            if (seg.isTooMassive) {
-                numMassive++;
-            }
-            if (seg.isDead) {
-                numDead++;
-            }
-        }
-
-        CM_LogWrite(std::format("Number of old: {}, number of massive: {}, number of dead: {}",
-            numOld, numMassive, numDead));
-
-        if (domain->twoWayCoupling) {
-            // Dump if old, massive, or dead
-            #pragma omp parallel for
-            for (SegmentType& seg : vec) {
-                if (seg.shouldBeDumped()) {
-                    seg.dump();
-                }
-            }
-        }
-
-        size_t numBefore = vec.size();
-
-        // Remove old or dead
-        std::erase_if(
-            vec,
-            [](const SegmentType& seg) {
-                return (seg.shouldBeDumped());
-            }
-        );
-        
-        size_t numAfter = vec.size();
-        
-        CM_LogWrite(std::format("Number removed: {}", numBefore - numAfter));
-    }
+    void dump(const CMTime& stopTime);
 
     // Construct QIcontrail using live segment data (parallelised)
     void constructQIcontrail() {
@@ -189,91 +96,10 @@ public:
     }
 
     // Save segments to file with currTime in name
-    void save(const CMTime& currTime, const PlumeModels::Model plumeModel) {
-        std::string filename = "segments_" + currTime.asFileFriendlyString() + ".bin";
-
-        CM_LogWrite("Saving segments to " + filename);
-
-        {
-            std::ofstream os(filename, std::ios::binary);
-            if (!os) {
-                CM_RaiseError("Cannot open file for writing: " + filename, __FILE__, __LINE__);
-            }
-            cereal::BinaryOutputArchive archive(os);
-            // Write plume model ID
-            archive(plumeModel.ID);
-            // Then vector
-            archive(vec);
-        }
-    }
+    void save(const CMTime& currTime, const PlumeModels::Model plumeModel);
 
     // Load segments from file with time in name
-    void load(const CMTime& time, const PlumeModels::Model plumeModel) {
-        std::string filename = "segments_" + time.asFileFriendlyString() + ".bin";
-
-        CM_LogWrite("Loading segments from " + filename);
-
-        int loadedPlumeModelID;
-
-        {
-            std::ifstream is(filename, std::ios::binary);
-            if (!is) {
-                CM_RaiseError("Cannot open file for reading: " + filename, __FILE__, __LINE__);
-            }
-            cereal::BinaryInputArchive archive(is);
-            archive(loadedPlumeModelID);
-
-            if (loadedPlumeModelID != plumeModel.ID) {
-                CM_RaiseError(
-                    std::format(
-                        "File was written with plume model ID {}, but config specifies {}",
-                        loadedPlumeModelID, plumeModel.name
-                    ),
-                    __FILE__, __LINE__
-                );
-            }
-
-            archive(vec);
-        }
-
-        size_t numLoaded = vec.size();
-
-        CM_LogWrite(std::format("Loaded {} segments from file.", numLoaded));
-
-        // Set domain pointer for each segment, then check if out of bounds
-        #pragma omp parallel for
-        for (SegmentType& seg : vec) {
-            seg.domain = domain;
-
-            IDX3<int> ijk;
-            if (!(domain->loc_to_ijk(seg.centre, ijk)
-                  && domain->can_do_interp(seg.front)
-                  && domain->can_do_interp(seg.back))) {
-                seg.outOfBounds = true;
-            }
-        }
-
-        std::erase_if(
-            vec,
-            [](const SegmentType& seg) {
-                return seg.outOfBounds;
-            }
-        );
-
-        size_t numAfter = vec.size();
-
-        CM_LogWrite(std::format("Number out of bounds: {}", numLoaded - numAfter));
-
-        // Find highest ID
-        uint64_t maxID = 0;
-        if (!vec.empty()) {
-            auto it = std::ranges::max_element(vec, {}, &SegmentType::ID);
-            maxID = it->ID;
-        }
-        // Set Segment struct ID counter to the next value
-        Segment::setIDCounter(maxID + 1);
-
-    }
+    void load(const CMTime& time, const PlumeModels::Model plumeModel);
 };
 
 #ifdef WITH_COCIP
