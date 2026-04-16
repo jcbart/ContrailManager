@@ -19,9 +19,9 @@ private:
     // Only valid (and used) during dataset reading
     std::unordered_map<std::string, size_t> flightIDIndexMap;
 
-    void read_file(const std::string& filepath);
+    void readFile(const std::string& filepath);
 
-    void read_parquet(const std::string& filepath);
+    void readParquet(const std::string& filepath);
 
 public:
     // Flights loaded in memory, sorted by first waypoint time
@@ -32,16 +32,16 @@ public:
     float maxInitialSegLen; // Maximum length of a new segment (m)
 
     // Read datasets from paths
-    void read_datasets(const std::vector<std::string>& filepaths);
+    void readDatasets(const std::vector<std::string>& filepaths);
 
     // Update FlightContainer::active by removing flights no longer on their trajectory and adding
     // flights starting their trajectory from FlightContainer::loaded
-    void update_active(const CMTime& startTime, const CMTime& stopTime);
+    void updateActive(const CMTime& startTime, const CMTime& stopTime);
 
     // Create segments from each flight (parallelised)
     // For each segment, a flight passes the resulting FlightInputs to `emit`
     template <typename Emit>
-    void create_segments(const CMTime& startTime, const CMTime& stopTime, const Domain& domain,
+    void createSegments(const CMTime& startTime, const CMTime& stopTime, const Domain& domain,
         Emit&& emit) {
         
         #pragma omp parallel for schedule(guided)

@@ -7,7 +7,7 @@
 #include "timekeeping.h"
 #include "CMLog.h"
 
-void FlightContainer::read_file(const std::string& filepath) {
+void FlightContainer::readFile(const std::string& filepath) {
     CM_LogWrite("Reading flight dataset: " + filepath);
 
     // Check file exists
@@ -22,7 +22,7 @@ void FlightContainer::read_file(const std::string& filepath) {
 
     // Read file according to its extension
     if (extension == ".parquet" || extension == ".pq") {
-        read_parquet(filepath);
+        readParquet(filepath);
     }
     else {
         CM_RaiseError("Flight dataset '" + filepath + "' has unsupported file extension.",
@@ -30,7 +30,7 @@ void FlightContainer::read_file(const std::string& filepath) {
     }
 }
 
-void FlightContainer::read_datasets(const std::vector<std::string>& filepaths) {
+void FlightContainer::readDatasets(const std::vector<std::string>& filepaths) {
     // Time at start of reading
     std::chrono::steady_clock::time_point readTimeStart = std::chrono::steady_clock::now();
 
@@ -75,12 +75,12 @@ void FlightContainer::read_datasets(const std::vector<std::string>& filepaths) {
             std::ranges::sort(matchedFilepaths);
 
             for (const std::string& match : matchedFilepaths) {
-                read_file(match);
+                readFile(match);
             }
         }
         // Else, regular path
         else {
-            read_file(filepath);
+            readFile(filepath);
         }
     }
 
@@ -113,7 +113,7 @@ void FlightContainer::read_datasets(const std::vector<std::string>& filepaths) {
     }
 }
 
-void FlightContainer::update_active(const CMTime& startTime, const CMTime& stopTime) {
+void FlightContainer::updateActive(const CMTime& startTime, const CMTime& stopTime) {
     // Remove flights whose last waypoint is before startTime
     std::erase_if(
         active,

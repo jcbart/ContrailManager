@@ -67,7 +67,7 @@ void ContrailManager::init() {
     outputInterval.set(std::chrono::duration<float>(config.outputInterval_s));
 
     flights.maxInitialSegLen = config.maxInitialSegLen;
-    flights.read_datasets(config.flightDatasetPaths);
+    flights.readDatasets(config.flightDatasetPaths);
 
     CM_LogWrite("Contrail Manager initialised");
 }
@@ -99,7 +99,7 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
         domain->QIcontrail.clear_all();
     }
 
-    flights.update_active(startTime, stopTime);
+    flights.updateActive(startTime, stopTime);
         
     // 1. Create segments
     create_segments(startTime, stopTime);
@@ -191,7 +191,7 @@ void ContrailManager::create_segments(const CMTime& startTime, const CMTime& sto
 
     // Create segments from each flight using lambda function telling flights what to do with
     // resulting FlightInputs objects
-    flights.create_segments(startTime, stopTime, *domain,
+    flights.createSegments(startTime, stopTime, *domain,
         [this](FlightInputs inputs) {
             std::visit([&inputs](auto& s) {
                 s.addItem(inputs);

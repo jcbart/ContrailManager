@@ -122,7 +122,7 @@ inline std::shared_ptr<arrow::Array> toStringArray(const std::shared_ptr<arrow::
     return result->make_array();
 }
 
-void FlightContainer::read_parquet(const std::string& filepath) {
+void FlightContainer::readParquet(const std::string& filepath) {
     // Arrow table of parquet file
     std::shared_ptr<arrow::Table> table;
     arrow::Status status = parquet_to_table(filepath, table);
