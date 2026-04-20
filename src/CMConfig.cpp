@@ -1,4 +1,5 @@
 #include <limits>
+#include <format>
 #include <yaml-cpp/yaml.h>
 #include "CMConfig.h"
 #include "CMLog.h"
@@ -17,16 +18,30 @@ void CMConfig::read() {
 
     maxInitialSegLen = config["Max initial segment length (m)"].as<double>();
     if (maxInitialSegLen <= 0) {
-        CM_RaiseError("Config error: Read maximum initial segment length of "
-            + std::to_string(maxInitialSegLen)
-            + " m. Maximum initial segment length must be positive.", __FILE__, __LINE__);
+        CM_RaiseError(std::format("Config error: Read maximum initial segment length of {} m. "
+            "Maximum initial segment length must be positive.", maxInitialSegLen),
+            __FILE__, __LINE__);
+    }
+
+    if (twoWayCoupling) {
+        // If two-way coupling, read value from config
+        maxSegLen = config["Max segment length (m)"].as<double>();
+        if (maxSegLen <= 0) {
+            CM_RaiseError(std::format("Config error: Read maximum segment length of {} m. "
+                "Maximum segment length must be positive.", maxSegLen),
+                __FILE__, __LINE__);
+        }
+    }
+    else {
+        // Else, value is infinite so that segments are never too long
+        maxSegLen = std::numeric_limits<double>::infinity();
     }
 
     double maxContrailAge_h = config["Max contrail age (h)"].as<double>();
     if (maxContrailAge_h <= 0) {
-        CM_RaiseError("Config error: Read maximum contrail age of "
-            + std::to_string(maxContrailAge_h)
-            + " h. Maximum contrail age must be positive.", __FILE__, __LINE__);
+        CM_RaiseError(std::format("Config error: Read maximum contrail age of {} h. "
+            "Maximum contrail age must be positive.", maxContrailAge_h),
+            __FILE__, __LINE__);
     }
     maxContrailAge_s = 3600 * maxContrailAge_h;
 
@@ -34,9 +49,9 @@ void CMConfig::read() {
         // If two-way coupling, read value from config
         maxAccumVapRatio = config["Max accumulated vapour ratio ()"].as<double>();
         if (maxAccumVapRatio <= 0) {
-            CM_RaiseError("Config error: Read maximum accumulated vapour ratio of "
-                + std::to_string(maxAccumVapRatio)
-                + ". Maximum accumulated vapour ratio must be positive.", __FILE__, __LINE__);
+            CM_RaiseError(std::format("Config error: Read maximum accumulated vapour ratio of {}. "
+                "Maximum accumulated vapour ratio must be positive.", maxAccumVapRatio),
+                __FILE__, __LINE__);
         }
     }
     else {

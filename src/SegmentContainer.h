@@ -21,6 +21,8 @@ template <typename SegmentType>
 struct SegmentContainer {
     // Maximum age of a contrail segment (s); set by ContrailManager
     double maxContrailAge_s;
+    // Maximum length of a contrail segment at any time (m); set by ContrailManager
+    double maxSegLen;
     // Maximum ratio of double-counted water vapour mass in contrail plume to water vapour mass in
     // grid cell (); set by ContrailManager
     double maxAccumVapRatio;
@@ -48,8 +50,8 @@ private:
         }
     }
 
-    // Updates isTooMassive flag for each segment if past size threshold (parallelised)
-    void flagTooMassiveSegments() {
+    // Updates isTooLarge flag for each segment if past size threshold (parallelised)
+    void flagLargeSegments() {
         #pragma omp parallel for
         for (SegmentType& seg : vec) {
             IDX3<int> ijkCurr = domain->loc_to_ijk(seg.centre);
@@ -57,8 +59,9 @@ private:
             double gridVapourMass = domain->QV.get(ijkCurr)
                                     * domain->DRYMASS.get(ijkCurr);
 
-            if (seg.M_v_accum / gridVapourMass > maxAccumVapRatio) {
-                seg.isTooMassive = true;
+            if ((seg.length > maxSegLen)
+                || (seg.M_v_accum / gridVapourMass > maxAccumVapRatio)) {
+                seg.isTooLarge = true;
             }
         }
     }
@@ -84,7 +87,7 @@ public:
     // Advect all segments and remove if out of bounds (parallelised)
     void advectSegments(const CMTime& startTime, const CMTime& stopTime);
 
-    // Dump old, massive, or dead segments (parallelised)
+    // Dump old, large, or dead segments (parallelised)
     void dump(const CMTime& stopTime);
 
     // Construct QIcontrail using live segment data (parallelised)

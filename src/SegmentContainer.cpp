@@ -60,25 +60,25 @@ void SegmentContainer<SegmentType>::dump(const CMTime& stopTime) {
     // Flag old segments
     flagOldSegments(stopTime);
 
-    // Flag massive segments
-    flagTooMassiveSegments();
+    // Flag large segments
+    flagLargeSegments();
 
-    size_t numOld = 0, numMassive = 0, numDead = 0;
-    #pragma omp parallel for reduction(+ : numOld, numMassive, numDead)
+    size_t numOld = 0, numLarge = 0, numDead = 0;
+    #pragma omp parallel for reduction(+ : numOld, numLarge, numDead)
     for (const SegmentType& seg : vec) {
         if (seg.isOld) {
             numOld++;
         }
-        if (seg.isTooMassive) {
-            numMassive++;
+        if (seg.isTooLarge) {
+            numLarge++;
         }
         if (seg.isDead) {
             numDead++;
         }
     }
 
-    CM_LogWrite(std::format("Number of old: {}, number of massive: {}, number of dead: {}",
-        numOld, numMassive, numDead));
+    CM_LogWrite(std::format("Number of old: {}, number of large: {}, number of dead: {}",
+        numOld, numLarge, numDead));
 
     if (domain->twoWayCoupling) {
         // Dump flagged segments

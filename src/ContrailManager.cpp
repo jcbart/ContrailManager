@@ -61,6 +61,7 @@ void ContrailManager::init() {
     // After the segment container has been set
     std::visit([&](auto& s) {
         s.maxContrailAge_s = config.maxContrailAge_s;
+        s.maxSegLen = config.maxSegLen;
         s.maxAccumVapRatio = config.maxAccumVapRatio;
     }, segments);
 
@@ -104,18 +105,14 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     // 1. Create segments
     create_segments(startTime, stopTime);
 
-    // 2. Evolve plumes
     std::visit([&](auto& s) {
+        // 2. Evolve plumes
         s.evolvePlumes(startTime, stopTime);
-    }, segments);
 
-    // 3. Advect segments
-    std::visit([&](auto& s) {
+        // 3. Advect segments
         s.advectSegments(startTime, stopTime);
-    }, segments);
 
-    // 4. Dump old or dead segments in their new location
-    std::visit([&](auto& s) {
+        // 4. Dump old or dead segments in their new location
         s.dump(stopTime);
     }, segments);
 

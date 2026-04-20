@@ -5,7 +5,6 @@
 #include <CoCiP++/met.h>
 #include <CoCiP++/params.h>
 #include <CoCiP++/CoCiPTime.h>
-#include "Segment.h"
 #include "segments/SegmentCoCiP.h"
 #include "thermo.h"
 #include "map/types.h"

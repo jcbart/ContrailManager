@@ -30,10 +30,10 @@ struct Segment {
     bool outOfBounds = false;
     // Flag updated by SegmentContainer if passed age threshold; segment is dumped
     bool isOld = false;
-    // Flag updated by plume model if below survival threshold; segment is dumped
+    // Flag updated by Segment or plume model if below survival threshold; segment is dumped
     bool isDead = false;
     // Flag updated by SegmentContainer if past size threshold; segment is dumped
-    bool isTooMassive = false;
+    bool isTooLarge = false;
 
     // Empty constructor
     Segment() {}
@@ -58,10 +58,10 @@ struct Segment {
     // Virtual integration method; must be overridden by plume model-specific method
     virtual void evolve(const CMTime& startTime, const CMTime& stopTime) = 0;
 
-    // Returns true if segment should be dumped (i.e. if flags raised for isOld, isTooMassive, or
+    // Returns true if segment should be dumped (i.e. if flags raised for isOld, isTooLarge, or
     // isDead)
     constexpr bool shouldBeDumped() const {
-        return (isOld || isDead || isTooMassive);
+        return (isOld || isDead || isTooLarge);
     }
 
     // Virtual method to add the "contents" of the segment into the NWP's native fields
@@ -107,7 +107,13 @@ struct Segment {
 
         // Find new length
         double newLength = calcLength();
+        // Set a minimum on length; segment is dumped
+        if (newLength < 1) {
+            isDead = true;
+        }
+        // Set length ratio for next call to evolve
         lengthRatio = length / newLength;
+        // Update length
         length = newLength;
 
         // Update dependent locs

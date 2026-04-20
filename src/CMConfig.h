@@ -18,7 +18,11 @@ struct CMConfig {
     double outputInterval_s = 3*3600;
 
     // Maximum length of a new segment (m)
-    double maxInitialSegLen = 2500;
+    double maxInitialSegLen = 2e3;
+
+    // Maximum length of a segment at any time (m)
+    // Irrelevant (set to infinity) if coupling is one-way so that segments are never too long
+    double maxSegLen = 10e3;
 
     // Maximum age of a contrail segment (s)
     double maxContrailAge_s = 12*3600;

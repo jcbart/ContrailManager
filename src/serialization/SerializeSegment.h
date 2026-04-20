@@ -59,7 +59,7 @@ void serialize(Archive& ar, Segment& seg) {
         seg.outOfBounds,
         seg.isOld,
         seg.isDead,
-        seg.isTooMassive
+        seg.isTooLarge
     );
 }
 
