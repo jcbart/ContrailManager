@@ -148,9 +148,13 @@ struct IDX {
     }
 
     // Return element address
-    T& operator[](size_t i) { return vals[i]; }
+    T& operator[](const size_t i) { return vals[i]; }
     // Return element address (read-only)
-    const T& operator[](size_t i) const { return vals[i]; }
+    const T& operator[](const size_t i) const { return vals[i]; }
+
+    bool operator==(const IDX& other) const {
+        return vals == other.vals;
+    }
 
     // Return an IDX object with a different number of indices and/or different data type
     // If the target number of indices is more than that of this object, the remainder are
@@ -176,6 +180,18 @@ struct IDX {
         }
         result += std::format("{})", vals[N - 1]);
         return result;
+    }
+};
+
+// IDX hashing struct for creating std::unordered_map
+template <size_t N, typename T>
+struct IDXHasher {
+    size_t operator()(const IDX<N, T>& idxs) const {
+        size_t h = 0;
+        for (size_t i = 0; i < N; i++) {
+            h ^= std::hash<T>()(idxs[i]) + 0x9e3779b9 + (h << 6) + (h >> 2);
+        }
+        return h;
     }
 };
 

@@ -98,6 +98,9 @@ public:
         }
     }
 
+    // Construct REIcontrail using live segment data (not parallelised)
+    void constructREIcontrail();
+
     // Save segments to file with currTime in name
     void save(const CMTime& currTime, const PlumeModels::Model plumeModel);
 

@@ -55,14 +55,20 @@ struct Segment {
     // Virtual destructor
     virtual ~Segment() = default;
 
-    // Virtual integration method; must be overridden by plume model-specific method
-    virtual void evolve(const CMTime& startTime, const CMTime& stopTime) = 0;
-
     // Returns true if segment should be dumped (i.e. if flags raised for isOld, isTooLarge, or
     // isDead)
     constexpr bool shouldBeDumped() const {
         return (isOld || isDead || isTooLarge);
     }
+
+    // Virtual method to return total contrail ice mass (kg)
+    virtual double totalIceMass() const = 0;
+
+    // Virtual method to return contrail ice effective radius (m)
+    virtual double effectiveRadius() const = 0;
+
+    // Virtual integration method; must be overridden by plume model-specific method
+    virtual void evolve(const CMTime& startTime, const CMTime& stopTime) = 0;
 
     // Virtual method to add the "contents" of the segment into the NWP's native fields
     // before it is destroyed. Only called if two-way coupling.

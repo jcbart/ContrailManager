@@ -26,6 +26,7 @@ Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
       deltaQI("deltaQI", {ids, jds, kds}, {ide, jde, kde}, 0),
       deltaNI("deltaNI", {ids, jds, kds}, {ide, jde, kde}, 0),
       QIcontrail("QIcontrail", {ids, jds, kds}, {ide, jde, kde}, 0),
+      REIcontrail("REIcontrail", {ids, jds, kds}, {ide, jde, kde}, 0),
       proj(std::move(p)) {
 
     CM_LogWrite("Contrail Manager variables initialised with dimensions:");

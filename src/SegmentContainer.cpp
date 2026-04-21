@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <functional>
 #include <fstream>
+#include <unordered_map>
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/vector.hpp>
 #include "SegmentContainer.h"
@@ -103,6 +104,35 @@ void SegmentContainer<SegmentType>::dump(const CMTime& stopTime) {
     size_t numAfter = vec.size();
     
     CM_LogWrite(std::format("Number removed: {}", numBefore - numAfter));
+}
+
+template<typename SegmentType>
+void SegmentContainer<SegmentType>::constructREIcontrail() {
+    // Map of grid cell indices to the segments whose centres are inside
+    std::unordered_map<IDX<3, int>, std::vector<SegmentType*>, IDXHasher<3, int>> segmentMap;
+
+    // Add segment pointers to map
+    for (SegmentType& seg : vec) {
+        IDX<3, int> ijk = domain->loc_to_ijk(seg.centre);
+        segmentMap[ijk].push_back(&seg);
+    }
+
+    // Combine effective radii in each cell and write to field
+    for (const auto& [ijk, cellVec] : segmentMap) {
+        double num = 0;
+        double denom = 0;
+        for (SegmentType* seg : cellVec) {
+            const double mass = seg->totalIceMass();
+            const double r_e = seg->effectiveRadius();
+            // Set threshold to avoid dividing by zero
+            if (r_e > 1e-7) {
+                num += mass;
+                denom += mass / r_e;
+            }
+        }
+        double r_e_comb = (denom > 0) ? num / denom : 0;
+        domain->REIcontrail.set(ijk, r_e_comb);
+    }
 }
 
 template<typename SegmentType>

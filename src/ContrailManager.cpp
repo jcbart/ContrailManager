@@ -91,13 +91,12 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     CM_LogWrite("Running between " + startTime.asString() + " and " + stopTime.asString());
 
     if (domain->twoWayCoupling) {
-        // Save QV and set all delta variables and contrail ice mass to zero
-        // (will be built up again)
-        //domain->save_QV();
+        // Set all delta and contrail fields to their default value (zero)
         domain->deltaQV.default_all();
         domain->deltaQI.default_all();
         domain->deltaNI.default_all();
         domain->QIcontrail.default_all();
+        domain->REIcontrail.default_all();
     }
 
     flights.updateActive(startTime, stopTime);
@@ -135,11 +134,10 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     }
 
     if (domain->twoWayCoupling) {
-        // Update deltaQV field
-        //domain->find_deltaQV();
-        // Construct QIcontrail field from the live contrail ice mass
+        // Construct contrail fields from the live contrail segments
         std::visit([](auto& s) {
             s.constructQIcontrail();
+            s.constructREIcontrail();
         }, segments);
     }
 

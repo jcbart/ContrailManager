@@ -70,6 +70,8 @@ public:
     Variable<3, float> deltaNI;
     // Contrail ice mass mixing ratio (kg (kg dry air-1))
     Variable<3, float> QIcontrail;
+    // Contrail ice effective radius (m) (zero if no contrail in cell)
+    Variable<3, float> REIcontrail;
 
     int get_ids() const { return ids; }
     int get_ide() const { return ide; }

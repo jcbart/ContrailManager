@@ -126,3 +126,8 @@ extern "C" float* get_deltaNI_extern(ContrailManager* CMptr) {
 extern "C" float* get_QIcontrail_extern(ContrailManager* CMptr) {
     return CMptr->domain->QIcontrail.get_data();
 }
+
+// Returns a pointer to the REIcontrail data
+extern "C" float* get_REIcontrail_extern(ContrailManager* CMptr) {
+    return CMptr->domain->REIcontrail.get_data();
+}
