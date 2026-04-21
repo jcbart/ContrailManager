@@ -75,7 +75,7 @@ struct Segment {
     inline void findDependentLocs() {
         centre = great_circle_interp(0.5, back, front);
         // Ensure centre is in grid
-        IDX3<int> ijkCentre;
+        IDX<3, int> ijkCentre;
         if (!domain->loc_to_ijk(centre, ijkCentre)) {
             outOfBounds = true;
         }

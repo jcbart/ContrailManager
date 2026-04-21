@@ -54,7 +54,7 @@ private:
     void flagLargeSegments() {
         #pragma omp parallel for
         for (SegmentType& seg : vec) {
-            IDX3<int> ijkCurr = domain->loc_to_ijk(seg.centre);
+            IDX<3, int> ijkCurr = domain->loc_to_ijk(seg.centre);
 
             double gridVapourMass = domain->QV.get(ijkCurr)
                                     * domain->DRYMASS.get(ijkCurr);

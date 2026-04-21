@@ -6,26 +6,26 @@ template <typename ProjType>
 Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
     : ids(ids), ide(ide), jds(jds), jde(jde), kds(kds), kde(kde),
       iSize(ide - ids + 1), jSize(jde - jds + 1), kSize(kde - kds + 1),
-      XLONG("XLONG", ids, ide, jds, jde),
-      XLAT("XLAT", ids, ide, jds, jde),
-      Z("Z", ids, ide, jds, jde, kds, kde),
-      Z_AT_W("Z_AT_W", ids, ide, jds, jde, kds, kde + 1),
-      DRYMASS("DRYMASS", ids, ide, jds, jde, kds, kde),
-      T_POT("T_POT", ids, ide, jds, jde, kds, kde),
-      //deltaT_POT("deltaT_POT", ids, ide, jds, jde, kds, kde),
-      P("P", ids, ide, jds, jde, kds, kde),
-      U("U", ids, ide, jds, jde, kds, kde),
-      V("V", ids, ide, jds, jde, kds, kde),
-      W("W", ids, ide, jds, jde, kds, kde),
-      TNSR("TNSR", ids, ide, jds, jde),
-      OLR("OLR", ids, ide, jds, jde),
-      QV("QV", ids, ide, jds, jde, kds, kde),
-      //QVsave("QV", ids, ide, jds, jde, kds, kde),
-      deltaQV("deltaQV", ids, ide, jds, jde, kds, kde),
-      QI("QI", ids, ide, jds, jde, kds, kde),
-      deltaQI("deltaQI", ids, ide, jds, jde, kds, kde),
-      deltaNI("deltaNI", ids, ide, jds, jde, kds, kde),
-      QIcontrail("QIcontrail", ids, ide, jds, jde, kds, kde),
+      XLONG("XLONG", {ids, jds}, {ide, jde}, 0),
+      XLAT("XLAT", {ids, jds}, {ide, jde}, 0),
+      Z("Z", {ids, jds, kds}, {ide, jde, kde}, 0),
+      Z_AT_W("Z_AT_W", {ids, jds, kds}, {ide, jde, kde + 1}, 0),
+      DRYMASS("DRYMASS", {ids, jds, kds}, {ide, jde, kde}, 0),
+      T_POT("T_POT", {ids, jds, kds}, {ide, jde, kde}, 0),
+      //deltaT_POT("deltaT_POT", {ids, jds, kds}, {ide, jde, kde}, 0),
+      P("P", {ids, jds, kds}, {ide, jde, kde}, 0),
+      U("U", {ids, jds, kds}, {ide, jde, kde}, 0),
+      V("V", {ids, jds, kds}, {ide, jde, kde}, 0),
+      W("W", {ids, jds, kds}, {ide, jde, kde}, 0),
+      TNSR("TNSR", {ids, jds}, {ide, jde}, 0),
+      OLR("OLR", {ids, jds}, {ide, jde}, 0),
+      QV("QV", {ids, jds, kds}, {ide, jde, kde}, 0),
+      //QVsave("QVsave", {ids, jds, kds}, {ide, jde, kde}, 0),
+      deltaQV("deltaQV", {ids, jds, kds}, {ide, jde, kde}, 0),
+      QI("QI", {ids, jds, kds}, {ide, jde, kde}, 0),
+      deltaQI("deltaQI", {ids, jds, kds}, {ide, jde, kde}, 0),
+      deltaNI("deltaNI", {ids, jds, kds}, {ide, jde, kde}, 0),
+      QIcontrail("QIcontrail", {ids, jds, kds}, {ide, jde, kde}, 0),
       proj(std::move(p)) {
 
     CM_LogWrite("Contrail Manager variables initialised with dimensions:");
@@ -50,18 +50,18 @@ void Domain::check_valid_exports() const {
     QIcontrail.check_condition(isNotNegative);
 }
 
-bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interpPoints) const {
+bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX<3, int>>& interpPoints) const {
     // Find grid cell and relevant diagonal
-    IDX2<int> ij, ijDiag;
+    IDX<2, int> ij, ijDiag;
     if (!loc_to_ij_and_diag(loc, ij, ijDiag)) {
         return false;
     }
 
     // Construct points
-    IDX2<int> ij1(ij.i, ij.j);
-    IDX2<int> ij2(ij.i, ijDiag.j);
-    IDX2<int> ij3(ijDiag.i, ijDiag.j);
-    IDX2<int> ij4(ijDiag.i, ij.j);
+    IDX<2, int> ij1{ij[0], ij[1]};
+    IDX<2, int> ij2{ij[0], ijDiag[1]};
+    IDX<2, int> ij3{ijDiag[0], ijDiag[1]};
+    IDX<2, int> ij4{ijDiag[0], ij[1]};
 
     interpPoints.resize(8);
 
@@ -72,35 +72,35 @@ bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX3<int>>& interp
     if (!find_k_below(loc, ij1, k)) {
         return false;
     }
-    interpPoints[0].set(ij1.i, ij1.j, k);
-    interpPoints[1].set(ij1.i, ij1.j, k+1);
+    interpPoints[0].set({ij1[0], ij1[1], k});
+    interpPoints[1].set({ij1[0], ij1[1], k+1});
 
     // Point 2
     if (!find_k_below(loc, ij2, k)) {
         return false;
     }
-    interpPoints[2].set(ij2.i, ij2.j, k);
-    interpPoints[3].set(ij2.i, ij2.j, k+1);
+    interpPoints[2].set({ij2[0], ij2[1], k});
+    interpPoints[3].set({ij2[0], ij2[1], k+1});
 
     // Point 3
     if (!find_k_below(loc, ij3, k)) {
         return false;
     }
-    interpPoints[4].set(ij3.i, ij3.j, k);
-    interpPoints[5].set(ij3.i, ij3.j, k+1);
+    interpPoints[4].set({ij3[0], ij3[1], k});
+    interpPoints[5].set({ij3[0], ij3[1], k+1});
 
     // Point 4
     if (!find_k_below(loc, ij4, k)) {
         return false;
     }
-    interpPoints[6].set(ij4.i, ij4.j, k);
-    interpPoints[7].set(ij4.i, ij4.j, k+1);
+    interpPoints[6].set({ij4[0], ij4[1], k});
+    interpPoints[7].set({ij4[0], ij4[1], k+1});
     
     // All points found, return true
     return true;
 }
 
-void Domain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>& interpPoints,
+void Domain::find_interp_weights(const Geo3D& loc, const std::vector<IDX<3, int>>& interpPoints,
     std::vector<float>& interpWeights) const {
     
     int numInterpPoints = interpPoints.size();
@@ -137,7 +137,7 @@ void Domain::find_interp_weights(const Geo3D& loc, const std::vector<IDX3<int>>&
 
 bool Domain::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const {
     bool inGrid;
-    std::vector<IDX3<int>> interpPoints;
+    std::vector<IDX<3, int>> interpPoints;
     std::vector<float> interpWeights;
     if (!find_interp_points(loc, interpPoints)) {
         return false;

@@ -50,7 +50,7 @@ public:
 
     // Returns the grid cell ij (including fractions) which loc lies within
     // Assumes i and j start at 0
-    virtual inline IDX2<double> loc_to_ij(const Geo2D& loc) const = 0;
+    virtual inline IDX<2, double> loc_to_ij(const Geo2D& loc) const = 0;
 };
 
 // Lambert-Conformal projection
@@ -93,8 +93,8 @@ public:
         polej = 1. + rsw * std::cos(arg);
     }
 
-    inline IDX2<double> loc_to_ij(const Geo2D& loc) const override {
-        IDX2<double> ij;
+    inline IDX<2, double> loc_to_ij(const Geo2D& loc) const override {
+        IDX<2, double> ij;
 
         double deltalon = loc.lon - stdlon;
         wrap_WE(deltalon);
@@ -104,8 +104,8 @@ public:
                             std::tan((90.*hemi - truelat1) * RAD_PER_DEG/2.)), cone);
 
         double arg = cone * deltalon * RAD_PER_DEG;
-        ij.i = hemi * (polei + hemi * rm * std::sin(arg));
-        ij.j = hemi * (polej - rm * std::cos(arg));
+        ij[0] = hemi * (polei + hemi * rm * std::sin(arg));
+        ij[1] = hemi * (polej - rm * std::cos(arg));
         return ij;
     }
 };

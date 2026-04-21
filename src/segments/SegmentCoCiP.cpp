@@ -28,17 +28,17 @@ SegmentCoCiP::SegmentCoCiP(const FlightInputs& flightInputs, std::shared_ptr<Dom
 }
 
 bool SegmentCoCiP::updateMet() {
-    IDX3<int> ijkCurr = domain->loc_to_ijk(centre);
+    IDX<3, int> ijkCurr = domain->loc_to_ijk(centre);
 
     // Indices at surface of column containing contrail
-    IDX3<int> ijkSurface = ijkCurr;
-    ijkSurface.k = domain->get_kds();
+    IDX<3, int> ijkSurface = ijkCurr;
+    ijkSurface[2] = domain->get_kds();
 
     // CoCiP requires that at least one grid cell centre be below the interpolation point
     // (at alt - dz_m) and at least one grid cell centre be above current altitude,
     // so return false if not
     if (centre.alt - cocip.params->dz_m < domain->Z.get(ijkSurface)
-        || ijkCurr.k >= domain->get_kde()) {
+        || ijkCurr[2] >= domain->get_kde()) {
         return false;
     }
 
@@ -84,7 +84,7 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
             // If two-way coupling, return water vapour to atmosphere
             if (domain->twoWayCoupling) {
                 // Get dry mass of grid cell contrail is inside
-                IDX3<int> ijkCurr = domain->loc_to_ijk(centre);
+                IDX<3, int> ijkCurr = domain->loc_to_ijk(centre);
 
                 double gridDryMass = domain->DRYMASS.get(ijkCurr);
 
@@ -105,7 +105,7 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
             // is because IWC -> 0
             if (domain->twoWayCoupling) {
                 // Get dry mass of grid cell contrail is inside
-                IDX3<int> ijkCurr = domain->loc_to_ijk(centre);
+                IDX<3, int> ijkCurr = domain->loc_to_ijk(centre);
 
                 double gridDryMass = domain->DRYMASS.get(ijkCurr);
 
@@ -190,7 +190,7 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
                          * area_swept * length;
         
         // Get dry mass of grid cell contrail is inside
-        IDX3<int> ijkCurr = domain->loc_to_ijk(centre);
+        IDX<3, int> ijkCurr = domain->loc_to_ijk(centre);
 
         double gridDryMass = domain->DRYMASS.get(ijkCurr);
 
@@ -200,7 +200,7 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
 }
 
 void SegmentCoCiP::dump() {
-    IDX3<int> ijkCurr = domain->loc_to_ijk(centre);
+    IDX<3, int> ijkCurr = domain->loc_to_ijk(centre);
 
     double gridDryMass = domain->DRYMASS.get(ijkCurr);
 
@@ -222,7 +222,7 @@ void SegmentCoCiP::dump() {
 }
 
 void SegmentCoCiP::addToQIcontrail() {
-    IDX3<int> ijkCurr = domain->loc_to_ijk(centre);
+    IDX<3, int> ijkCurr = domain->loc_to_ijk(centre);
 
     // Do q_to_r as long as plume_mass_per_m is actually dry air mass
     float M_ice = thermo::q_to_r(cocip.iwc) * cocip.plume_mass_per_m * length;

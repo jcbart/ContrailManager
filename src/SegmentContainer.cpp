@@ -166,10 +166,10 @@ void SegmentContainer<SegmentType>::load(const CMTime& time,
     for (SegmentType& seg : vec) {
         seg.domain = domain;
 
-        IDX3<int> ijk;
+        IDX<3, int> ijk;
         if (!(domain->loc_to_ijk(seg.centre, ijk)
-                && domain->can_do_interp(seg.front)
-                && domain->can_do_interp(seg.back))) {
+              && domain->can_do_interp(seg.front)
+              && domain->can_do_interp(seg.back))) {
             seg.outOfBounds = true;
         }
     }

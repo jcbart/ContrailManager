@@ -1,8 +1,10 @@
 #ifndef MAPTYPES_H
 #define MAPTYPES_H
 
+#include <array>
 #include <string>
-#include <sstream>
+#include <format>
+#include <concepts>
 
 // Forward declarations
 struct Geo2D;
@@ -30,9 +32,7 @@ struct Geo2D {
 
     // Return location (lon, lat) as string
     std::string asString() const {
-        std::stringstream ss;
-        ss << "(" << lon << ", " << lat << ")";
-        return ss.str();
+        return std::format("({}, {})", lon, lat);
     }
 };
 
@@ -60,9 +60,7 @@ struct Geo3D {
 
     // Return location (lon, lat, alt) as string
     std::string asString() const {
-        std::stringstream ss;
-        ss << "(" << lon << ", " << lat << ", " << alt << ")";
-        return ss.str();
+        return std::format("({}, {}, {})", lon, lat, alt);
     }
 };
 
@@ -121,112 +119,64 @@ struct Cart3D {
     }
 };
 
-// Forward declarations
-template <typename dtype>
-struct IDX2;
-template <typename dtype>
-struct IDX3;
-
-// A template structure to store 2 indices of type dtype
-template <typename dtype>
-struct IDX2 {
-    dtype i;
-    dtype j;
+// A template structure to store N indices of type T
+template <size_t N, typename T>
+struct IDX {
+    std::array<T, N> vals{};
 
     // Constructor without values
-    IDX2() {}
+    IDX() = default;
 
-    // Constructor with values
-    IDX2(dtype i, dtype j) : i(i), j(j) {}
+    // Constructor from lvalue array
+    explicit IDX(const std::array<T, N>& arr) : vals(arr) {}
 
-    // Set values
-    void set(dtype i, dtype j) {
-        this->i = i;
-        this->j = j;
+    // Constructor from rvalue array
+    explicit IDX(std::array<T, N>&& arr) : vals(std::move(arr)) {}
+
+    // Variadic constructor from list of values, e.g. IDX<3, int> ijk{1, 2, 3} 
+    template <typename... U>
+    requires (sizeof...(U) == N) && (std::same_as<std::remove_cvref_t<U>, T> &&...)
+    IDX(U&&... u) : vals{ { std::forward<U>(u)... } } {}
+
+    // Set values from lvalue array
+    void set(const std::array<T, N>& arr) {
+        vals = arr;
+    }
+    // Set values from rvalue array
+    void set(std::array<T, N>&& arr) {
+        vals = std::move(arr);
     }
 
-    // Return an IDX2 object with a different data type
-    template <typename dtypeTarget>
-    operator IDX2<dtypeTarget>() const {
-        return IDX2<dtypeTarget>(
-            static_cast<dtypeTarget>(i),
-            static_cast<dtypeTarget>(j)
-        );
+    // Return element address
+    T& operator[](size_t i) { return vals[i]; }
+    // Return element address (read-only)
+    const T& operator[](size_t i) const { return vals[i]; }
+
+    // Return an IDX object with a different number of indices and/or different data type
+    // If the target number of indices is more than that of this object, the remainder are
+    // defaulted
+    // If the target number of indices is fewer than that of this object, the excess are cut off
+    template <size_t targetN, typename targetT>
+    operator IDX<targetN, targetT>() const {
+        IDX<targetN, targetT> target;
+        for (size_t i = 0; i < std::min(N, targetN); i++) {
+            target.vals[i] = static_cast<targetT>(vals[i]);
+        }
+        for (size_t i = std::min(N, targetN); i < targetN; i++) {
+            target.vals[i] = targetT{};
+        }
+        return target;
     }
 
-    // Return a IDX3 version of an IDX2 object (k not set)
-    template <typename dtypeTarget>
-    inline operator IDX3<dtypeTarget>() const;
-
-    // Return location (i, j) as string
+    // Return indices as string in form (i, j, ...)
     std::string asString() const {
-        std::stringstream ss;
-        ss << "(" << i << ", " << j << ")";
-        return ss.str();
+        std::string result = "(";
+        for (size_t i = 0; i < N - 1; i++) {
+            result += std::format("{}, ", vals[i]);
+        }
+        result += std::format("{})", vals[N - 1]);
+        return result;
     }
 };
-
-// A template structure to store 3 indices of type dtype
-template <typename dtype>
-struct IDX3 {
-    dtype i;
-    dtype j;
-    dtype k;
-
-    // Constructor without values
-    IDX3() {}
-
-    // Constructor with values
-    IDX3(dtype i, dtype j, dtype k) : i(i), j(j), k(k) {}
-
-    // Set values
-    void set(dtype i, dtype j, dtype k) {
-        this->i = i;
-        this->j = j;
-        this->k = k;
-    }
-
-    // Return an IDX3 object with a different data type
-    template <typename dtypeTarget>
-    operator IDX3<dtypeTarget>() const {
-        return IDX3<dtypeTarget>(
-            static_cast<dtypeTarget>(i),
-            static_cast<dtypeTarget>(j),
-            static_cast<dtypeTarget>(k)
-        );
-    }
-
-    // Return a IDX2 version of an IDX3 object (k stripped)
-    template <typename dtypeTarget>
-    inline operator IDX2<dtypeTarget>() const;
-
-    // Return location (i, j, k) as string
-    std::string asString() const {
-        std::stringstream ss;
-        ss << "(" << i << ", " << j << ", " << k << ")";
-        return ss.str();
-    }
-};
-
-// Return a IDX3 version of an IDX2 object (k set to 0)
-template <typename dtypeSource>
-template <typename dtypeTarget>
-inline IDX2<dtypeSource>::operator IDX3<dtypeTarget>() const {
-    return IDX3<dtypeTarget>(
-        static_cast<dtypeTarget>(i),
-        static_cast<dtypeTarget>(j),
-        static_cast<dtypeTarget>(0)
-    );
-}
-
-// Return a IDX2 version of an IDX3 object (k stripped)
-template <typename dtypeSource>
-template <typename dtypeTarget>
-inline IDX3<dtypeSource>::operator IDX2<dtypeTarget>() const {
-    return IDX2<dtypeTarget>(
-        static_cast<dtypeTarget>(i),
-        static_cast<dtypeTarget>(j)
-    );
-}
 
 #endif

@@ -94,10 +94,10 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
         // Save QV and set all delta variables and contrail ice mass to zero
         // (will be built up again)
         //domain->save_QV();
-        domain->deltaQV.clear_all();
-        domain->deltaQI.clear_all();
-        domain->deltaNI.clear_all();
-        domain->QIcontrail.clear_all();
+        domain->deltaQV.default_all();
+        domain->deltaQI.default_all();
+        domain->deltaNI.default_all();
+        domain->QIcontrail.default_all();
     }
 
     flights.updateActive(startTime, stopTime);
