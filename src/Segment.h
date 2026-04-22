@@ -79,18 +79,18 @@ struct Segment {
 
     // Calculate segment centre and heading
     inline void findDependentLocs() {
-        centre = great_circle_interp(0.5, back, front);
+        centre = map::great_circle_interp(0.5, back, front);
         // Ensure centre is in grid
         IDX<3, int> ijkCentre;
         if (!domain->loc_to_ijk(centre, ijkCentre)) {
             outOfBounds = true;
         }
-        heading = great_circle_bearing(back, front);
+        heading = map::great_circle_bearing(back, front);
     }
 
     // Calculate (but not update) segment length
     constexpr double calcLength() {
-        return great_circle_dist(back, front);
+        return map::great_circle_dist(back, front);
     }
     
     // Advect front and back locations of segment and flag outOfBounds if out of bounds
@@ -101,13 +101,10 @@ struct Segment {
             ? (stopTime - birthTime).to_s()
             : (stopTime - startTime).to_s();
 
-        bool inGridBack, inGridFront;
-
-        inGridBack = advect_loc_RK4(back, duration_s, *domain);
-        inGridFront = advect_loc_RK4(front, duration_s, *domain);
-
         // If either end of segment has drifted out of grid, remove segment 
-        if (!(inGridBack && inGridFront)) {
+        if (!(map::advect_loc_RK4(back, duration_s, *domain)
+              && map::advect_loc_RK4(front, duration_s, *domain)))
+        {
             outOfBounds = true;
         }
 

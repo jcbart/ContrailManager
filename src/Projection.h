@@ -81,7 +81,7 @@ public:
         
         cone = lc_cone(truelat1, truelat2);
         double deltalon1 = lon1 - stdlon;
-        wrap_WE(deltalon1);
+        map::wrap_WE(deltalon1);
 
         ctl1r = std::cos(truelat1 * constants::RAD_PER_DEG);
 
@@ -98,7 +98,7 @@ public:
         IDX<2, double> ij;
 
         double deltalon = loc.lon - stdlon;
-        wrap_WE(deltalon);
+        map::wrap_WE(deltalon);
 
         double rm = rebydx * ctl1r/cone
                 * std::pow((std::tan((90.*hemi - loc.lat) * constants::RAD_PER_DEG/2.) /

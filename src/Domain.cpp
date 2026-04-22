@@ -102,21 +102,21 @@ bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX<3, int>>& inte
 }
 
 void Domain::find_interp_weights(const Geo3D& loc, const std::vector<IDX<3, int>>& interpPoints,
-    std::vector<float>& interpWeights) const {
+    std::vector<double>& interpWeights) const {
     
     int numInterpPoints = interpPoints.size();
     interpWeights.resize(numInterpPoints);
-    std::vector<float> dists(numInterpPoints);
+    std::vector<double> dists(numInterpPoints);
 
     // Find distances
     bool anyZero = false;
     for (int i = 0; i < numInterpPoints; i++) {
-        dists[i] = cart_dist(loc, ijk_to_loc(interpPoints[i]));
+        dists[i] = map::cart_dist(loc, ijk_to_loc(interpPoints[i]));
         if (dists[i] == 0) { anyZero = true; }
     }
     
     // Find weights
-    float totalWeight = 0;
+    double totalWeight = 0;
     if (anyZero) {
         for (int i = 0; i < numInterpPoints; i++) {
             interpWeights[i] = (dists[i] == 0) ? 1 : 0;
@@ -139,7 +139,7 @@ void Domain::find_interp_weights(const Geo3D& loc, const std::vector<IDX<3, int>
 bool Domain::wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const {
     bool inGrid;
     std::vector<IDX<3, int>> interpPoints;
-    std::vector<float> interpWeights;
+    std::vector<double> interpWeights;
     if (!find_interp_points(loc, interpPoints)) {
         return false;
     }

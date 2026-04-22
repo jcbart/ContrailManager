@@ -10,6 +10,8 @@ class Domain;
 struct Waypoint;
 struct CMTime;
 
+namespace map {
+
 // Finds the length of a vector (or distance of a point from the origin)
 constexpr double vector_mag(const Cart3D& vec) {
     return std::sqrt(vec.x*vec.x + vec.y*vec.y + vec.z*vec.z);
@@ -102,19 +104,19 @@ constexpr double great_circle_dist(const Geo3D& pointA, const Geo3D& pointB) {
 
 // Wraps longitude to be in range (-180, 180]
 inline void wrap_WE(double& lon) {
-    while (lon > 180) { lon -= 360; }
-    while (lon <= -180) { lon += 360; }
+    if (lon > 180) { lon -= 360; }
+    else if (lon <= -180) { lon += 360; }
 }
 
 // Wraps longitude and latitude if latitude is outside range [-90, 90]
 // (reflects at poles)
 inline void wrap_SN(double& lon, double& lat) {
-    while (lat > 90) {
-        lat = 180-lat;
+    if (lat > 90) {
+        lat = 180 - lat;
         lon += 180;
     }
-    while (lat < -90) {
-        lat = -180-lat;
+    else if (lat < -90) {
+        lat = -180 - lat;
         lon += 180;
     }
     wrap_WE(lon);
@@ -163,5 +165,7 @@ bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom);
 // Updates loc
 // Returns false if loc is outside or goes outside the grid
 bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom);
+
+}
 
 #endif

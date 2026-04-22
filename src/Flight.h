@@ -58,7 +58,7 @@ struct Flight {
             return false;
         }
         // Flight is between lastWp and lastWp + 1
-        loc = great_circle_interp(time, waypoints[lastWp], waypoints[lastWp + 1]);
+        loc = map::great_circle_interp(time, waypoints[lastWp], waypoints[lastWp + 1]);
         return true;
     }
 
@@ -107,7 +107,7 @@ struct Flight {
             }
 
             // Create as many segments as needed between
-            double distInLeg = great_circle_dist(legStartLoc, legEndLoc);
+            double distInLeg = map::great_circle_dist(legStartLoc, legEndLoc);
             int numNewSegments = ceil(distInLeg / maxInitialSegLen);
             Geo3D backLoc = legStartLoc;
             Geo3D frontLoc;
@@ -115,7 +115,7 @@ struct Flight {
                 // Find new front loc
                 // Fraction of the total distance where the front of the segment is
                 double f_leg_front = (i + 1.)/numNewSegments;
-                frontLoc = great_circle_interp(f_leg_front, legStartLoc, legEndLoc);
+                frontLoc = map::great_circle_interp(f_leg_front, legStartLoc, legEndLoc);
 
                 // Find if interpolation is possible
                 // If interpolation is not possible for any segment location, don't add the segment
@@ -180,7 +180,7 @@ struct Flight {
 
         // Caluclate speed
         emissions.true_airspeed = (
-            great_circle_dist(lastWaypoint.loc, nextWaypoint.loc)
+            map::great_circle_dist(lastWaypoint.loc, nextWaypoint.loc)
             / (nextWaypoint.time - lastWaypoint.time).to_s()
         );
 

@@ -2,7 +2,7 @@
 #include "Waypoint.h"
 #include "Domain.h"
 
-Geo3D great_circle_interp(const double f, const Geo3D& loc1, const Geo3D& loc2) {
+Geo3D map::great_circle_interp(const double f, const Geo3D& loc1, const Geo3D& loc2) {
     // Lat/lon interpolation
     // Pass Geo2D version of Geo3D objects to function
     Cart3D loc1_Cart = Geo2D_to_Cart3D(loc1);
@@ -31,12 +31,12 @@ Geo3D great_circle_interp(const double f, const Geo3D& loc1, const Geo3D& loc2) 
     return result;
 }
 
-Geo3D great_circle_interp(const CMTime& time, const Waypoint& wp1, const Waypoint& wp2) {
+Geo3D map::great_circle_interp(const CMTime& time, const Waypoint& wp1, const Waypoint& wp2) {
     double f = (time - wp1.time) / (wp2.time - wp1.time);
     return great_circle_interp(f, wp1.loc, wp2.loc);
 }
 
-bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
+bool map::advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
     bool inGrid;
 
     float u, v, w;
@@ -63,7 +63,7 @@ bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
     return inGrid;
 }
 
-bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
+bool map::advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
     float u1, v1, w1; // Values of k1
     float u2, v2, w2; // Values of k2
     float u3, v3, w3; // Values of k3

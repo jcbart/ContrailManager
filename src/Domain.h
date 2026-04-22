@@ -292,7 +292,7 @@ public:
 
     // Finds inverse-distance weights for a vector of interpolation points
     void find_interp_weights(const Geo3D& loc, const std::vector<IDX<3, int>>& interpPoints,
-        std::vector<float>& interpWeights) const;
+        std::vector<double>& interpWeights) const;
 
     // Finds the wind speed at location by interpolating between neighbouring grid cells
     // Updates u, v, and w
