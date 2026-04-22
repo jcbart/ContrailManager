@@ -10,7 +10,7 @@
 // Forward declaration
 struct Params;
 
-// Derived CoCiP segment type
+// CoCiP segment type
 struct SegmentCoCiP : public Segment {
     CoCiP<ArrayMet<float>> cocip;
     bool doneFormation = false;

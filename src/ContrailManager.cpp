@@ -37,6 +37,11 @@ void ContrailManager::init() {
     // Determine plume model
     // Sets variant to specific segment container
     switch (config.plumeModelID) {
+        case PlumeModels::CACE.ID: {
+            plumeModel = PlumeModels::CACE;
+            segments = SegmentContainer<SegmentCaCE>{};
+            break;
+        }
         case PlumeModels::COCIP.ID: {
             plumeModel = PlumeModels::COCIP;
 #ifdef WITH_COCIP
@@ -52,8 +57,9 @@ void ContrailManager::init() {
             break;
         }
         default: {
-            CM_RaiseError(std::format("Plume model {} not recognised", config.plumeModelID),
+            CM_RaiseError(std::format("Plume model ID {} not recognised", config.plumeModelID),
                 __FILE__, __LINE__);
+            break;
         }
     }
     CM_LogWrite(std::format("Plume model: {}", plumeModel.name));

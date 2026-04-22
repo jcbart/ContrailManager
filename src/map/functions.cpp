@@ -45,13 +45,13 @@ bool advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
     if (!inGrid) { return false; }
 
     // Advect in longitude
-    loc.lon += DEG_PER_RAD * u * duration_s
-               / ((EARTH_RADIUS_M + loc.alt) * std::cos(RAD_PER_DEG * loc.lat));
+    loc.lon += constants::DEG_PER_RAD * u * duration_s
+               / ((constants::EARTH_RADIUS_M + loc.alt) * std::cos(constants::RAD_PER_DEG * loc.lat));
     // Wrap around the Earth
     wrap_WE(loc.lon);
 
     // Advect in latitude
-    loc.lat += DEG_PER_RAD * v * duration_s / (EARTH_RADIUS_M + loc.alt);
+    loc.lat += constants::DEG_PER_RAD * v * duration_s / (constants::EARTH_RADIUS_M + loc.alt);
     // Reflect at poles
     wrap_SN(loc.lon, loc.lat);
 
@@ -80,13 +80,15 @@ bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
     }
 
     // Advect in longitude
-    loc1.lon = loc.lon + DEG_PER_RAD * u1 * 0.5*duration_s
-                         / ((EARTH_RADIUS_M + loc.alt) * std::cos(RAD_PER_DEG * loc.lat));
+    loc1.lon = loc.lon
+        + constants::DEG_PER_RAD * u1 * 0.5*duration_s
+          / ((constants::EARTH_RADIUS_M + loc.alt) * std::cos(constants::RAD_PER_DEG * loc.lat));
     // Wrap around the Earth
     wrap_WE(loc1.lon);
 
     // Advect in latitude
-    loc1.lat = loc.lat + DEG_PER_RAD * v1 * 0.5*duration_s / (EARTH_RADIUS_M + loc.alt);
+    loc1.lat = loc.lat
+        + constants::DEG_PER_RAD * v1 * 0.5*duration_s / (constants::EARTH_RADIUS_M + loc.alt);
     // Reflect at poles
     wrap_SN(loc1.lon, loc1.lat);
 
@@ -100,13 +102,15 @@ bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
     }
 
     // Advect in longitude
-    loc2.lon = loc.lon + DEG_PER_RAD * u2 * 0.5*duration_s
-                         / ((EARTH_RADIUS_M + loc.alt) * std::cos(RAD_PER_DEG * loc.lat));
+    loc2.lon = loc.lon
+        + constants::DEG_PER_RAD * u2 * 0.5*duration_s
+          / ((constants::EARTH_RADIUS_M + loc.alt) * std::cos(constants::RAD_PER_DEG * loc.lat));
     // Wrap around the Earth
     wrap_WE(loc2.lon);
 
     // Advect in latitude
-    loc2.lat = loc.lat + DEG_PER_RAD * v2 * 0.5*duration_s / (EARTH_RADIUS_M + loc.alt);
+    loc2.lat = loc.lat
+        + constants::DEG_PER_RAD * v2 * 0.5*duration_s / (constants::EARTH_RADIUS_M + loc.alt);
     // Reflect at poles
     wrap_SN(loc2.lon, loc2.lat);
 
@@ -120,13 +124,15 @@ bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
     }
 
     // Advect in longitude
-    loc3.lon = loc.lon + DEG_PER_RAD * u3 * duration_s
-                         / ((EARTH_RADIUS_M + loc.alt) * std::cos(RAD_PER_DEG * loc.lat));
+    loc3.lon = loc.lon
+        + constants::DEG_PER_RAD * u3 * duration_s
+          / ((constants::EARTH_RADIUS_M + loc.alt) * std::cos(constants::RAD_PER_DEG * loc.lat));
     // Wrap around the Earth
     wrap_WE(loc3.lon);
 
     // Advect in latitude
-    loc3.lat = loc.lat + DEG_PER_RAD * v3 * duration_s / (EARTH_RADIUS_M + loc.alt);
+    loc3.lat = loc.lat
+        + constants::DEG_PER_RAD * v3 * duration_s / (constants::EARTH_RADIUS_M + loc.alt);
     // Reflect at poles
     wrap_SN(loc3.lon, loc3.lat);
 
@@ -142,13 +148,14 @@ bool advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
     // Update loc
 
     // Advect in longitude
-    loc.lon += DEG_PER_RAD * (u1 + 2*u2 + 2*u3 + u4) * duration_s/6. 
-               / ((EARTH_RADIUS_M + loc.alt) * std::cos(RAD_PER_DEG * loc.lat));
+    loc.lon += constants::DEG_PER_RAD * (u1 + 2*u2 + 2*u3 + u4) * duration_s/6. 
+        / ((constants::EARTH_RADIUS_M + loc.alt) * std::cos(constants::RAD_PER_DEG * loc.lat));
     // Wrap around the Earth
     wrap_WE(loc.lon);
 
     // Advect in latitude
-    loc.lat += DEG_PER_RAD * (v1 + 2*v2 + 2*v3 + v4) * duration_s/6. / (EARTH_RADIUS_M + loc.alt);
+    loc.lat += constants::DEG_PER_RAD * (v1 + 2*v2 + 2*v3 + v4) * duration_s/6.
+        / (constants::EARTH_RADIUS_M + loc.alt);
     // Reflect at poles
     wrap_SN(loc.lon, loc.lat);
 

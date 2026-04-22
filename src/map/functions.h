@@ -2,7 +2,7 @@
 #define MAPFUNCTIONS_H
 
 #include <cmath>
-#include "map/constants.h"
+#include "constants.h"
 #include "map/types.h"
 
 // Forward declarations
@@ -18,8 +18,8 @@ constexpr double vector_mag(const Cart3D& vec) {
 // Converts a geographic point to a Cartesian point on a unit circle
 inline Cart3D Geo2D_to_Cart3D(const Geo2D& pointIn) {
     Cart3D pointOut;
-    double theta = RAD_PER_DEG * (90. - pointIn.lat);
-    double phi = RAD_PER_DEG * pointIn.lon;
+    double theta = constants::RAD_PER_DEG * (90. - pointIn.lat);
+    double phi = constants::RAD_PER_DEG * pointIn.lon;
     pointOut.x = std::sin(theta) * std::cos(phi);
     pointOut.y = std::sin(theta) * std::sin(phi);
     pointOut.z = std::cos(theta);
@@ -36,17 +36,17 @@ inline Geo2D Cart3D_to_Geo2D(const Cart3D& pointIn) {
     Geo2D pointOut;
     double theta = std::acos(pointIn.z);
     double phi = std::atan2(pointIn.y, pointIn.x);
-    pointOut.lon = phi/RAD_PER_DEG;
-    pointOut.lat = 90. - theta/RAD_PER_DEG;
+    pointOut.lon = phi/constants::RAD_PER_DEG;
+    pointOut.lat = 90. - theta/constants::RAD_PER_DEG;
     return pointOut;
 }
 
 // Converts a geodetic point to a Cartesian point
 inline Cart3D Geo3D_to_Cart3D(const Geo3D& pointIn) {
     Cart3D pointOut;
-    double theta = RAD_PER_DEG * (90. - pointIn.lat);
-    double phi = RAD_PER_DEG * pointIn.lon;
-    double rho = EARTH_RADIUS_M + pointIn.alt;
+    double theta = constants::RAD_PER_DEG * (90. - pointIn.lat);
+    double phi = constants::RAD_PER_DEG * pointIn.lon;
+    double rho = constants::EARTH_RADIUS_M + pointIn.alt;
     pointOut.x = rho * std::sin(theta) * std::cos(phi);
     pointOut.y = rho * std::sin(theta) * std::sin(phi);
     pointOut.z = rho * std::cos(theta);
@@ -59,9 +59,9 @@ inline Geo3D Cart3D_to_Geo3D(const Cart3D& pointIn) {
     double rho = vector_mag(pointIn);
     double theta = std::acos(pointIn.z/rho);
     double phi = std::atan2(pointIn.y, pointIn.x);
-    pointOut.lon = phi/RAD_PER_DEG;
-    pointOut.lat = 90. - theta/RAD_PER_DEG;
-    pointOut.alt = rho - EARTH_RADIUS_M;
+    pointOut.lon = phi/constants::RAD_PER_DEG;
+    pointOut.lat = 90. - theta/constants::RAD_PER_DEG;
+    pointOut.alt = rho - constants::EARTH_RADIUS_M;
     return pointOut;
 }
 
@@ -91,12 +91,12 @@ inline Cart3D cross_prod(const Cart3D& vecA, const Cart3D& vecB) {
 
 // Calculates the great circle distance between two points at their average altitude (m)
 constexpr double great_circle_dist(const Geo3D& pointA, const Geo3D& pointB) {
-    return (EARTH_RADIUS_M + 0.5 * (pointA.alt + pointB.alt)) * std::acos(
-        std::cos(RAD_PER_DEG * pointA.lat)
-        * std::cos(RAD_PER_DEG * pointB.lat)
-        * std::cos(RAD_PER_DEG * (pointA.lon - pointB.lon))
-        + std::sin(RAD_PER_DEG * pointA.lat)
-        * std::sin(RAD_PER_DEG * pointB.lat)
+    return (constants::EARTH_RADIUS_M + 0.5 * (pointA.alt + pointB.alt)) * std::acos(
+        std::cos(constants::RAD_PER_DEG * pointA.lat)
+        * std::cos(constants::RAD_PER_DEG * pointB.lat)
+        * std::cos(constants::RAD_PER_DEG * (pointA.lon - pointB.lon))
+        + std::sin(constants::RAD_PER_DEG * pointA.lat)
+        * std::sin(constants::RAD_PER_DEG * pointB.lat)
     );
 }
 
@@ -125,13 +125,13 @@ inline void wrap_SN(double& lon, double& lat) {
 constexpr double great_circle_bearing(const double lon1, const double lat1, const double lon2,
     const double lat2) {
 
-    double lon1_rad = RAD_PER_DEG * lon1;
-    double lat1_rad = RAD_PER_DEG * lat1;
-    double lon2_rad = RAD_PER_DEG * lon2;
-    double lat2_rad = RAD_PER_DEG * lat2;
+    double lon1_rad = constants::RAD_PER_DEG * lon1;
+    double lat1_rad = constants::RAD_PER_DEG * lat1;
+    double lon2_rad = constants::RAD_PER_DEG * lon2;
+    double lat2_rad = constants::RAD_PER_DEG * lat2;
 
     double d_lon = lon2_rad - lon1_rad;
-    double alpha = DEG_PER_RAD * std::atan2(
+    double alpha = constants::DEG_PER_RAD * std::atan2(
         std::sin(d_lon),
         std::cos(lat1_rad) * std::tan(lat2_rad) - std::sin(lat1_rad) * std::cos(d_lon)
     );

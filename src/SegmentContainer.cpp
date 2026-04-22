@@ -6,12 +6,14 @@
 #include <cereal/types/vector.hpp>
 #include "SegmentContainer.h"
 #include "serialization/SerializeSegment.h"
+#include "serialization/SerializeCaCE.h"
 #ifdef WITH_COCIP
 #include "serialization/SerializeCoCiP.h"
 #endif
 #include "CMLog.h"
 
 // Types to compile
+template struct SegmentContainer<SegmentCaCE>;
 #ifdef WITH_COCIP
 template struct SegmentContainer<SegmentCoCiP>;
 #endif
@@ -139,6 +141,11 @@ template<typename SegmentType>
 void SegmentContainer<SegmentType>::save(const CMTime& currTime,
     const PlumeModels::Model plumeModel
 ) {
+    if (vec.empty()) {
+        CM_LogWrite("No live segments - will not write to file.");
+        return;
+    }
+
     std::string filename = "segments_" + currTime.asFileFriendlyString() + ".bin";
 
     CM_LogWrite("Saving segments to " + filename);

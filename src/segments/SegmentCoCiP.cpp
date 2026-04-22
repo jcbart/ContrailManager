@@ -1,13 +1,11 @@
 #ifdef WITH_COCIP
 
-#include <omp.h>
 #include <CoCiP++/CoCiP.h>
 #include <CoCiP++/met.h>
 #include <CoCiP++/params.h>
 #include <CoCiP++/CoCiPTime.h>
 #include "segments/SegmentCoCiP.h"
 #include "thermo.h"
-#include "map/types.h"
 #include "CMLog.h"
 
 SegmentCoCiP::SegmentCoCiP(const FlightInputs& flightInputs, std::shared_ptr<Domain> domain,

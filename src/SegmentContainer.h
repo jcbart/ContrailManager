@@ -10,6 +10,7 @@
 #include "map/types.h"
 #include "timekeeping.h"
 #include "FlightInputs.h"
+#include "segments/SegmentCaCE.h"
 #ifdef WITH_COCIP
 #include <CoCiP++/params.h>
 #include "segments/SegmentCoCiP.h"
@@ -108,6 +109,14 @@ public:
     void load(const CMTime& time, const PlumeModels::Model plumeModel);
 };
 
+template <>
+inline SegmentCaCE SegmentContainer<SegmentCaCE>::newSegmentInstance(
+    const FlightInputs& flightInputs
+) {
+    // Initialise with additional pointer to common params
+    return SegmentCaCE(flightInputs, domain);
+}
+
 #ifdef WITH_COCIP
 template <>
 inline SegmentCoCiP SegmentContainer<SegmentCoCiP>::newSegmentInstance(
@@ -120,6 +129,7 @@ inline SegmentCoCiP SegmentContainer<SegmentCoCiP>::newSegmentInstance(
 
 // Define SegmentContainer variant alias
 using SegmentContainerVariant = std::variant<
+    SegmentContainer<SegmentCaCE>,
     SegmentContainer<SegmentCoCiP>
 >;
 

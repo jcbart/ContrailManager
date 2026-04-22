@@ -176,6 +176,10 @@ arrow::Result<std::shared_ptr<arrow::Table>> bin_to_table(const std::string& fil
 
         // Load vector according to plume model
         switch (loadedPlumeModelID) {
+            case PlumeModels::CACE.ID: {
+                // Do nothing, CaCE should not be able to output
+                break;
+            }
             case PlumeModels::COCIP.ID: {
 #ifdef WITH_COCIP
                 std::cout << "Archived segment type: " << PlumeModels::COCIP.name << std::endl;
@@ -190,6 +194,12 @@ arrow::Result<std::shared_ptr<arrow::Table>> bin_to_table(const std::string& fil
                           << PlumeModels::COCIP.name << std::endl;
                 exit(EXIT_FAILURE);
 #endif
+                break;
+            }
+            default: {
+                std::cerr << "Plume model ID " << loadedPlumeModelID << " not recognised."
+                    << std::endl;
+                exit(EXIT_FAILURE);
                 break;
             }
         }

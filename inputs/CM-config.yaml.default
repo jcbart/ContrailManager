@@ -4,7 +4,8 @@
 Two-way coupling: true
 
 # Plume model. Options are:
-# 1 - CoCiP
+# 1 - Contrails as Cloud Enhancement (CaCE)
+# 2 - CoCiP
 Plume model: 1
 
 # Is this a restart run?

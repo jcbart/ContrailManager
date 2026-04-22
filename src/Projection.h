@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <variant>
+#include "constants.h"
 #include "map/functions.h"
 #include "CMLog.h"
 
@@ -41,7 +42,7 @@ public:
 
         hemi = (truelat1 < 0) ? -1 : 1;
 
-        rebydx = EARTH_RADIUS_M / dx;
+        rebydx = constants::EARTH_RADIUS_M / dx;
         if (std::abs(this->truelat2) > 90) {
             CM_LogWrite("CM Projection: truelat2 > 90; assuming a tangent.");
             this->truelat2 = this->truelat1;
@@ -62,13 +63,13 @@ class ProjectionLC : public IProjection {
     inline double lc_cone(double truelat1, double truelat2) {
         double cone;
         if (std::abs(truelat1 - truelat2) > 0.01) {
-            cone = std::log10(std::cos(truelat1 * RAD_PER_DEG))
-                   - std::log10(std::cos(truelat2 * RAD_PER_DEG));
-            cone /= (std::log10(std::tan((45. - std::abs(truelat1)/2.) * RAD_PER_DEG))
-                    - std::log10(std::tan((45. - std::abs(truelat2)/2.) * RAD_PER_DEG)));
+            cone = std::log10(std::cos(truelat1 * constants::RAD_PER_DEG))
+                   - std::log10(std::cos(truelat2 * constants::RAD_PER_DEG));
+            cone /= (std::log10(std::tan((45. - std::abs(truelat1)/2.) * constants::RAD_PER_DEG))
+                    - std::log10(std::tan((45. - std::abs(truelat2)/2.) * constants::RAD_PER_DEG)));
         }
         else {
-            cone = std::sin(std::abs(truelat1 * RAD_PER_DEG));
+            cone = std::sin(std::abs(truelat1 * constants::RAD_PER_DEG));
         }
         return cone;
     }
@@ -82,13 +83,13 @@ public:
         double deltalon1 = lon1 - stdlon;
         wrap_WE(deltalon1);
 
-        ctl1r = std::cos(truelat1 * RAD_PER_DEG);
+        ctl1r = std::cos(truelat1 * constants::RAD_PER_DEG);
 
         rsw = rebydx * ctl1r/cone
-            * std::pow((std::tan((90.*hemi - lat1) * RAD_PER_DEG/2.) /
-                        std::tan((90.*hemi - truelat1) * RAD_PER_DEG/2.)), cone);
+            * std::pow((std::tan((90.*hemi - lat1) * constants::RAD_PER_DEG/2.) /
+                        std::tan((90.*hemi - truelat1) * constants::RAD_PER_DEG/2.)), cone);
 
-        double arg = cone * deltalon1 * RAD_PER_DEG;
+        double arg = cone * deltalon1 * constants::RAD_PER_DEG;
         polei = 1. - hemi * rsw * std::sin(arg);
         polej = 1. + rsw * std::cos(arg);
     }
@@ -100,10 +101,10 @@ public:
         wrap_WE(deltalon);
 
         double rm = rebydx * ctl1r/cone
-                * std::pow((std::tan((90.*hemi - loc.lat) * RAD_PER_DEG/2.) /
-                            std::tan((90.*hemi - truelat1) * RAD_PER_DEG/2.)), cone);
+                * std::pow((std::tan((90.*hemi - loc.lat) * constants::RAD_PER_DEG/2.) /
+                            std::tan((90.*hemi - truelat1) * constants::RAD_PER_DEG/2.)), cone);
 
-        double arg = cone * deltalon * RAD_PER_DEG;
+        double arg = cone * deltalon * constants::RAD_PER_DEG;
         ij[0] = hemi * (polei + hemi * rm * std::sin(arg));
         ij[1] = hemi * (polej - rm * std::cos(arg));
         return ij;

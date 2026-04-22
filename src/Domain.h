@@ -115,7 +115,7 @@ public:
             double slhs = thermo::slh_sublimation_ice(
                 thermo::theta_to_T(T_POT.get_data()[i], P.get_data()[i])
             );
-            double delta_T = slhs * deltaQI.get_data()[i] / thermo::c_pd;
+            double delta_T = slhs * deltaQI.get_data()[i] / constants::c_pd;
             deltaT_POT.get_data()[i] = thermo::T_to_theta(delta_T, P.get_data()[i]);
         }
     }

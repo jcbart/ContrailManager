@@ -11,8 +11,11 @@ struct Model {
     std::string_view name;
 };
 
+// Contrails as Cloud Enhancement (CaCE) model ID and name
+constexpr Model CACE = {1, "CaCE"};
+
 // CoCiP model ID and name
-constexpr Model COCIP = {1, "CoCiP"};
+constexpr Model COCIP = {2, "CoCiP"};
 
 }
 
