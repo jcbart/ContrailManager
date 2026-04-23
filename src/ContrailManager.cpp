@@ -3,19 +3,7 @@
 #include <chrono>
 #include <format>
 #include <omp.h>
-#ifdef WITH_COCIP
-#include <CoCiP++/params.h>
-#endif
 #include "ContrailManager.h"
-#include "timekeeping.h"
-#include "Domain.h"
-#include "PlumeModels.h"
-#include "SegmentContainer.h"
-#include "Segment.h"
-#include "Flight.h"
-#include "FlightInputs.h"
-#include "Projection.h"
-#include "map/functions.h"
 #include "CMLog.h"
 
 void ContrailManager::init() {
@@ -74,7 +62,7 @@ void ContrailManager::init() {
     outputInterval.set(std::chrono::duration<double>(config.outputInterval_s));
 
     flights.maxInitialSegLen = config.maxInitialSegLen;
-    flights.readDatasets(config.flightDatasetPaths);
+    flights.readDatasets(config.flightWaypointPaths, config.aircraftDataPaths);
 
     CM_LogWrite("Contrail Manager initialised");
 }

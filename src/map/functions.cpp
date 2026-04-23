@@ -1,5 +1,5 @@
 #include "map/functions.h"
-#include "Waypoint.h"
+#include "flight/Waypoint.h"
 #include "Domain.h"
 
 Geo3D map::great_circle_interp(const double f, const Geo3D& loc1, const Geo3D& loc2) {
@@ -31,7 +31,9 @@ Geo3D map::great_circle_interp(const double f, const Geo3D& loc1, const Geo3D& l
     return result;
 }
 
-Geo3D map::great_circle_interp(const CMTime& time, const Waypoint& wp1, const Waypoint& wp2) {
+Geo3D map::great_circle_interp(const CMTime& time, const Waypoint& wp1,
+    const Waypoint& wp2) {
+    
     double f = (time - wp1.time) / (wp2.time - wp1.time);
     return great_circle_interp(f, wp1.loc, wp2.loc);
 }

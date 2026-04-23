@@ -59,5 +59,7 @@ void CMConfig::read() {
         maxAccumVapRatio = std::numeric_limits<double>::infinity();
     }
 
-    flightDatasetPaths = config["Flight dataset paths"].as<std::vector<std::string>>();
+    flightWaypointPaths = config["Flight waypoint paths"].as<std::vector<std::string>>();
+
+    aircraftDataPaths = config["Aircraft data paths"].as<std::vector<std::string>>();
 }

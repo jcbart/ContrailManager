@@ -153,7 +153,8 @@ Geo3D great_circle_interp(const double f, const Geo3D& loc1, const Geo3D& loc2);
 
 // Returns location at time by interpolating between two waypoints
 // If time = wp1.time, the returned location will be wp1.loc and vice versa
-Geo3D great_circle_interp(const CMTime& time, const Waypoint& wp1, const Waypoint& wp2);
+Geo3D great_circle_interp(const CMTime& time, const Waypoint& wp1,
+    const Waypoint& wp2);
 
 // Advect a location (loc) for duration in seconds given a domain (dom)
 // Updates loc

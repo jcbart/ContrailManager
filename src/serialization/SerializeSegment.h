@@ -3,9 +3,6 @@
 
 #include <cereal/types/memory.hpp>
 #include "Segment.h"
-#include "timekeeping.h"
-#include "map/types.h"
-#include "FlightInputs.h"
 
 namespace cereal {
 

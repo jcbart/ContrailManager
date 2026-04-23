@@ -2,13 +2,12 @@
 #include <algorithm>
 #include <format>
 #include <chrono>
-#include <omp.h>
 #include "FlightContainer/FlightContainer.h"
 #include "timekeeping.h"
 #include "CMLog.h"
 
-void FlightContainer::readFile(const std::string& filepath) {
-    CM_LogWrite("Reading flight dataset: " + filepath);
+void FlightContainer::readWaypointFile(const std::string& filepath) {
+    CM_LogWrite("Reading waypoint dataset: " + filepath);
 
     // Check file exists
     if (!std::filesystem::exists(filepath)) {
@@ -22,7 +21,7 @@ void FlightContainer::readFile(const std::string& filepath) {
 
     // Read file according to its extension
     if (extension == ".parquet" || extension == ".pq") {
-        readParquet(filepath);
+        readWaypointParquet(filepath);
     }
     else {
         CM_RaiseError("Flight dataset '" + filepath + "' has unsupported file extension.",
@@ -30,18 +29,33 @@ void FlightContainer::readFile(const std::string& filepath) {
     }
 }
 
-void FlightContainer::readDatasets(const std::vector<std::string>& filepaths) {
-    // Time at start of reading
-    std::chrono::steady_clock::time_point readTimeStart = std::chrono::steady_clock::now();
+void FlightContainer::readAircraftFile(const std::string& filepath) {
+    CM_LogWrite("Reading aircraft dataset: " + filepath);
 
+    // Check file exists
+    if (!std::filesystem::exists(filepath)) {
+        CM_RaiseError("File not found: " + filepath, __FILE__, __LINE__);
+    }
+
+    // File path
+    std::filesystem::path path(filepath);
+    // File extension
+    std::string extension = path.extension().string();
+
+    // Read file according to its extension
+    if (extension == ".parquet" || extension == ".pq") {
+        readAircraftParquet(filepath);
+    }
+    else {
+        CM_RaiseError("Flight dataset '" + filepath + "' has unsupported file extension.",
+            __FILE__, __LINE__);
+    }
+}
+
+void FlightContainer::readWaypointDatasets(const std::vector<std::string>& filepaths) {
     constexpr std::string_view PREFIX_TAG = "PREFIX:";
 
     for (const std::string& filepath : filepaths) {
-        // Ignore NONE used for idle Contrail Manager
-        if (filepath == "NONE") {
-            return;
-        }
-
         // If a prefix path
         if (filepath.starts_with(PREFIX_TAG)) {
             const std::filesystem::path prefixPath = filepath.substr(PREFIX_TAG.size());
@@ -75,13 +89,90 @@ void FlightContainer::readDatasets(const std::vector<std::string>& filepaths) {
             std::ranges::sort(matchedFilepaths);
 
             for (const std::string& match : matchedFilepaths) {
-                readFile(match);
+                readWaypointFile(match);
             }
         }
         // Else, regular path
         else {
-            readFile(filepath);
+            readWaypointFile(filepath);
         }
+    }
+}
+
+void FlightContainer::readAircraftDatasets(const std::vector<std::string>& filepaths) {
+    constexpr std::string_view PREFIX_TAG = "PREFIX:";
+
+    for (const std::string& filepath : filepaths) {
+        // If a prefix path
+        if (filepath.starts_with(PREFIX_TAG)) {
+            const std::filesystem::path prefixPath = filepath.substr(PREFIX_TAG.size());
+
+            const std::string filePrefix = prefixPath.filename().string();
+
+            if (filePrefix.empty()) {
+                CM_RaiseError(std::format("No prefix provided after {}", PREFIX_TAG),
+                    __FILE__, __LINE__);
+            }
+
+            // If prefix includes directory path, must search that directory
+            const std::filesystem::path dir = prefixPath.has_parent_path()
+                ? prefixPath.parent_path()
+                : std::filesystem::current_path();
+
+            // Add all matching files in search directory to vector
+            std::vector<std::string> matchedFilepaths;
+            for (const std::filesystem::directory_entry& entry
+                    : std::filesystem::directory_iterator(dir)) {
+                if (entry.path().filename().string().starts_with(filePrefix)) {
+                    matchedFilepaths.push_back(entry.path().string());
+                }
+            }
+
+            CM_LogWrite(std::format("Found {} files matching prefix \"{}\"",
+                matchedFilepaths.size(), prefixPath.string()));
+
+            for (const std::string& match : matchedFilepaths) {
+                readAircraftFile(match);
+            }
+        }
+        // Else, regular path
+        else {
+            readAircraftFile(filepath);
+        }
+    }
+}
+
+void FlightContainer::readDatasets(
+    const std::vector<std::string>& waypointFilepaths,
+    const std::vector<std::string>& fixedFilepaths
+) {
+    // Time at start of reading
+    std::chrono::steady_clock::time_point readTimeStart = std::chrono::steady_clock::now();
+
+    // The following two methods can be called in either order, but cannot easily be parallelised
+
+    // Read waypoints
+    readWaypointDatasets(waypointFilepaths);
+
+    // Read aircraft data
+    readAircraftDatasets(fixedFilepaths);
+
+    // Move flights from flightIDMap to loaded
+    loaded.reserve(flightDataMap.size());
+    for (auto& [ID, stagedData] : flightDataMap) {
+        // Ignore staged data with no waypoints
+        if (stagedData.waypoints.empty()) {
+            continue;
+        }
+
+        // If waypoints exist, but no aircraft data, raise error
+        if (!stagedData.aircraft.has_value()) {
+            CM_RaiseError("No aircraft data found for flight {}" + ID, __FILE__, __LINE__);
+        }
+
+        // Construct Flight in loaded vector
+        // Use move to empty the map
+        loaded.emplace_back(ID, std::move(*stagedData.aircraft), std::move(stagedData.waypoints));
     }
 
     // Sort waypoints in each loaded flight by time

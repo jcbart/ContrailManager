@@ -8,7 +8,7 @@
 #include "timekeeping.h"
 #include "Domain.h"
 #include "map/functions.h"
-#include "FlightInputs.h"
+#include "flight/FlightInputs.h"
 
 // Virtual contrail segment structure
 struct Segment {

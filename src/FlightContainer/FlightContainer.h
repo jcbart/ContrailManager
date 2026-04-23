@@ -4,24 +4,57 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <optional>
 #include <omp.h>
-#include "Flight.h"
+#include "flight/Flight.h"
 
 // Forward declarations
 struct CMTime;
+
+// Struct for storing flight data read from file
+struct StagedFlightData {
+    std::optional<Aircraft> aircraft;
+    std::vector<Waypoint> waypoints;
+};
 
 struct FlightContainer {
 private:
     // Index of the next flight in loadedFlights to check for adding to activeFlights
     size_t nextFlightToCheck = 0;
 
-    // Map of flight ID to index in FlightContainer::loaded
-    // Only valid (and used) during dataset reading
-    std::unordered_map<std::string, size_t> flightIDIndexMap;
+    // Map of flight ID to StagedFlightData objects
+    // Only used while reading datasets, otherwise empty
+    std::unordered_map<std::string, StagedFlightData> flightDataMap;
 
-    void readFile(const std::string& filepath);
+    // Add waypoint to corresponding ID in flightDataMap
+    // If ID does not exist, it is added to the map
+    void addWaypointToMap(const std::string& ID, const Waypoint& wp) {
+        flightDataMap[ID].waypoints.push_back(wp);
+    }
 
-    void readParquet(const std::string& filepath);
+    // Add fixed flight data to corresponding ID in flightDataMap
+    // If ID does not exist, it is added to the map
+    void addAircraftToMap(const std::string& ID, const Aircraft& aircraft) {
+        flightDataMap[ID].aircraft = aircraft;
+    }
+
+    // Read waypoint data from paths to flightDataMap
+    void readWaypointDatasets(const std::vector<std::string>& filepaths);
+
+    // Read single waypoint file
+    void readWaypointFile(const std::string& filepath);
+    
+    // Read single waypoint file (Parquet)
+    void readWaypointParquet(const std::string& filepath);
+
+    // Read aircraft data from paths to flightDataMap
+    void readAircraftDatasets(const std::vector<std::string>& filepaths);
+
+    // Read single aircraft file
+    void readAircraftFile(const std::string& filepath);
+
+    // Read single aircraft file (Parquet)
+    void readAircraftParquet(const std::string& filepath);
 
 public:
     // Flights loaded in memory, sorted by first waypoint time
@@ -31,8 +64,10 @@ public:
 
     float maxInitialSegLen; // Maximum length of a new segment (m)
 
-    // Read datasets from paths
-    void readDatasets(const std::vector<std::string>& filepaths);
+    // Read waypoint and static datasets from paths
+    // Loads all flights into loaded
+    void readDatasets(const std::vector<std::string>& waypointFilepaths,
+        const std::vector<std::string>& aircraftFilepaths);
 
     // Update FlightContainer::active by removing flights no longer on their trajectory and adding
     // flights starting their trajectory from FlightContainer::loaded

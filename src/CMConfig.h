@@ -32,7 +32,9 @@ struct CMConfig {
     // Irrelevant (set to infinity) if coupling is one-way so that segments are never too massive
     double maxAccumVapRatio = 1e-2;
 
-    std::vector<std::string> flightDatasetPaths; // Flight dataset file paths
+    std::vector<std::string> flightWaypointPaths; // Flight waypoint file paths
+
+    std::vector<std::string> aircraftDataPaths; // Aircraft data file paths
 
     // Read config file
     void read();

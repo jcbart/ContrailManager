@@ -4,26 +4,23 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include "flight/Aircraft.h"
+#include "flight/Waypoint.h"
+#include "flight/FlightInputs.h"
 #include "Domain.h"
-#include "Waypoint.h"
-#include "FlightInputs.h"
 #include "map/functions.h"
 #include "CMLog.h"
 
 // Flight structure
 struct Flight {
     std::string ID; // ID
+    Aircraft aircraft; // Aircraft data
     std::vector<Waypoint> waypoints; // Waypoints
 
-    // Read from file
-    float wingspan = 34; // Aircraft wingspan (m)
-    
-    // COnstant for now
-    float ei_h2o = 1.25; // Emissions index of water vapour (kg (kg fuel)-1)
-    float q_fuel = 43.15e6; // Specific combustion heat of fuel (J kg-1)
-
     // Constructor
-    Flight(const std::string_view ID) : ID(ID) {}
+    Flight(const std::string_view ID, const Aircraft& aircraft,
+        const std::vector<Waypoint>& waypoints)
+        : ID(ID), aircraft(aircraft), waypoints(waypoints) {}
 
     size_t numWaypoints() const {
         return waypoints.size();
@@ -31,7 +28,7 @@ struct Flight {
 
     // Find the last waypoint passed by the flight at the given time (e.g. 0 for 0th waypoint)
     // If before the 0th waypoint, lastWp = -1
-    constexpr size_t find_last_wp(const CMTime& time) const {
+    size_t find_last_wp(const CMTime& time) const {
         if (time < waypoints.front().time) {
             // Flight is before first waypoint
             return -1;
@@ -51,7 +48,7 @@ struct Flight {
     // neighbouring waypoints
     // loc is given the location
     // Returns false if flight is before first or after last waypoint at time
-    constexpr bool find_loc(const CMTime& time, Geo3D& loc) const {
+    bool find_loc(const CMTime& time, Geo3D& loc) const {
         size_t lastWp = find_last_wp(time);
         if (lastWp == -1 || lastWp == numWaypoints() - 1) {
             // Flight is before first or after last waypoint
@@ -68,8 +65,6 @@ struct Flight {
     void createSegments(const CMTime& startTime, const CMTime& stopTime, const Domain& domain,
         const float maxInitialSegLen, Emit&& emit
     ) const {
-        //CM_LogWrite("Creating segments for flight: " + ID);
-
         // Find last waypoint passed at start and end of time interval
         size_t lastWpStart = find_last_wp(startTime);
         size_t lastWpEnd = find_last_wp(stopTime);
@@ -174,9 +169,9 @@ struct Flight {
             + (1 - f_waypoint) * nextWaypoint.nvpm_ei_n
         );
 
-        emissions.wingspan = this->wingspan;
-        emissions.ei_h2o = this->ei_h2o;
-        emissions.q_fuel = this->q_fuel;
+        emissions.wingspan = aircraft.wingspan;
+        emissions.ei_h2o = aircraft.ei_h2o;
+        emissions.q_fuel = aircraft.q_fuel;
 
         // Caluclate speed
         emissions.true_airspeed = (

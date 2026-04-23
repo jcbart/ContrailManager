@@ -9,7 +9,6 @@
 #include "Domain.h"
 #include "map/types.h"
 #include "timekeeping.h"
-#include "FlightInputs.h"
 #include "segments/SegmentCaCE.h"
 #ifdef WITH_COCIP
 #include <CoCiP++/params.h>

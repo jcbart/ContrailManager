@@ -122,7 +122,7 @@ inline std::shared_ptr<arrow::Array> toStringArray(const std::shared_ptr<arrow::
     return result->make_array();
 }
 
-void FlightContainer::readParquet(const std::string& filepath) {
+void FlightContainer::readWaypointParquet(const std::string& filepath) {
     // Arrow table of parquet file
     std::shared_ptr<arrow::Table> table;
     arrow::Status status = parquet_to_table(filepath, table);
@@ -138,7 +138,7 @@ void FlightContainer::readParquet(const std::string& filepath) {
     int64_t ncols = table->num_columns();
 
     if (nrows == 0 || ncols == 0) {
-        CM_RaiseError("Flight dataset is empty!", __FILE__, __LINE__);
+        CM_RaiseError("File is empty: " + filepath, __FILE__, __LINE__);
     }
 
     // Get each parquet column
@@ -299,27 +299,6 @@ void FlightContainer::readParquet(const std::string& filepath) {
             // Flight ID
             std::string id = flight_id_array->GetString(row_idx);
 
-            // Check if id is in map
-            auto it = flightIDIndexMap.find(id);
-            // Index of flight in FlightContainer::loaded
-            size_t loaded_idx;
-
-            if (it == flightIDIndexMap.end()) {
-                // New flight - add to vector
-                loaded.emplace_back(id);
-                // Get index
-                loaded_idx = loaded.size() - 1;
-                // Add to index map
-                flightIDIndexMap[id] = loaded_idx;
-            }
-            else {
-                // Existing flight - get its index
-                loaded_idx = it->second;
-            }
-
-            // Add row data to flight at loaded_idx
-            Flight& flight = loaded[loaded_idx];
-
             if (timestamp_array->IsValid(row_idx) &&
                 lon_array->IsValid(row_idx) &&
                 lat_array->IsValid(row_idx) &&
@@ -329,8 +308,8 @@ void FlightContainer::readParquet(const std::string& filepath) {
                 engine_efficiency_array->IsValid(row_idx) &&
                 nvpm_ei_n_array->IsValid(row_idx)) {
                 
-                // Convert timestamp and location to CMTime and Geo3D and add to flight
-                flight.waypoints.emplace_back(
+                // Convert timestamp and location to CMTime and Geo3D and add to map
+                addWaypointToMap(id, Waypoint(
                     arrow_timestamp_to_CMTime(
                         timestamp_array->Value(row_idx),
                         time_unit
@@ -344,7 +323,82 @@ void FlightContainer::readParquet(const std::string& filepath) {
                     fuel_flow_array->Value(row_idx),
                     engine_efficiency_array->Value(row_idx),
                     nvpm_ei_n_array->Value(row_idx)
-                );
+                ));
+            }
+        }
+    }
+}
+
+void FlightContainer::readAircraftParquet(const std::string& filepath) {
+    // Arrow table of parquet file
+    std::shared_ptr<arrow::Table> table;
+    arrow::Status status = parquet_to_table(filepath, table);
+    if (!status.ok()) {
+        CM_RaiseError("Arrow error: " + status.message(), __FILE__, __LINE__);
+    }
+
+    // Reader to read table in batches
+    arrow::TableBatchReader reader(*table);
+    //reader.set_chunksize(1024); // If needed
+
+    int64_t nrows = table->num_rows();
+    int64_t ncols = table->num_columns();
+
+    if (nrows == 0 || ncols == 0) {
+        CM_RaiseError("File is empty: " + filepath, __FILE__, __LINE__);
+    }
+
+    // Get each parquet column
+
+    ParquetColumn flight_id = find_parquet_field(
+        table,
+        {
+            "id",
+            "flight_id",
+            "flightid"
+        },
+        {
+            arrow::utf8(),
+            arrow::large_utf8()
+        }
+    );
+    ParquetColumn wingspan = find_parquet_field(
+        table,
+        {
+            "wingspan",
+        },
+        {
+            arrow::float64(),
+            arrow::float32()
+        }
+    );
+
+    std::shared_ptr<arrow::RecordBatch> batch;
+    // Iterate through batches
+    while (reader.ReadNext(&batch).ok() && batch != nullptr) {
+        // Get pointers to arrays from each batch
+
+        const std::shared_ptr<arrow::StringArray> flight_id_array
+            = std::static_pointer_cast<arrow::StringArray>(toStringArray(batch->column(flight_id.colIndex)));
+
+        const std::shared_ptr<arrow::DoubleArray> wingspan_array
+            = std::static_pointer_cast<arrow::DoubleArray>(toDoubleArray(batch->column(wingspan.colIndex)));
+
+        // Process each row in batch
+        for (int64_t row_idx = 0; row_idx < batch->num_rows(); row_idx++) {
+            if (flight_id_array->IsNull(row_idx)) {
+                continue; // Ignore null
+            }
+
+            // Flight ID
+            std::string id = flight_id_array->GetString(row_idx);
+
+            if (wingspan_array->IsValid(row_idx)) {
+                
+                // Add to map
+                addAircraftToMap(id, Aircraft(
+                    wingspan_array->Value(row_idx)
+                ));
             }
         }
     }

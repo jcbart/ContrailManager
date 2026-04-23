@@ -33,9 +33,15 @@ Max contrail age (h): 6
 # dumped for being too massive
 Max accumulated vapour ratio (): 1e-2
 
-# Paths to flight dataset files separated by commas within square brackets
-# Read all datasets fulfilling a prefix by writing PREFIX: followed by the prefix
-# Add only NONE or leave list empty for idle Contrail Manager
-Flight dataset paths: [
+# Paths to flight waypoint files separated by commas within square brackets
+# Read all files fulfilling a prefix by writing PREFIX: followed by the prefix
+# Leave list empty for idle Contrail Manager
+Flight waypoint paths: [
+
+]
+
+# Paths to aircraft data files separated by commas within square brackets
+# Read all files fulfilling a prefix by writing PREFIX: followed by the prefix
+Aircraft data paths: [
 
 ]

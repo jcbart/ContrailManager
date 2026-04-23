@@ -9,7 +9,7 @@
 #include "Domain.h"
 #include "FlightContainer/FlightContainer.h"
 #include "SegmentContainer.h"
-#include "Flight.h"
+#include "timekeeping.h"
 
 // Forward declarations
 struct CMTime;
@@ -27,7 +27,7 @@ private:
 
     CMConfig config; // Config read from file
 
-    FlightContainer flights;
+    FlightContainer flights; // Flight container
 
     // Contrail segment container (is given a specific type during initialisation)
     SegmentContainerVariant segments;
