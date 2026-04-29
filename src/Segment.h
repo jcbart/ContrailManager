@@ -123,7 +123,7 @@ struct Segment {
         findDependentLocs();
     }
 
-    // Sets the ID counter to value (after restarting from file)
+    // Sets the ID counter to value
     static void setIDCounter(uint64_t value) {
         global_id_counter.store(value, std::memory_order_seq_cst);
     }

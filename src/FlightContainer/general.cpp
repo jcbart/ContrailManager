@@ -167,7 +167,7 @@ void FlightContainer::readDatasets(
 
         // If waypoints exist, but no aircraft data, raise error
         if (!stagedData.aircraft.has_value()) {
-            CM_RaiseError("No aircraft data found for flight {}" + ID, __FILE__, __LINE__);
+            CM_RaiseError("No aircraft data found for flight " + ID, __FILE__, __LINE__);
         }
 
         // Construct Flight in loaded vector

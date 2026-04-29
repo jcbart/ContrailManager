@@ -110,29 +110,31 @@ void SegmentContainer<SegmentType>::dump(const CMTime& stopTime) {
 
 template<typename SegmentType>
 void SegmentContainer<SegmentType>::constructREIcontrail() {
-    // Map of grid cell indices to the segments whose centres are inside
-    std::unordered_map<IDX<3, int>, std::vector<SegmentType*>, IDXHasher<3, int>> segmentMap;
-
-    // Add segment pointers to map
-    for (SegmentType& seg : vec) {
-        IDX<3, int> ijk = domain->loc_to_ijk(seg.centre);
-        segmentMap[ijk].push_back(&seg);
-    }
-
-    // Combine effective radii in each cell and write to field
-    for (const auto& [ijk, cellVec] : segmentMap) {
+    struct NumDenom {
         double num = 0;
         double denom = 0;
-        for (SegmentType* seg : cellVec) {
-            const double mass = seg->totalIceMass();
-            const double r_e = seg->effectiveRadius();
-            // Set threshold to avoid dividing by zero
-            if (r_e > 1e-7) {
-                num += mass;
-                denom += mass / r_e;
-            }
+    };
+    // Map of grid cell indices to numerator/denominator values
+    std::unordered_map<IDX<3, int>, NumDenom, IDXHasher<3, int>> numDenomMap;
+
+    for (SegmentType& seg : vec) {
+        const double mass = seg.totalIceMass();
+        const double r_e = seg.effectiveRadius();
+        // Ignore segments below threshold to avoid dividing by zero
+        if (r_e < 1e-7) {
+            continue;
         }
-        double r_e_comb = (denom > 0) ? num / denom : 0;
+
+        // Add to values at segment centre's grid cell
+        const IDX<3, int> ijk = domain->loc_to_ijk(seg.centre);
+        auto& nd = numDenomMap[ijk];
+        nd.num += mass;
+        nd.denom += mass / r_e;
+    }
+
+    // Could parallelise if map is replaced with a vector
+    for (const auto& [ijk, nd] : numDenomMap) {
+        const double r_e_comb = (nd.denom > 0) ? nd.num / nd.denom : 0;
         domain->REIcontrail.set(ijk, r_e_comb);
     }
 }
