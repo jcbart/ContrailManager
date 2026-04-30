@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <ranges>
+#include "Grid.h"
 #include "Variable.h"
 #include "map/types.h"
 #include "Projection.h"
@@ -27,6 +28,12 @@ private:
 
 public:
     bool twoWayCoupling; // True for two-way coupling (feedback to NWP)
+
+    // Grids
+    const Grid<2> grid2D; // 2D grid
+    const Grid<3> grid3D; // 3D grid
+    const Grid<3> grid3D_stag_k; // 3D grid staggered in k dimension
+
     // Meteorological variables (accessible externally)
     // Longitude (degrees, West is negative)
     Variable<2, float> XLONG;

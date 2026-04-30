@@ -6,27 +6,32 @@ template <typename ProjType>
 Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
     : ids(ids), ide(ide), jds(jds), jde(jde), kds(kds), kde(kde),
       iSize(ide - ids + 1), jSize(jde - jds + 1), kSize(kde - kds + 1),
-      XLONG("XLONG", {ids, jds}, {ide, jde}, 0),
-      XLAT("XLAT", {ids, jds}, {ide, jde}, 0),
-      Z("Z", {ids, jds, kds}, {ide, jde, kde}, 0),
-      Z_AT_W("Z_AT_W", {ids, jds, kds}, {ide, jde, kde + 1}, 0),
-      DRYMASS("DRYMASS", {ids, jds, kds}, {ide, jde, kde}, 0),
-      T_POT("T_POT", {ids, jds, kds}, {ide, jde, kde}, 0),
-      //deltaT_POT("deltaT_POT", {ids, jds, kds}, {ide, jde, kde}, 0),
-      P("P", {ids, jds, kds}, {ide, jde, kde}, 0),
-      U("U", {ids, jds, kds}, {ide, jde, kde}, 0),
-      V("V", {ids, jds, kds}, {ide, jde, kde}, 0),
-      W("W", {ids, jds, kds}, {ide, jde, kde}, 0),
-      TNSR("TNSR", {ids, jds}, {ide, jde}, 0),
-      OLR("OLR", {ids, jds}, {ide, jde}, 0),
-      QV("QV", {ids, jds, kds}, {ide, jde, kde}, 0),
-      //QVsave("QVsave", {ids, jds, kds}, {ide, jde, kde}, 0),
-      deltaQV("deltaQV", {ids, jds, kds}, {ide, jde, kde}, 0),
-      QI("QI", {ids, jds, kds}, {ide, jde, kde}, 0),
-      deltaQI("deltaQI", {ids, jds, kds}, {ide, jde, kde}, 0),
-      deltaNI("deltaNI", {ids, jds, kds}, {ide, jde, kde}, 0),
-      QIcontrail("QIcontrail", {ids, jds, kds}, {ide, jde, kde}, 0),
-      REIcontrail("REIcontrail", {ids, jds, kds}, {ide, jde, kde}, 0),
+      // Initialise grids
+      grid2D({ids, jds}, {ide, jde}),
+      grid3D({ids, jds, kds}, {ide, jde, kde}),
+      grid3D_stag_k({ids, jds, kds}, {ide, jde, kde + 1}),
+      // Initialise variables
+      XLONG("XLONG", grid2D, 0),
+      XLAT("XLAT", grid2D, 0),
+      Z("Z", grid3D, 0),
+      Z_AT_W("Z_AT_W", grid3D_stag_k, 0),
+      DRYMASS("DRYMASS", grid3D, 0),
+      T_POT("T_POT", grid3D, 0),
+      //deltaT_POT("deltaT_POT", grid3D, 0),
+      P("P", grid3D, 0),
+      U("U", grid3D, 0),
+      V("V", grid3D, 0),
+      W("W", grid3D, 0),
+      TNSR("TNSR", grid2D, 0),
+      OLR("OLR", grid2D, 0),
+      QV("QV", grid3D, 0),
+      //QVsave("QVsave", grid3D, 0),
+      deltaQV("deltaQV", grid3D, 0),
+      QI("QI", grid3D, 0),
+      deltaQI("deltaQI", grid3D, 0),
+      deltaNI("deltaNI", grid3D, 0),
+      QIcontrail("QIcontrail", grid3D, 0),
+      REIcontrail("REIcontrail", grid3D, 0),
       proj(std::move(p)) {
 
     CM_LogWrite("Contrail Manager variables initialised with dimensions:");
@@ -49,6 +54,8 @@ void Domain::check_valid_exports() const {
     deltaNI.check_condition(isFinite);
     QIcontrail.check_condition(isFinite);
     QIcontrail.check_condition(isNotNegative);
+    REIcontrail.check_condition(isFinite);
+    REIcontrail.check_condition(isNotNegative);
 }
 
 bool Domain::find_interp_points(const Geo3D& loc, std::vector<IDX<3, int>>& interpPoints) const {
