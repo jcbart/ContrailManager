@@ -2,7 +2,7 @@
 #define SERIALIZESEGMENT_H
 
 #include <cereal/types/memory.hpp>
-#include "Segment.h"
+#include "segment/Segment.h"
 
 namespace cereal {
 

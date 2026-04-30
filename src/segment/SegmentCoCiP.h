@@ -5,7 +5,7 @@
 
 #include <CoCiP++/CoCiP.h>
 #include <CoCiP++/met.h>
-#include "Segment.h"
+#include "segment/Segment.h"
 
 // Forward declaration
 struct Params;

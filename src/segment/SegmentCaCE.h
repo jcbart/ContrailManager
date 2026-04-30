@@ -1,7 +1,7 @@
 #ifndef SEGMENTCACE_H
 #define SEGMENTCACE_H
 
-#include "Segment.h"
+#include "segment/Segment.h"
 
 // Contrails as Cloud Enhancement (CaCE) segment type
 struct SegmentCaCE : public Segment {

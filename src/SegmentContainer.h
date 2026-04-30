@@ -9,10 +9,10 @@
 #include "Domain.h"
 #include "map/types.h"
 #include "timekeeping.h"
-#include "segments/SegmentCaCE.h"
+#include "segment/SegmentCaCE.h"
 #ifdef WITH_COCIP
 #include <CoCiP++/params.h>
-#include "segments/SegmentCoCiP.h"
+#include "segment/SegmentCoCiP.h"
 #endif
 
 // Plume model-specific segment container structure

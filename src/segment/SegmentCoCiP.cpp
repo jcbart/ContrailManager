@@ -4,7 +4,7 @@
 #include <CoCiP++/met.h>
 #include <CoCiP++/params.h>
 #include <CoCiP++/CoCiPTime.h>
-#include "segments/SegmentCoCiP.h"
+#include "segment/SegmentCoCiP.h"
 #include "thermo.h"
 #include "CMLog.h"
 

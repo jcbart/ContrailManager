@@ -1,7 +1,7 @@
 #ifndef SERIALIZECACE_H
 #define SERIALIZECACE_H
 
-#include "segments/SegmentCaCE.h"
+#include "segment/SegmentCaCE.h"
 
 namespace cereal {
 

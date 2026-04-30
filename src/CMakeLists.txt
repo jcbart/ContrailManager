@@ -2,8 +2,8 @@ add_library(contrailmanager STATIC
     FlightContainer/general.cpp
     FlightContainer/parquet.cpp
     map/functions.cpp
-    segments/SegmentCaCE.cpp
-    segments/SegmentCoCiP.cpp
+    segment/SegmentCaCE.cpp
+    segment/SegmentCoCiP.cpp
     CMConfig.cpp
     CMLog.cpp
     ContrailManager.cpp

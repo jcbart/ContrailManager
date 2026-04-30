@@ -1,5 +1,5 @@
 #include <limits>
-#include "segments/SegmentCaCE.h"
+#include "segment/SegmentCaCE.h"
 #include "constants.h"
 #include "thermo.h"
 
