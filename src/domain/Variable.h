@@ -6,7 +6,7 @@
 #include <concepts>
 #include <functional>
 #include <omp.h>
-#include "Grid.h"
+#include "domain/Grid.h"
 #include "CMLog.h"
 
 // Define a condition function F which takes a value of type T and returns a bool meaning it can be

@@ -5,10 +5,9 @@
 #include <vector>
 #include <algorithm>
 #include <ranges>
-#include "Grid.h"
-#include "Variable.h"
-#include "map/types.h"
-#include "Projection.h"
+#include "domain/Grid.h"
+#include "domain/Variable.h"
+#include "domain/Projection.h"
 #include "thermo.h"
 #include "CMLog.h"
 

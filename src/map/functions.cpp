@@ -1,6 +1,6 @@
 #include "map/functions.h"
 #include "flight/Waypoint.h"
-#include "Domain.h"
+#include "domain/Domain.h"
 
 Geo3D map::great_circle_interp(const double f, const Geo3D& loc1, const Geo3D& loc2) {
     // Lat/lon interpolation

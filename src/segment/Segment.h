@@ -6,7 +6,7 @@
 #include <memory>
 #include <atomic>
 #include "timekeeping.h"
-#include "Domain.h"
+#include "domain/Domain.h"
 #include "map/functions.h"
 #include "flight/FlightInputs.h"
 

@@ -6,7 +6,7 @@
 #include <memory>
 #include "CMConfig.h"
 #include "PlumeModels.h"
-#include "Domain.h"
+#include "domain/Domain.h"
 #include "FlightContainer/FlightContainer.h"
 #include "SegmentContainer.h"
 #include "timekeeping.h"

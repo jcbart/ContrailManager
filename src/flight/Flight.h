@@ -7,7 +7,7 @@
 #include "flight/Aircraft.h"
 #include "flight/Waypoint.h"
 #include "flight/FlightInputs.h"
-#include "Domain.h"
+#include "domain/Domain.h"
 #include "map/functions.h"
 #include "CMLog.h"
 

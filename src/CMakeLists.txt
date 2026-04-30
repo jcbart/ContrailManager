@@ -1,4 +1,5 @@
 add_library(contrailmanager STATIC
+    domain/Domain.cpp
     FlightContainer/general.cpp
     FlightContainer/parquet.cpp
     map/functions.cpp
@@ -7,7 +8,6 @@ add_library(contrailmanager STATIC
     CMConfig.cpp
     CMLog.cpp
     ContrailManager.cpp
-    Domain.cpp
     extern.cpp
     SegmentContainer.cpp
 )

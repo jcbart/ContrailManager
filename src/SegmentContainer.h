@@ -6,7 +6,7 @@
 #include <variant>
 #include <omp.h>
 #include "PlumeModels.h"
-#include "Domain.h"
+#include "domain/Domain.h"
 #include "map/types.h"
 #include "timekeeping.h"
 #include "segment/SegmentCaCE.h"

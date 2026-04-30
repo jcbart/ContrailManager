@@ -2,7 +2,6 @@
 
 #include <memory>
 #include "ContrailManager.h"
-#include "Projection.h"
 
 // Create and return reference to the Contrail Manager
 extern "C" ContrailManager* create_ContrailManager() {
