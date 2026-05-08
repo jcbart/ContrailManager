@@ -99,13 +99,13 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     create_segments(startTime, stopTime);
 
     std::visit([&](auto& s) {
-        // 2. Evolve plumes
-        s.evolvePlumes(startTime, stopTime);
-
-        // 3. Advect segments
+        // 2. Advect segments
         s.advectSegments(startTime, stopTime);
 
-        // 4. Dump old or dead segments in their new location
+        // 3. Evolve plumes
+        s.evolvePlumes(startTime, stopTime);
+
+        // 4. Dump old or dead segments
         s.dump(stopTime);
     }, segments);
 
@@ -156,7 +156,7 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
     // Set domain-related variables now that domain is initialised
     domain->twoWayCoupling = config.twoWayCoupling;
     std::visit([&](auto& s) {
-        s.domain = domain;
+        s.domain = domain.get();
     }, segments);
 
     currTime = startTime;
@@ -174,26 +174,20 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
 }
 
 void ContrailManager::create_segments(const CMTime& startTime, const CMTime& stopTime) {
-    CM_LogWrite("Creating segments for " + std::to_string(flights.active.size())
-        + " active flights");
-
-    size_t numBefore = std::visit([](auto& s) -> size_t {
-        return s.getSize();
-    }, segments);
+    CM_LogWrite(std::format("Creating segments for {} active flights", flights.active.size()));
 
     // Create segments from each flight using lambda function telling flights what to do with
     // resulting FlightInputs objects
     flights.createSegments(startTime, stopTime, *domain,
         [this](FlightInputs inputs) {
             std::visit([&inputs](auto& s) {
-                s.addItem(inputs);
+                s.addNewSegment(inputs);
             }, segments);
         }
     );
 
-    size_t numAfter = std::visit([](auto& s) -> size_t {
-        return s.getSize();
+    // Run formation
+    std::visit([](auto& s) {
+        s.runFormation();
     }, segments);
-    
-    CM_LogWrite(std::format("Number of segments created: {}", (numAfter - numBefore)));
 }

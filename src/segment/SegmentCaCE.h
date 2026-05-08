@@ -49,7 +49,7 @@ struct SegmentCaCE : public Segment {
     SegmentCaCE() : Segment() {}
 
     // Constructor
-    SegmentCaCE(const FlightInputs& flightInputs, std::shared_ptr<Domain> domain)
+    SegmentCaCE(const FlightInputs& flightInputs, Domain* domain)
         : Segment(flightInputs, domain),
           engine_efficiency(flightEmissions.engine_efficiency),
           ei_h2o(flightEmissions.ei_h2o),
@@ -68,12 +68,16 @@ struct SegmentCaCE : public Segment {
         return 0; // N/A
     }
 
-    void evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd) override;
+    void formation() override;
+
+    void evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd) override {
+        // Do nothing to satisfy the method's existence
+    }
 
     void dump() override;
 
     void addToQIcontrail() override {
-        return; // Should not have live contrail ice
+        // Should not have live contrail ice
     }
 
 private:
@@ -134,9 +138,6 @@ private:
         return (domain->V.get(ijkBelow)
             + interpFraction * (domain->V.get(ijkAbove) - domain->V.get(ijkBelow)));
     }
-
-    // Calculate formation; returns true if contrail forms according to SAC
-    bool formation();
 
     // Simulate wake vortex downwash
     void simulate_wake_vortex_downwash();

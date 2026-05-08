@@ -8,23 +8,6 @@
 #include "thermo.h"
 #include "CMLog.h"
 
-SegmentCoCiP::SegmentCoCiP(const FlightInputs& flightInputs, std::shared_ptr<Domain> domain,
-    std::shared_ptr<Params> params)
-    : Segment(flightInputs, domain) {
-    
-    cocip.met = std::make_unique<ArrayMet<float>>(params->dz_m, domain->get_kSize());
-    cocip.params = params;
-    // give flight inputs (flightEmissions is taken from flightInputs)
-    cocip.engine_efficiency = flightEmissions.engine_efficiency;
-    cocip.ei_h2o = flightEmissions.ei_h2o;
-    cocip.q_fuel = flightEmissions.q_fuel;
-    cocip.aircraft_mass = flightEmissions.aircraft_mass;
-    cocip.wingspan = flightEmissions.wingspan;
-    cocip.true_airspeed = flightEmissions.true_airspeed;
-    cocip.fuel_flow = flightEmissions.fuel_flow;
-    cocip.nvpm_ei_n = flightEmissions.nvpm_ei_n;
-}
-
 bool SegmentCoCiP::updateMet() {
     IDX<3, int> ijk = domain->loc_to_ijk(centre);
 
@@ -54,6 +37,82 @@ bool SegmentCoCiP::updateMet() {
     return true;
 }
 
+void SegmentCoCiP::formation() {
+    // Give CoCiP current location and datetime
+    cocip.longitude = centre.lon;
+    cocip.latitude = centre.lat;
+    cocip.altitude = centre.alt;
+    cocip.datetime.set(birthTime.timepoint);
+
+    // Get local meteorology
+    if (!updateMet()) {
+        outOfBounds = true;
+        return;
+    }
+
+    cocip.formation();
+
+    double fuel_dist = cocip.fuel_flow / cocip.true_airspeed; // (kg fuel m-1)
+    double vap_mass_per_m_exhaust = cocip.ei_h2o * fuel_dist; // (kg vapour m-1)
+    // Mass of vapour exhausted (kg) - used in both formation and no formation
+    double M_v_exhaust = vap_mass_per_m_exhaust * length;
+
+    if (!std::isfinite(M_v_exhaust)) {
+        badSimulation = true;
+        return;
+    }
+
+    if (!cocip.sac) {
+        noFormation = true;
+
+        // If two-way coupling, return water vapour to atmosphere
+        if (domain->twoWayCoupling) {
+            // Get dry mass of grid cell contrail is inside
+            IDX<3, int> ijk = domain->loc_to_ijk(centre);
+
+            double gridDryMass = domain->DRYMASS.get(ijk);
+
+            // Add M_v_exhaust to current grid cell
+            domain->deltaQV.add(ijk,  M_v_exhaust / gridDryMass);
+        }
+        return;
+    }
+
+    cocip.simulate_wake_vortex_downwash();
+    cocip.initial_properties();
+
+    if (!cocip.persistent) {
+        noFormation = true;
+
+        // If two-way coupling, return water vapour to atmosphere and assume !cocip.persistent
+        // is because IWC -> 0
+        if (domain->twoWayCoupling) {
+            // Get dry mass of grid cell contrail is inside
+            IDX<3, int> ijk = domain->loc_to_ijk(centre);
+
+            double gridDryMass = domain->DRYMASS.get(ijk);
+
+            // Add M_v_exhaust to current grid cell
+            domain->deltaQV.add(ijk,  M_v_exhaust / gridDryMass);
+        }
+        return;
+    }
+
+    // Takes angle between segment and longitude axis
+    cocip.process_downwash_flight(90 - heading);
+
+    double M_ice = totalIceMass();
+
+    // Specific humidity inside contrail
+    double q_sat = thermo::q_sat_ice(cocip.met->air_temperature, cocip.met->air_pressure);
+    // Do q_to_r as long as plume_mass_per_m is actually dry air mass
+    double M_v_inside = thermo::q_to_r(q_sat) * cocip.plume_mass_per_m * length;
+
+    // Vapour mass intaken from atmosphere =
+    //    ice mass + vapour mass inside - vapour mass exhausted
+    M_v_accum = M_ice + M_v_inside - M_v_exhaust;
+}
+
 void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
     // Give CoCiP current location and datetime
     cocip.longitude = centre.lon;
@@ -66,69 +125,6 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
         outOfBounds = true;
         return;
     }
-    
-    if (!doneFormation) {
-        cocip.formation();
-
-        double fuel_dist = cocip.fuel_flow / cocip.true_airspeed; // (kg fuel m-1)
-        double vap_mass_per_m_exhaust = cocip.ei_h2o * fuel_dist; // (kg vapour m-1)
-        // Mass of vapour exhausted (kg) - used in both formation and no formation
-        double M_v_exhaust = vap_mass_per_m_exhaust * length;
-
-        if (!cocip.sac) {
-            isDead = true;
-            //CM_LogWrite("CoCiP: no formation");
-
-            // If two-way coupling, return water vapour to atmosphere
-            if (domain->twoWayCoupling) {
-                // Get dry mass of grid cell contrail is inside
-                IDX<3, int> ijk = domain->loc_to_ijk(centre);
-
-                double gridDryMass = domain->DRYMASS.get(ijk);
-
-                // Add M_v_exhaust to current grid cell
-                domain->deltaQV.add(ijk,  M_v_exhaust / gridDryMass);
-            }
-            return;
-        }
-
-        cocip.simulate_wake_vortex_downwash();
-        cocip.initial_properties();
-
-        if (!cocip.persistent) {
-            isDead = true;
-            //CM_LogWrite("CoCiP: not initially persistent");
-
-            // If two-way coupling, return water vapour to atmosphere and assume !cocip.persistent
-            // is because IWC -> 0
-            if (domain->twoWayCoupling) {
-                // Get dry mass of grid cell contrail is inside
-                IDX<3, int> ijk = domain->loc_to_ijk(centre);
-
-                double gridDryMass = domain->DRYMASS.get(ijk);
-
-                // Add M_v_exhaust to current grid cell
-                domain->deltaQV.add(ijk,  M_v_exhaust / gridDryMass);
-            }
-            return;
-        }
-
-        // Takes angle between segment and longitude axis
-        cocip.process_downwash_flight(90 - heading);
-
-        double M_ice = totalIceMass();
-
-        // Specific humidity inside contrail
-        double q_sat = thermo::q_sat_ice(cocip.met->air_temperature, cocip.met->air_pressure);
-        // Do q_to_r as long as plume_mass_per_m is actually dry air mass
-        double M_v_inside = thermo::q_to_r(q_sat) * cocip.plume_mass_per_m * length;
-
-        // Vapour mass intaken from atmosphere =
-        //    ice mass + vapour mass inside - vapour mass exhausted
-        M_v_accum = M_ice + M_v_inside - M_v_exhaust;
-
-        doneFormation = true;
-    }
 
     // Plume mass before time step (kg)
     double M_air_before = cocip.plume_mass_per_m * length;
@@ -140,6 +136,16 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
     cocip.evolve(lengthRatio, 90 - heading, dt_s);
     
     isDead = !cocip.persistent;
+
+    // Check resulting variables are valid
+    // Should really check all variables, but these will capture most bad simulations
+    if (!std::isfinite(cocip.altitude) || !std::isfinite(cocip.iwc) || !std::isfinite(cocip.width)
+        || !std::isfinite(cocip.depth) || !std::isfinite(cocip.n_ice_per_vol)
+        || !std::isfinite(cocip.plume_mass_per_m) || !std::isfinite(cocip.diffuse_v)) {
+        
+        badSimulation = true;
+        return;
+    }
 
     // Get change in altitude after CoCiP sediments
     double deltaAlt = cocip.altitude - centre.alt;

@@ -54,9 +54,11 @@ void serialize(Archive& ar, Segment& seg) {
         seg.M_v_accum,
 
         seg.outOfBounds,
+        seg.noFormation,
         seg.isOld,
         seg.isDead,
-        seg.isTooLarge
+        seg.isTooLarge,
+        seg.badSimulation
     );
 }
 

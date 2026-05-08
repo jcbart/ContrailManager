@@ -16,7 +16,7 @@ struct Segment {
     std::string parentID; // ID of the flight object which created the segment
     CMTime birthTime; // Estimated time at which centre of segment was emitted
     FlightEmissions flightEmissions; // Flight emissions
-    std::shared_ptr<Domain> domain; // Pointer to the Contrail Manager's domain
+    Domain* domain; // Pointer to the Contrail Manager's domain
 
     Geo3D back; // Location of back (first point created) of segment
     Geo3D front; // Location of front (last point created) of segment
@@ -26,20 +26,24 @@ struct Segment {
     double lengthRatio = 1; // Ratio of old length to new length; set in advect, used in evolve
     double M_v_accum = 0; // Mass of ambient accumulated (double-counted) vapour (kg)
 
-     // Flag updated by SegmentContainer or plume model if out of domain bounds; segment is not dumped
+    // Flag updated by SegmentContainer or plume model if out of domain bounds; segment is not dumped
     bool outOfBounds = false;
-    // Flag updated by SegmentContainer if passed age threshold; segment is dumped
+    // Flag updated by plume model if no contrail forms
+    bool noFormation = false;
+    // Flag updated by SegmentContainer if past age threshold; segment is dumped
     bool isOld = false;
     // Flag updated by Segment or plume model if below survival threshold; segment is dumped
     bool isDead = false;
     // Flag updated by SegmentContainer if past size threshold; segment is dumped
     bool isTooLarge = false;
+    // Flag updated by plume model is simulation has gone wrong (e.g. NaN values); segment is not dumped
+    bool badSimulation = false;
 
     // Empty constructor
     Segment() {}
 
     // Constructor
-    Segment(const FlightInputs& flightInputs, std::shared_ptr<Domain> domain)
+    Segment(const FlightInputs& flightInputs, Domain* domain)
         : ID(nextID()),
           parentID(flightInputs.ID),
           birthTime(flightInputs.birthTime),
@@ -67,7 +71,10 @@ struct Segment {
     // Virtual method to return contrail ice effective radius (m)
     virtual double effectiveRadius() const = 0;
 
-    // Virtual integration method; must be overridden by plume model-specific method
+    // Virtual formation method
+    virtual void formation() = 0;
+
+    // Virtual evolve method
     virtual void evolve(const CMTime& startTime, const CMTime& stopTime) = 0;
 
     // Virtual method to add the "contents" of the segment into the NWP's native fields
@@ -78,9 +85,9 @@ struct Segment {
     virtual void addToQIcontrail() = 0;
 
     // Calculate segment centre and heading
-    inline void findDependentLocs() {
+    void findDependentLocs() {
         centre = map::great_circle_interp(0.5, back, front);
-        // Ensure centre is in grid
+        // Set centre and ensure it is in grid
         IDX<3, int> ijkCentre;
         if (!domain->loc_to_ijk(centre, ijkCentre)) {
             outOfBounds = true;

@@ -19,16 +19,41 @@ template struct SegmentContainer<SegmentCoCiP>;
 #endif
 
 template<typename SegmentType>
-void SegmentContainer<SegmentType>::evolvePlumes(const CMTime& startTime, const CMTime& stopTime) {
+void SegmentContainer<SegmentType>::runFormation() {
     // Using schedule(guided) to balance work when segments take different computational time
     // to evolve
     #pragma omp parallel for schedule(guided)
-    for (SegmentType& seg : vec) {
-        // Check segment is in bounds in case findDependentLocs failed to find centre
+    for (SegmentType& seg : newSegments) {
         if (!seg.outOfBounds) {
-            seg.evolve(startTime, stopTime);
+            seg.formation();
         }
     }
+
+    size_t numCreated = newSegments.size();
+
+    // Remove segments which have not formed contrails
+    std::erase_if(
+        newSegments,
+        [](const SegmentType& seg) {
+            return seg.noFormation;
+        }
+    );
+
+    size_t numAfterFormation = newSegments.size();
+
+    CM_LogWrite(std::format("Created {} segments of which {} formed a contrail.",
+        numCreated, numAfterFormation));
+
+    // Add remaining new segments to vec
+    vec.reserve(vec.size() + newSegments.size());
+    vec.insert(
+        vec.end(),
+        std::make_move_iterator(newSegments.begin()),
+        std::make_move_iterator(newSegments.end())
+    );
+
+    // Clear newSegments
+    newSegments.clear();
 }
 
 template<typename SegmentType>
@@ -57,6 +82,51 @@ void SegmentContainer<SegmentType>::advectSegments(const CMTime& startTime,
 }
 
 template<typename SegmentType>
+void SegmentContainer<SegmentType>::evolvePlumes(const CMTime& startTime, const CMTime& stopTime) {
+    CM_LogWrite("Evolving segments");
+
+    // Using schedule(guided) to balance work when segments take different computational time
+    // to evolve
+    #pragma omp parallel for schedule(guided)
+    for (SegmentType& seg : vec) {
+        // Do not evolve if segment was marked as being too short after advection
+        if (!seg.isDead) {
+            seg.evolve(startTime, stopTime);
+        }
+    }
+
+    // Plume model may move segment out of bounds or mark as bad simulation, so remove those
+    size_t numOOB = 0, numBadSim = 0;
+    #pragma omp parallel for reduction(+ : numOOB, numBadSim)
+    for (SegmentType& seg : vec) {
+        // Check if out of bounds
+        IDX<3, int> ijk;
+        if (!(domain->loc_to_ijk(seg.centre, ijk)
+              && domain->can_do_interp(seg.front)
+              && domain->can_do_interp(seg.back))) {
+            seg.outOfBounds = true;
+        }
+        if (seg.outOfBounds) {
+            numOOB++;
+        }
+        if (seg.badSimulation) {
+            numBadSim++;
+        }
+    }
+
+    CM_LogWrite(std::format("Number out of bounds: {}, bad simulation: {}",
+        numOOB, numBadSim));
+
+    // Remove flagged segments
+    std::erase_if(
+        vec,
+        [](const SegmentType& seg) {
+            return (seg.outOfBounds || seg.badSimulation);
+        }
+    );
+}
+
+template<typename SegmentType>
 void SegmentContainer<SegmentType>::dump(const CMTime& stopTime) {
     CM_LogWrite("Dumping segments");
     
@@ -79,12 +149,9 @@ void SegmentContainer<SegmentType>::dump(const CMTime& stopTime) {
             numDead++;
         }
     }
-
-    CM_LogWrite(std::format("Number of old: {}, number of large: {}, number of dead: {}",
-        numOld, numLarge, numDead));
-
+    
     if (domain->twoWayCoupling) {
-        // Dump flagged segments
+        // Dump segments flagged for dumping
         #pragma omp parallel for
         for (SegmentType& seg : vec) {
             if (seg.shouldBeDumped()) {
@@ -95,7 +162,7 @@ void SegmentContainer<SegmentType>::dump(const CMTime& stopTime) {
 
     size_t numBefore = vec.size();
 
-    // Remove flagged segments
+    // Remove segments flagged for dumping
     std::erase_if(
         vec,
         [](const SegmentType& seg) {
@@ -104,8 +171,9 @@ void SegmentContainer<SegmentType>::dump(const CMTime& stopTime) {
     );
     
     size_t numAfter = vec.size();
-    
-    CM_LogWrite(std::format("Number removed: {}", numBefore - numAfter));
+
+    CM_LogWrite(std::format("Number of old: {}, large: {}, dead: {}. Total dumped: {}",
+        numOld, numLarge, numDead, numBefore - numAfter));
 }
 
 template<typename SegmentType>

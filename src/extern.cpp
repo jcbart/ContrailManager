@@ -30,7 +30,7 @@ extern "C" void init_domainlc_extern(ContrailManager* CMptr, int ids, int ide, i
 
     ProjectionLC proj(lat1, lon1, knowni, knownj, dx, stdlon, truelat1, truelat2);
 
-    CMptr->domain = std::make_shared<Domain>(ids, ide, jds, jde, kds, kde, proj);
+    CMptr->domain = std::make_unique<Domain>(ids, ide, jds, jde, kds, kde, proj);
 }
 
 

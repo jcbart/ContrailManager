@@ -13,14 +13,26 @@ struct Params;
 // CoCiP segment type
 struct SegmentCoCiP : public Segment {
     CoCiP<ArrayMet<float>> cocip;
-    bool doneFormation = false;
 
     // Empty constructor
     SegmentCoCiP() : Segment() {}
 
     // Constructor
-    SegmentCoCiP(const FlightInputs& flightInputs, std::shared_ptr<Domain> domain,
-        std::shared_ptr<Params> params);
+    SegmentCoCiP(const FlightInputs& flightInputs, Domain* domain,
+        std::shared_ptr<Params> params) : Segment(flightInputs, domain) {
+    
+        cocip.met = std::make_unique<ArrayMet<float>>(params->dz_m, domain->get_kSize());
+        cocip.params = params;
+        // give flight inputs (flightEmissions is taken from flightInputs)
+        cocip.engine_efficiency = flightEmissions.engine_efficiency;
+        cocip.ei_h2o = flightEmissions.ei_h2o;
+        cocip.q_fuel = flightEmissions.q_fuel;
+        cocip.aircraft_mass = flightEmissions.aircraft_mass;
+        cocip.wingspan = flightEmissions.wingspan;
+        cocip.true_airspeed = flightEmissions.true_airspeed;
+        cocip.fuel_flow = flightEmissions.fuel_flow;
+        cocip.nvpm_ei_n = flightEmissions.nvpm_ei_n;
+    }
     
     double totalIceMass() const override {
         // Do q_to_r as long as plume_mass_per_m is actually dry air mass
@@ -32,6 +44,8 @@ struct SegmentCoCiP : public Segment {
         constexpr double c_r = 0.9;
         return cocip.r_ice_vol / c_r;
     }
+
+    void formation() override;
 
     void evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd) override;
 

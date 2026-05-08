@@ -454,23 +454,6 @@ void SegmentCaCE::update_met() {
         std::cos(90. - heading), std::sin(90. - heading), dz_m);
 }
 
-bool SegmentCaCE::formation() {
-    IDX<3, int> ijk = domain->loc_to_ijk(centre);
-
-    float specific_humidity = thermo::r_to_q(domain->QV.get(ijk));
-    float air_pressure = domain->P.get(ijk);
-    float air_temperature = thermo::theta_to_T(domain->T_POT.get(ijk), air_pressure);
-
-    double G = sac::slope_mixing_line(specific_humidity, air_pressure, engine_efficiency,
-        ei_h2o, q_fuel);
-    double T_sat_liq = sac::T_sat_liquid(G);
-    double rh_crit_sac = sac::rh_critical_sac(air_temperature, T_sat_liq, G);
-    double rh = specific_humidity / thermo::q_sat_liquid(air_temperature, air_pressure);
-    T_crit_sac = sac::T_critical_sac(T_sat_liq, rh, G);
-
-    return (std::isfinite(rh) && std::isfinite(rh_crit_sac) && (rh > rh_crit_sac));
-}
-
 void SegmentCaCE::simulate_wake_vortex_downwash() {
     double dz_max = wake_vortex::max_downward_displacement(wingspan, true_airspeed, aircraft_mass,
         air_temperature, dtheta_dz, ds_dz, air_pressure,
@@ -523,10 +506,7 @@ void SegmentCaCE::initial_properties() {
     area_eff = contrail_properties::plume_effective_cross_sectional_area(width, depth, 0);
 }
 
-void SegmentCaCE::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd) {
-    // Contrail is initialised, but not evolved so there is no birth time-dependence within a
-    // coupling interval
-
+void SegmentCaCE::formation() {
     update_met();
 
     double fuel_dist = fuel_flow / true_airspeed; // (kg fuel m-1)
@@ -534,13 +514,29 @@ void SegmentCaCE::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd)
     // Mass of vapour exhausted (kg) - used in both formation and no formation
     double M_v_exhaust = vap_mass_per_m_exhaust * length;
 
-    if (!formation()) {
-        isDead = true;
+    if (!std::isfinite(M_v_exhaust)) {
+        badSimulation = true;
+        return;
+    }
+
+    IDX<3, int> ijk = domain->loc_to_ijk(centre);
+
+    float specific_humidity = thermo::r_to_q(domain->QV.get(ijk));
+    float air_pressure = domain->P.get(ijk);
+    float air_temperature = thermo::theta_to_T(domain->T_POT.get(ijk), air_pressure);
+
+    double G = sac::slope_mixing_line(specific_humidity, air_pressure, engine_efficiency,
+        ei_h2o, q_fuel);
+    double T_sat_liq = sac::T_sat_liquid(G);
+    double rh_crit_sac = sac::rh_critical_sac(air_temperature, T_sat_liq, G);
+    double rh = specific_humidity / thermo::q_sat_liquid(air_temperature, air_pressure);
+    T_crit_sac = sac::T_critical_sac(T_sat_liq, rh, G);
+
+    if (!(std::isfinite(rh) && std::isfinite(rh_crit_sac) && (rh > rh_crit_sac))) {
+        noFormation = true;
         // If two-way coupling, return water vapour to atmosphere
         if (domain->twoWayCoupling) {
             // Get dry mass of grid cell contrail is inside
-            IDX<3, int> ijk = domain->loc_to_ijk(centre);
-
             double gridDryMass = domain->DRYMASS.get(ijk);
 
             // Add M_v_exhaust to current grid cell
@@ -557,6 +553,12 @@ void SegmentCaCE::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd)
     // Specific humidity inside contrail
     double q_sat = thermo::q_sat_ice(air_temperature, air_pressure);
     double M_v_inside = thermo::q_to_r(q_sat) * rho_air * area_eff * length;
+
+    // Check resulting variables are valid
+    if (!std::isfinite(iwc) || !std::isfinite(n_ice_per_m) || !std::isfinite(M_v_inside)) {
+        badSimulation = true;
+        return;
+    }
 
     // Vapour mass intaken from atmosphere =
     //    ice mass + vapour mass inside - vapour mass exhausted

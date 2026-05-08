@@ -220,8 +220,7 @@ void serialize(Archive& ar, SegmentCoCiP& seg) {
     // Serialize base class, then derived members
     ar(
         cereal::virtual_base_class<Segment>(&seg),
-        seg.cocip,
-        seg.doneFormation
+        seg.cocip
     );
 }
 

@@ -27,13 +27,16 @@ struct SegmentContainer {
     // grid cell (); set by ContrailManager
     double maxAccumVapRatio;
 
-    std::shared_ptr<Domain> domain; // Pointer to the Contrail Manager's domain
+    Domain* domain; // Pointer to the Contrail Manager's domain
 
 #ifdef WITH_COCIP
     std::shared_ptr<Params> cocipParams; // Pointer to CoCiP Params object if using
 #endif
 
 private:
+    // Vector of new
+    std::vector<SegmentType> newSegments;
+    // Vector of segments
     std::vector<SegmentType> vec;
 
     // Returns a new object of SegmentType; allows plume model-specific initialisation
@@ -72,20 +75,24 @@ public:
         return vec.size();
     }
 
-    // Add segment to container; assumes segment has been checked to be inside domain
-    void addItem(const FlightInputs& flightInputs) {
+    // Add segment to vector of new segments; assumes segment has been checked to be inside domain
+    void addNewSegment(const FlightInputs& flightInputs) {
         // Add to vector
         #pragma omp critical
         {
-            vec.push_back(newSegmentInstance(flightInputs));
+            newSegments.push_back(newSegmentInstance(flightInputs));
         }
     }
 
-    // Evolve all segment plumes (parallelised)
-    void evolvePlumes(const CMTime& startTime, const CMTime& stopTime);
+    // Run the formation method of each of the new segments (parallelised)
+    // Segments which form contrails are added to vec; the rest are erased and newSegments is reset
+    void runFormation();
 
     // Advect all segments and remove if out of bounds (parallelised)
     void advectSegments(const CMTime& startTime, const CMTime& stopTime);
+
+    // Evolve all segment plumes (parallelised)
+    void evolvePlumes(const CMTime& startTime, const CMTime& stopTime);
 
     // Dump old, large, or dead segments (parallelised)
     void dump(const CMTime& stopTime);

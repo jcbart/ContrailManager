@@ -40,7 +40,7 @@ private:
 
 public:
     // Pointer to domain
-    std::shared_ptr<Domain> domain;
+    std::unique_ptr<Domain> domain;
 
     // Initialise Contrail Manager
     void init();
