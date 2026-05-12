@@ -86,6 +86,7 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
 
     if (domain->twoWayCoupling) {
         // Set all delta and contrail fields to their default value (zero)
+        domain->deltaT_POT.default_all();
         domain->deltaQV.default_all();
         domain->deltaQI.default_all();
         domain->deltaNI.default_all();
@@ -128,6 +129,7 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     }
 
     if (domain->twoWayCoupling) {
+        domain->find_deltaT_POT();
         // Construct contrail fields from the live contrail segments
         std::visit([](auto& s) {
             s.constructQIcontrail();
@@ -174,7 +176,7 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
 }
 
 void ContrailManager::create_segments(const CMTime& startTime, const CMTime& stopTime) {
-    CM_LogWrite(std::format("Creating segments for {} active flights", flights.active.size()));
+    CM_LogWrite(std::format("Creating segments for {} active flights.", flights.active.size()));
 
     // Create segments from each flight using lambda function telling flights what to do with
     // resulting FlightInputs objects

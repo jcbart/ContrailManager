@@ -66,6 +66,12 @@ extern "C" float* get_T_POT_extern(ContrailManager* CMptr) {
     return CMptr->domain->T_POT.get_data();
 }
 
+// Returns a pointer to the deltaT_POT data
+extern "C" float* get_deltaT_POT_extern(ContrailManager* CMptr) {
+    return CMptr->domain->deltaT_POT.get_data();
+}
+
+
 // Returns a pointer to the P data
 extern "C" float* get_P_extern(ContrailManager* CMptr) {
     return CMptr->domain->P.get_data();

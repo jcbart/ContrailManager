@@ -97,11 +97,8 @@ constexpr double q_sat_liquid(double T, double P) {
 
 // Returns specific latent heat of sublimation from and of deposition to ice (J kg-1)
 constexpr double slh_sublimation_ice(double T) {
-    return 1e3 * (
-        2834.1
-        - 0.29 * (T + constants::ABS_ZERO)
-        - 4e-3 * (T + constants::ABS_ZERO) * (T + constants::ABS_ZERO)
-    );
+    const double T_C = T + constants::ABS_ZERO;
+    return 1e3 * (2834.1 - 0.29 * T_C - 4e-3 * T_C * T_C);
 }
 
 // Returns isobaric heat capacity of moist air (J kg-1 K-1) given specific humidity (kg (kg air)-1)

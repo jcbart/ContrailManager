@@ -47,7 +47,7 @@ public:
     // Potential temperature (K)
     Variable<3, float> T_POT;
     // Change in potential temperature (K)
-    //Variable<3, float> deltaT_POT;
+    Variable<3, float> deltaT_POT;
     // Total air pressure (Pa)
     Variable<3, float> P;
     // Wind speed in Eastward direction (m s-1)
@@ -114,18 +114,16 @@ public:
     }
     */
 
-    /*
     // Calculate deltaT_POT due to deltaQI (sublimation/deposition)
     void find_deltaT_POT() {
-        for (size_t i = 0; i < deltaT_POT.get_num_elements(); i++) {
-            double slhs = thermo::slh_sublimation_ice(
+        for (size_t i = 0; i < deltaT_POT.grid.get_num_elements(); i++) {
+            const double slhs = thermo::slh_sublimation_ice(
                 thermo::theta_to_T(T_POT.get_data()[i], P.get_data()[i])
             );
-            double delta_T = slhs * deltaQI.get_data()[i] / constants::c_pd;
+            const double delta_T = slhs * deltaQI.get_data()[i] / constants::c_pd;
             deltaT_POT.get_data()[i] = thermo::T_to_theta(delta_T, P.get_data()[i]);
         }
     }
-    */
 
     // Checks the export fields have valid values; raises an error if not
     void check_valid_exports() const;

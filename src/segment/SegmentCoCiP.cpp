@@ -126,9 +126,6 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
         return;
     }
 
-    // Plume mass before time step (kg)
-    double M_air_before = cocip.plume_mass_per_m * length;
-
     double dt_s = (birthTime > timeStepStart)
         ? (timeStepEnd - birthTime).to_s()
         : (timeStepEnd - timeStepStart).to_s();
@@ -138,7 +135,7 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
     isDead = !cocip.persistent;
 
     // Check resulting variables are valid
-    // Should really check all variables, but these will capture most bad simulations
+    // Should really check all variables, but these will likely capture all bad simulations
     if (!std::isfinite(cocip.altitude) || !std::isfinite(cocip.iwc) || !std::isfinite(cocip.width)
         || !std::isfinite(cocip.depth) || !std::isfinite(cocip.n_ice_per_vol)
         || !std::isfinite(cocip.plume_mass_per_m) || !std::isfinite(cocip.diffuse_v)) {
@@ -153,59 +150,31 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
     front.alt += deltaAlt;
     back.alt += deltaAlt;
 
-    // Plume mass after time step (kg)
-    double M_air_after = cocip.plume_mass_per_m * length;
-
-    // Add to mass of accumulated ambient water vapour
-    // using the interpolated humidity found by CoCiP
-    M_v_accum += cocip.met->specific_humidity * (M_air_after - M_air_before);
+    // Add to mass of accumulated ambient water vapour using saved value from CoCiP
+    M_v_accum += cocip.delta_mass_h2o_dil * length;
 
     // The below is only required for a two-way coupling in which some water vapour is continually
     // exchanged through sedimentation
     if (domain->twoWayCoupling) {
-        // Calculate ambient conditions seen by CoCiP using its interpolation method
-        int k_below = cocip.met->find_k_below(cocip.altitude);
-        double interp_fraction = cocip.met->calc_interp_fraction(cocip.altitude, k_below);
-
-        // Ambient air pressure (Pa)
-        double P_amb = cocip.met->interp_P(k_below, interp_fraction);
-        // Ambient water vapour mass mixing ratio (kg (kg dry air)-1)
-        double r_v_amb = cocip.met->interp_QV(k_below, interp_fraction);
-        // Ambient air temperature (kg m-3)
-        double rho_d_amb = thermo::rho_d(
-            thermo::theta_to_T(cocip.met->interp_T_POT(k_below, interp_fraction), P_amb),
-            P_amb
-        );
-        // Contrail water vapour mass mixing ratio - CoCiP assumes saturation (kg (kg dry air)-1)
-        double r_v_contrail = thermo::q_to_r(thermo::q_sat_ice(
-            cocip.met->air_temperature,
-            cocip.met->air_pressure
-        ));
-        // Contrail air temperature (kg m-3)
-        double rho_d_contrail = cocip.met->rho_air;
-
-        // Cross-sectional area sedimented through (m2) - if the segment sediments through a
-        // greater cross-sectional area than its own, cap at its own
-        double area_swept = std::min(std::abs(deltaAlt) * cocip.width, cocip.area_eff);
-        
         // Mass of vapour gained by the segment through sedimentation (kg)
-        double M_v_sed = (r_v_amb * rho_d_amb - r_v_contrail * rho_d_contrail)
-                         * area_swept * length;
-        
-        // Get dry mass of grid cell contrail is inside
-        IDX<3, int> ijk = domain->loc_to_ijk(centre);
+        double M_v_sed = cocip.delta_mass_h2o_sed * length;
 
-        double gridDryMass = domain->DRYMASS.get(ijk);
+        if (M_v_sed != 0) {
+            // Get dry mass of grid cell contrail is inside
+            IDX<3, int> ijk = domain->loc_to_ijk(centre);
 
-        // Remove M_v_sed from current grid cell
-        domain->deltaQV.subtract(ijk,  M_v_sed / gridDryMass);
+            const double gridDryMass = domain->DRYMASS.get(ijk);
+
+            // Remove M_v_sed from current grid cell
+            domain->deltaQV.subtract(ijk,  M_v_sed / gridDryMass);
+        }
     }
 }
 
 void SegmentCoCiP::dump() {
     IDX<3, int> ijk = domain->loc_to_ijk(centre);
 
-    double gridDryMass = domain->DRYMASS.get(ijk);
+    const double gridDryMass = domain->DRYMASS.get(ijk);
 
     // Specific humidity inside contrail
     double q_sat = thermo::q_sat_ice(cocip.met->air_temperature, cocip.met->air_pressure);
@@ -227,7 +196,7 @@ void SegmentCoCiP::addToQIcontrail() {
     IDX<3, int> ijk = domain->loc_to_ijk(centre);
 
     double M_ice = totalIceMass();
-    float gridDryMass = domain->DRYMASS.get(ijk);
+    const double gridDryMass = domain->DRYMASS.get(ijk);
     domain->QIcontrail.add(ijk, M_ice / gridDryMass);
 }
 

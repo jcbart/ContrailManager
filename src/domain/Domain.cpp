@@ -17,7 +17,7 @@ Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
       Z_AT_W("Z_AT_W", grid3D_stag_k, 0),
       DRYMASS("DRYMASS", grid3D, 0),
       T_POT("T_POT", grid3D, 0),
-      //deltaT_POT("deltaT_POT", grid3D, 0),
+      deltaT_POT("deltaT_POT", grid3D, 0),
       P("P", grid3D, 0),
       U("U", grid3D, 0),
       V("V", grid3D, 0),
@@ -49,6 +49,7 @@ void Domain::check_valid_exports() const {
     constexpr auto isNotNegative = [](float x) -> bool { return x >= 0; };
     constexpr auto isFinite = [](float x) -> bool { return std::isfinite(x); }; // includes NaN
 
+    deltaT_POT.check_condition(isFinite);
     deltaQV.check_condition(isFinite);
     deltaQI.check_condition(isFinite);
     deltaNI.check_condition(isFinite);

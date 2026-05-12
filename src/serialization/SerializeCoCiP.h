@@ -171,6 +171,7 @@ void serialize(Archive& ar, CoCiP<ArrayMet<arrayType>>& cocip) {
         cocip.longitude,
         cocip.latitude,
         cocip.altitude,
+        cocip.altitude_old,
         cocip.datetime,
 
         cocip.sin_a,
@@ -210,7 +211,10 @@ void serialize(Archive& ar, CoCiP<ArrayMet<arrayType>>& cocip) {
         cocip.rf_net,
         cocip.cumul_heat,
         cocip.cumul_differential_heat,
-        cocip.persistent
+        cocip.persistent,
+
+        cocip.delta_mass_h2o_sed,
+        cocip.delta_mass_h2o_dil
     );
 }
 
