@@ -189,7 +189,6 @@ arrow::Result<std::shared_ptr<arrow::Table>> bin_to_table(const std::string& fil
                 // Create table
                 result = CoCiP_to_table(vec);
 #else
-            
                 std::cerr << "Error: Contrail Manager has not been built with "
                           << PlumeModels::COCIP.name << std::endl;
                 exit(EXIT_FAILURE);

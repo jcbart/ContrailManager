@@ -37,13 +37,13 @@ void CMConfig::read() {
         maxSegLen = std::numeric_limits<double>::infinity();
     }
 
-    double maxContrailAge_h = config["Max contrail age (h)"].as<double>();
-    if (maxContrailAge_h <= 0) {
-        CM_RaiseError(std::format("Config error: Read maximum contrail age of {} h. "
-            "Maximum contrail age must be positive.", maxContrailAge_h),
+    double maxSegmentAge_h = config["Max segment age (h)"].as<double>();
+    if (maxSegmentAge_h <= 0) {
+        CM_RaiseError(std::format("Config error: Read maximum segment age of {} h. "
+            "Maximum segment age must be positive.", maxSegmentAge_h),
             __FILE__, __LINE__);
     }
-    maxContrailAge_s = 3600 * maxContrailAge_h;
+    maxSegmentAge_s = 3600 * maxSegmentAge_h;
 
     if (twoWayCoupling) {
         // If two-way coupling, read value from config

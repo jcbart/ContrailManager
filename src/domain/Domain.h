@@ -48,6 +48,8 @@ public:
     Variable<3, float> T_POT;
     // Change in potential temperature (K)
     Variable<3, float> deltaT_POT;
+    // Tendency of potential temperature derived from deltaT_POT (K s-1)
+    Variable<3, float> T_POT_tend;
     // Total air pressure (Pa)
     Variable<3, float> P;
     // Wind speed in Eastward direction (m s-1)
@@ -66,14 +68,20 @@ public:
     //Variable<3, float> QVsave;
     // Change in water vapour mass mixing ratio over coupling interval (kg (kg dry air-1))
     Variable<3, float> deltaQV;
+    // Tendency of water vapour mass mixing ratio derived from deltaQV (kg (kg dry air-1) s-1)
+    Variable<3, float> QV_tend;
     // Ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
     Variable<3, float> QI;
     // Change in ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
     Variable<3, float> deltaQI;
+    // Tendency of ice mass mixing ratio derived from deltaQI (kg (kg dry air-1) s-1)
+    Variable<3, float> QI_tend;
     // Ice number mixing ratio excl. live contrails (# (kg dry air-1))
     //Variable<3, float> NI;
     // Change in ice number mixing ratio excl. live contrails (# (kg dry air-1))
     Variable<3, float> deltaNI;
+    // Tendency of ice number mixing ratio derived from deltaQI (# (kg dry air-1) s-1)
+    Variable<3, float> NI_tend;
     // Contrail ice mass mixing ratio (kg (kg dry air-1))
     Variable<3, float> QIcontrail;
     // Contrail ice effective radius (m) (zero if no contrail in cell)
@@ -115,7 +123,7 @@ public:
     */
 
     // Calculate deltaT_POT due to deltaQI (sublimation/deposition)
-    void find_deltaT_POT() {
+    void construct_deltaT_POT() {
         for (size_t i = 0; i < deltaT_POT.grid.get_num_elements(); i++) {
             const double slhs = thermo::slh_sublimation_ice(
                 thermo::theta_to_T(T_POT.get_data()[i], P.get_data()[i])
@@ -124,6 +132,9 @@ public:
             deltaT_POT.get_data()[i] = thermo::T_to_theta(delta_T, P.get_data()[i]);
         }
     }
+
+    // Constructs tendency fields from deltas
+    void construct_tendencies(const CMTime& startTime, const CMTime& stopTime);
 
     // Checks the export fields have valid values; raises an error if not
     void check_valid_exports() const;
@@ -301,7 +312,7 @@ public:
     // Finds the wind speed at location by interpolating between neighbouring grid cells
     // Updates u, v, and w
     // Returns false if location is not in grid
-    bool wind_at_loc(const Geo3D& loc, float& u, float& v, float& w) const;
+    bool wind_at_loc(const Geo3D& loc, double& u, double& v, double& w) const;
 };
 
 #endif

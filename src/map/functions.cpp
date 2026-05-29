@@ -39,12 +39,8 @@ Geo3D map::great_circle_interp(const CMTime& time, const Waypoint& wp1,
 }
 
 bool map::advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
-    bool inGrid;
-
-    float u, v, w;
-
-    inGrid = dom.wind_at_loc(loc, u, v, w);
-    if (!inGrid) { return false; }
+    double u, v, w;
+    if (!dom.wind_at_loc(loc, u, v, w)) { return false; }
 
     // Advect in longitude
     loc.lon += constants::DEG_PER_RAD * u * duration_s
@@ -61,108 +57,63 @@ bool map::advect_loc(Geo3D& loc, const float duration_s, const Domain& dom) {
     loc.alt += w * duration_s;
 
     // Check if still in grid (able to interp)
-    inGrid = dom.can_do_interp(loc);
-    return inGrid;
+    return dom.can_do_interp(loc);
 }
 
 bool map::advect_loc_RK4(Geo3D& loc, const float duration_s, const Domain& dom) {
-    float u1, v1, w1; // Values of k1
-    float u2, v2, w2; // Values of k2
-    float u3, v3, w3; // Values of k3
-    float u4, v4, w4; // Values of k4
 
-    Geo3D loc1; // Location after k1 step, used in k2 step
-    Geo3D loc2; // Location after k2 step, used in k3 step
-    Geo3D loc3; // Location after k3 step, used in k4 step
+    // Lambda function to advance a position by (u, v, w) over dt seconds, using reference geometry
+    // from ref_loc
+    auto advect_step = [&](const Geo3D& base_loc, const Geo3D& ref_loc,
+        const double u, const double v, const double w, const float dt_s) -> Geo3D {
+        
+        Geo3D next;
 
-    // k1
+        next.lon = base_loc.lon
+            + constants::DEG_PER_RAD * u * dt_s
+              / ((constants::EARTH_RADIUS_M + ref_loc.alt)
+                 * std::cos(constants::RAD_PER_DEG * ref_loc.lat));
+        // Wrap around the Earth
+        wrap_WE(next.lon);
 
-    if (!dom.wind_at_loc(loc, u1, v1, w1)) {
-        return false;
-    }
+        next.lat = base_loc.lat
+            + constants::DEG_PER_RAD * v * dt_s / (constants::EARTH_RADIUS_M + ref_loc.alt);
+        // Reflect at poles
+        wrap_SN(next.lon, next.lat);
 
-    // Advect in longitude
-    loc1.lon = loc.lon
-        + constants::DEG_PER_RAD * u1 * 0.5*duration_s
-          / ((constants::EARTH_RADIUS_M + loc.alt) * std::cos(constants::RAD_PER_DEG * loc.lat));
-    // Wrap around the Earth
-    wrap_WE(loc1.lon);
+        next.alt = base_loc.alt + w * dt_s;
 
-    // Advect in latitude
-    loc1.lat = loc.lat
-        + constants::DEG_PER_RAD * v1 * 0.5*duration_s / (constants::EARTH_RADIUS_M + loc.alt);
-    // Reflect at poles
-    wrap_SN(loc1.lon, loc1.lat);
+        return next;
+    };
 
-    // Advect in altitude
-    loc1.alt = loc.alt + w1 * 0.5*duration_s;
+    const float half_duration_s = 0.5 * duration_s;
 
-    // k2
+    // Values of k1
+    double u1, v1, w1;
+    if (!dom.wind_at_loc(loc, u1, v1, w1)) { return false; }
+    // Location after k1 step, used in k2 step
+    Geo3D loc1 = advect_step(loc, loc, u1, v1, w1, half_duration_s);
 
-    if (!dom.wind_at_loc(loc1, u2, v2, w2)) {
-        return false;
-    }
+    // Values of k2
+    double u2, v2, w2;
+    if (!dom.wind_at_loc(loc1, u2, v2, w2)) { return false; }
+    // Location after k2 step, used in k3 step
+    Geo3D loc2 = advect_step(loc, loc1, u2, v2, w2, half_duration_s);
 
-    // Advect in longitude
-    loc2.lon = loc.lon
-        + constants::DEG_PER_RAD * u2 * 0.5*duration_s
-          / ((constants::EARTH_RADIUS_M + loc.alt) * std::cos(constants::RAD_PER_DEG * loc.lat));
-    // Wrap around the Earth
-    wrap_WE(loc2.lon);
+    // Values of k3
+    double u3, v3, w3;
+    if (!dom.wind_at_loc(loc2, u3, v3, w3)) { return false; }
+    // Location after k3 step, used in k4 step
+    Geo3D loc3 = advect_step(loc, loc2, u3, v3, w3, duration_s);
 
-    // Advect in latitude
-    loc2.lat = loc.lat
-        + constants::DEG_PER_RAD * v2 * 0.5*duration_s / (constants::EARTH_RADIUS_M + loc.alt);
-    // Reflect at poles
-    wrap_SN(loc2.lon, loc2.lat);
+    // Values of k4
+    double u4, v4, w4;
+    if (!dom.wind_at_loc(loc3, u4, v4, w4)) { return false; }
 
-    // Advect in altitude
-    loc2.alt = loc.alt + w2 * 0.5*duration_s;
-
-    // k3
-
-    if (!dom.wind_at_loc(loc2, u3, v3, w3)) {
-        return false;
-    }
-
-    // Advect in longitude
-    loc3.lon = loc.lon
-        + constants::DEG_PER_RAD * u3 * duration_s
-          / ((constants::EARTH_RADIUS_M + loc.alt) * std::cos(constants::RAD_PER_DEG * loc.lat));
-    // Wrap around the Earth
-    wrap_WE(loc3.lon);
-
-    // Advect in latitude
-    loc3.lat = loc.lat
-        + constants::DEG_PER_RAD * v3 * duration_s / (constants::EARTH_RADIUS_M + loc.alt);
-    // Reflect at poles
-    wrap_SN(loc3.lon, loc3.lat);
-
-    // Advect in altitude
-    loc3.alt = loc.alt + w3 * duration_s;
-
-    // k4
-
-    if (!dom.wind_at_loc(loc3, u4, v4, w4)) {
-        return false;
-    }
-
-    // Update loc
-
-    // Advect in longitude
-    loc.lon += constants::DEG_PER_RAD * (u1 + 2*u2 + 2*u3 + u4) * duration_s/6. 
-        / ((constants::EARTH_RADIUS_M + loc.alt) * std::cos(constants::RAD_PER_DEG * loc.lat));
-    // Wrap around the Earth
-    wrap_WE(loc.lon);
-
-    // Advect in latitude
-    loc.lat += constants::DEG_PER_RAD * (v1 + 2*v2 + 2*v3 + v4) * duration_s/6.
-        / (constants::EARTH_RADIUS_M + loc.alt);
-    // Reflect at poles
-    wrap_SN(loc.lon, loc.lat);
-
-    // Advect in altitude
-    loc.alt += (w1 + 2*w2 + 2*w3 + w4) * duration_s/6.;
+    const double u_rk4 = (u1 + 2*u2 + 2*u3 + u4) / 6.;
+    const double v_rk4 = (v1 + 2*v2 + 2*v3 + v4) / 6.;
+    const double w_rk4 = (w1 + 2*w2 + 2*w3 + w4) / 6.;
+    loc = advect_step(loc, loc, u_rk4, v_rk4, w_rk4, duration_s);
 
     // Check if still in grid (able to interp)
     return dom.can_do_interp(loc);

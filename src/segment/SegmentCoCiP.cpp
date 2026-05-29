@@ -71,6 +71,11 @@ void SegmentCoCiP::formation() {
             IDX<3, int> ijk = domain->loc_to_ijk(centre);
 
             double gridDryMass = domain->DRYMASS.get(ijk);
+            if (M_v_exhaust / gridDryMass > 1) [[unlikely]] {
+                std::string msg = std::format("Found M_v_exhaust / gridDryMass = {}. M_v_exhaust = {}, gridDryMass = {}",
+                    M_v_exhaust / gridDryMass, M_v_exhaust, gridDryMass);
+                CM_RaiseError(msg, __FILE__, __LINE__);
+            }
 
             // Add M_v_exhaust to current grid cell
             domain->deltaQV.add(ijk,  M_v_exhaust / gridDryMass);
@@ -91,6 +96,11 @@ void SegmentCoCiP::formation() {
             IDX<3, int> ijk = domain->loc_to_ijk(centre);
 
             double gridDryMass = domain->DRYMASS.get(ijk);
+            if (M_v_exhaust / gridDryMass > 1) [[unlikely]] {
+                std::string msg = std::format("Found M_v_exhaust / gridDryMass = {}. M_v_exhaust = {}, gridDryMass = {}",
+                    M_v_exhaust / gridDryMass, M_v_exhaust, gridDryMass);
+                CM_RaiseError(msg, __FILE__, __LINE__);
+            }
 
             // Add M_v_exhaust to current grid cell
             domain->deltaQV.add(ijk,  M_v_exhaust / gridDryMass);
@@ -137,8 +147,9 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
     // Check resulting variables are valid
     // Should really check all variables, but these will likely capture all bad simulations
     if (!std::isfinite(cocip.altitude) || !std::isfinite(cocip.iwc) || !std::isfinite(cocip.width)
-        || !std::isfinite(cocip.depth) || !std::isfinite(cocip.n_ice_per_vol)
-        || !std::isfinite(cocip.plume_mass_per_m) || !std::isfinite(cocip.diffuse_v)) {
+        || (cocip.width > 1e12) || !std::isfinite(cocip.depth) || (cocip.depth > 1e6)
+        || !std::isfinite(cocip.n_ice_per_vol) || !std::isfinite(cocip.plume_mass_per_m)
+        || (cocip.plume_mass_per_m > 1e30) || !std::isfinite(cocip.diffuse_v)) {
         
         badSimulation = true;
         return;
@@ -164,6 +175,11 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
             IDX<3, int> ijk = domain->loc_to_ijk(centre);
 
             const double gridDryMass = domain->DRYMASS.get(ijk);
+            if (M_v_sed / gridDryMass > 1) [[unlikely]] {
+                std::string msg = std::format("Found M_v_sed / gridDryMass = {}. M_v_sed = {}, gridDryMass = {}",
+                    M_v_sed / gridDryMass, M_v_sed, gridDryMass);
+                CM_RaiseError(msg, __FILE__, __LINE__);
+            }
 
             // Remove M_v_sed from current grid cell
             domain->deltaQV.subtract(ijk,  M_v_sed / gridDryMass);
@@ -181,6 +197,11 @@ void SegmentCoCiP::dump() {
     // Water vapour mass (returned is mass inside minus that double-counted from atmosphere)
     // Do q_to_r as long as plume_mass_per_m is actually dry air mass
     double M_v = thermo::q_to_r(q_sat) * cocip.plume_mass_per_m * length;
+    if ((M_v - M_v_accum) / gridDryMass > 1) [[unlikely]] {
+        std::string msg = std::format("Found (M_v - M_v_accum) / gridDryMass = {}. M_v = {}, M_v_accum = {}, gridDryMass = {}, q_sat = {}, cocip.plume_mass_per_m = {}, length = {}, cocip.area_eff = {}, cocip.met->rho_air = {}, cocip.width = {}, cocip.depth = {}, cocip.sigma_yz = {}, cocip.met->air_temperature = {}, cocip.met->air_pressure = {}",
+            (M_v - M_v_accum) / gridDryMass, M_v, M_v_accum, gridDryMass, q_sat, cocip.plume_mass_per_m, length, cocip.area_eff, cocip.met->rho_air, cocip.width, cocip.depth, cocip.sigma_yz, cocip.met->air_temperature, cocip.met->air_pressure);
+        CM_RaiseError(msg, __FILE__, __LINE__);
+    }
     domain->deltaQV.add(ijk, (M_v - M_v_accum) / gridDryMass);
 
     // Ice mass

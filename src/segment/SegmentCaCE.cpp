@@ -555,7 +555,9 @@ void SegmentCaCE::formation() {
     double M_v_inside = thermo::q_to_r(q_sat) * rho_air * area_eff * length;
 
     // Check resulting variables are valid
-    if (!std::isfinite(iwc) || !std::isfinite(n_ice_per_m) || !std::isfinite(M_v_inside)) {
+    if (!std::isfinite(iwc) || !std::isfinite(n_ice_per_m) || !std::isfinite(M_v_inside)
+        || (M_v_inside > 1e30)) {
+        
         badSimulation = true;
         return;
     }

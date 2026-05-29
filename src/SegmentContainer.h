@@ -20,7 +20,7 @@
 template <typename SegmentType>
 struct SegmentContainer {
     // Maximum age of a contrail segment (s); set by ContrailManager
-    double maxContrailAge_s;
+    double maxSegmentAge_s;
     // Maximum length of a contrail segment at any time (m); set by ContrailManager
     double maxSegLen;
     // Maximum ratio of double-counted water vapour mass in contrail plume to water vapour mass in
@@ -42,12 +42,12 @@ private:
     // Returns a new object of SegmentType; allows plume model-specific initialisation
     inline SegmentType newSegmentInstance(const FlightInputs& flightInputs);
 
-    // Update isOld flag for each segment if past age threshold (maxContrailAge_s) at a given time
+    // Update isOld flag for each segment if past age threshold (maxSegmentAge_s) at a given time
     // (parallelised)
     void flagOldSegments(const CMTime& time) {
         #pragma omp parallel for
         for (SegmentType& seg : vec) {
-            if ((time - seg.birthTime).to_s() > maxContrailAge_s) {
+            if ((time - seg.birthTime).to_s() > maxSegmentAge_s) {
                 seg.isOld = true;
             }
         }

@@ -25,7 +25,7 @@ Max segment length (m): 10e3
 
 # Age at which a contrail segment, if it still exists, will be dumped into the NWP's native grid
 # or erased if using a one-way coupling
-Max contrail age (h): 6
+Max segment age (h): 6
 
 # Maximum ratio of water vapour mass in contrail plume to water vapour mass in the grid cell it is
 # inside; above this, the contrail is dumped into the NWP's native grid

@@ -54,7 +54,7 @@ void ContrailManager::init() {
 
     // After the segment container has been set
     std::visit([&](auto& s) {
-        s.maxContrailAge_s = config.maxContrailAge_s;
+        s.maxSegmentAge_s = config.maxSegmentAge_s;
         s.maxSegLen = config.maxSegLen;
         s.maxAccumVapRatio = config.maxAccumVapRatio;
     }, segments);
@@ -87,9 +87,13 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     if (domain->twoWayCoupling) {
         // Set all delta and contrail fields to their default value (zero)
         domain->deltaT_POT.default_all();
+        domain->T_POT_tend.default_all();
         domain->deltaQV.default_all();
+        domain->QV_tend.default_all();
         domain->deltaQI.default_all();
+        domain->QI_tend.default_all();
         domain->deltaNI.default_all();
+        domain->NI_tend.default_all();
         domain->QIcontrail.default_all();
         domain->REIcontrail.default_all();
     }
@@ -129,16 +133,30 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     }
 
     if (domain->twoWayCoupling) {
-        domain->find_deltaT_POT();
+        domain->construct_deltaT_POT();
+        domain->construct_tendencies(startTime, stopTime);
         // Construct contrail fields from the live contrail segments
         std::visit([](auto& s) {
             s.constructQIcontrail();
             s.constructREIcontrail();
         }, segments);
+        // Check exported fields are valid
+        domain->check_valid_exports();
     }
-
-    // Check exported fields are valid
-    domain->check_valid_exports();
+    else {
+        // Set all delta and contrail fields to their default value (zero) just in case they have
+        // been modified
+        domain->deltaT_POT.default_all();
+        domain->T_POT_tend.default_all();
+        domain->deltaQV.default_all();
+        domain->QV_tend.default_all();
+        domain->deltaQI.default_all();
+        domain->QI_tend.default_all();
+        domain->deltaNI.default_all();
+        domain->NI_tend.default_all();
+        domain->QIcontrail.default_all();
+        domain->REIcontrail.default_all();
+    }
 
     // Current time at end of run
     std::chrono::steady_clock::time_point computeTimeEnd = std::chrono::steady_clock::now();

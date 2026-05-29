@@ -25,7 +25,7 @@ struct CMConfig {
     double maxSegLen = 10e3;
 
     // Maximum age of a contrail segment (s)
-    double maxContrailAge_s = 12*3600;
+    double maxSegmentAge_s = 12*3600;
 
     // Maximum ratio of double-counted water vapour mass in contrail plume to water vapour mass in
     // grid cell ()
