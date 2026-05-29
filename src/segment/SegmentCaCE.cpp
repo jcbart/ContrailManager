@@ -540,7 +540,7 @@ void SegmentCaCE::formation() {
             double gridDryMass = domain->DRYMASS.get(ijk);
 
             // Add M_v_exhaust to current grid cell
-            domain->deltaQV.add(ijk,  M_v_exhaust / gridDryMass);
+            domain->delta_QV.add(ijk,  M_v_exhaust / gridDryMass);
         }
         return;
     }
@@ -579,13 +579,13 @@ void SegmentCaCE::dump() {
     double q_sat = thermo::q_sat_ice(air_temperature, air_pressure);
     // Water vapour mass (returned is mass inside minus that double-counted from atmosphere)
     double M_v = thermo::q_to_r(q_sat) * rho_air * area_eff * length;
-    domain->deltaQV.add(ijk, (M_v - M_v_accum) / gridDryMass);
+    domain->delta_QV.add(ijk, (M_v - M_v_accum) / gridDryMass);
 
     // Ice mass
     double M_ice = totalIceMass();
-    domain->deltaQI.add(ijk, M_ice / gridDryMass);
+    domain->delta_QI.add(ijk, M_ice / gridDryMass);
 
     // Ice number
     double N_ice = n_ice_per_m * length;
-    domain->deltaNI.add(ijk, N_ice / gridDryMass);
+    domain->delta_NI.add(ijk, N_ice / gridDryMass);
 }

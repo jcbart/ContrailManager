@@ -18,7 +18,7 @@ Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
       Z_AT_W("Z_AT_W", grid3D_stag_k, 0),
       DRYMASS("DRYMASS", grid3D, 0),
       T_POT("T_POT", grid3D, 0),
-      deltaT_POT("deltaT_POT", grid3D, 0),
+      delta_T_POT("delta_T_POT", grid3D, 0),
       T_POT_tend("T_POT_tend", grid3D, 0),
       P("P", grid3D, 0),
       U("U", grid3D, 0),
@@ -28,12 +28,12 @@ Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
       OLR("OLR", grid2D, 0),
       QV("QV", grid3D, 0),
       //QVsave("QVsave", grid3D, 0),
-      deltaQV("deltaQV", grid3D, 0),
+      delta_QV("delta_QV", grid3D, 0),
       QV_tend("QV_tend", grid3D, 0),
       QI("QI", grid3D, 0),
-      deltaQI("deltaQI", grid3D, 0),
+      delta_QI("delta_QI", grid3D, 0),
       QI_tend("QI_tend", grid3D, 0),
-      deltaNI("deltaNI", grid3D, 0),
+      delta_NI("delta_NI", grid3D, 0),
       NI_tend("NI_tend", grid3D, 0),
       QIcontrail("QIcontrail", grid3D, 0),
       REIcontrail("REIcontrail", grid3D, 0),
@@ -53,16 +53,16 @@ void Domain::construct_tendencies(const CMTime& startTime, const CMTime& stopTim
     const double dt_s = (stopTime - startTime).to_s();
     
     for (size_t i = 0; i < QV_tend.grid.get_num_elements(); i++) {
-        QV_tend.get_data()[i] = deltaQV.get_data()[i] / dt_s;
+        QV_tend.get_data()[i] = delta_QV.get_data()[i] / dt_s;
     }
     for (size_t i = 0; i < QI_tend.grid.get_num_elements(); i++) {
-        QI_tend.get_data()[i] = deltaQI.get_data()[i] / dt_s;
+        QI_tend.get_data()[i] = delta_QI.get_data()[i] / dt_s;
     }
     for (size_t i = 0; i < NI_tend.grid.get_num_elements(); i++) {
-        NI_tend.get_data()[i] = deltaNI.get_data()[i] / dt_s;
+        NI_tend.get_data()[i] = delta_NI.get_data()[i] / dt_s;
     }
     for (size_t i = 0; i < T_POT_tend.grid.get_num_elements(); i++) {
-        T_POT_tend.get_data()[i] = deltaT_POT.get_data()[i] / dt_s;
+        T_POT_tend.get_data()[i] = delta_T_POT.get_data()[i] / dt_s;
     }
 }
 
@@ -72,15 +72,15 @@ void Domain::check_valid_exports() const {
     constexpr auto isFinite = [](float x) -> bool { return std::isfinite(x); }; // includes NaN
     constexpr auto isNotInsane = [](float x) -> bool {return x < 1; };
 
-    deltaT_POT.check_condition(isFinite);
+    delta_T_POT.check_condition(isFinite);
     T_POT_tend.check_condition(isFinite);
-    deltaQV.check_condition(isFinite);
-    deltaQV.check_condition(isNotInsane);
+    delta_QV.check_condition(isFinite);
+    delta_QV.check_condition(isNotInsane);
     QV_tend.check_condition(isFinite);
-    deltaQI.check_condition(isFinite);
-    deltaQI.check_condition(isNotInsane);
+    delta_QI.check_condition(isFinite);
+    delta_QI.check_condition(isNotInsane);
     QI_tend.check_condition(isFinite);
-    deltaNI.check_condition(isFinite);
+    delta_NI.check_condition(isFinite);
     NI_tend.check_condition(isFinite);
     QIcontrail.check_condition(isFinite);
     QIcontrail.check_condition(isNotNegative);

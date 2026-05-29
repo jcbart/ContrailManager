@@ -78,7 +78,7 @@ void SegmentCoCiP::formation() {
             }
 
             // Add M_v_exhaust to current grid cell
-            domain->deltaQV.add(ijk,  M_v_exhaust / gridDryMass);
+            domain->delta_QV.add(ijk,  M_v_exhaust / gridDryMass);
         }
         return;
     }
@@ -103,7 +103,7 @@ void SegmentCoCiP::formation() {
             }
 
             // Add M_v_exhaust to current grid cell
-            domain->deltaQV.add(ijk,  M_v_exhaust / gridDryMass);
+            domain->delta_QV.add(ijk,  M_v_exhaust / gridDryMass);
         }
         return;
     }
@@ -182,7 +182,7 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
             }
 
             // Remove M_v_sed from current grid cell
-            domain->deltaQV.subtract(ijk,  M_v_sed / gridDryMass);
+            domain->delta_QV.subtract(ijk,  M_v_sed / gridDryMass);
         }
     }
 }
@@ -202,15 +202,15 @@ void SegmentCoCiP::dump() {
             (M_v - M_v_accum) / gridDryMass, M_v, M_v_accum, gridDryMass, q_sat, cocip.plume_mass_per_m, length, cocip.area_eff, cocip.met->rho_air, cocip.width, cocip.depth, cocip.sigma_yz, cocip.met->air_temperature, cocip.met->air_pressure);
         CM_RaiseError(msg, __FILE__, __LINE__);
     }
-    domain->deltaQV.add(ijk, (M_v - M_v_accum) / gridDryMass);
+    domain->delta_QV.add(ijk, (M_v - M_v_accum) / gridDryMass);
 
     // Ice mass
     double M_ice = totalIceMass();
-    domain->deltaQI.add(ijk, M_ice / gridDryMass);
+    domain->delta_QI.add(ijk, M_ice / gridDryMass);
 
     // Ice number
     double N_ice = cocip.n_ice_per_m * length;
-    domain->deltaNI.add(ijk, N_ice / gridDryMass);
+    domain->delta_NI.add(ijk, N_ice / gridDryMass);
 }
 
 void SegmentCoCiP::addToQIcontrail() {

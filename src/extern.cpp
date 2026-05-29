@@ -67,8 +67,8 @@ extern "C" float* get_T_POT_extern(ContrailManager* CMptr) {
 }
 
 // Returns a pointer to the deltaT_POT data
-extern "C" float* get_deltaT_POT_extern(ContrailManager* CMptr) {
-    return CMptr->domain->deltaT_POT.get_data();
+extern "C" float* get_delta_T_POT_extern(ContrailManager* CMptr) {
+    return CMptr->domain->delta_T_POT.get_data();
 }
 
 // Returns a pointer to the T_POT_tend data
@@ -111,9 +111,9 @@ extern "C" float* get_QV_extern(ContrailManager* CMptr) {
     return CMptr->domain->QV.get_data();
 }
 
-// Returns a pointer to the deltaQV data
-extern "C" float* get_deltaQV_extern(ContrailManager* CMptr) {
-    return CMptr->domain->deltaQV.get_data();
+// Returns a pointer to the delta_QV data
+extern "C" float* get_delta_QV_extern(ContrailManager* CMptr) {
+    return CMptr->domain->delta_QV.get_data();
 }
 
 // Returns a pointer to the QV_tend data
@@ -126,9 +126,9 @@ extern "C" float* get_QI_extern(ContrailManager* CMptr) {
     return CMptr->domain->QI.get_data();
 }
 
-// Returns a pointer to the deltaQI data
-extern "C" float* get_deltaQI_extern(ContrailManager* CMptr) {
-    return CMptr->domain->deltaQI.get_data();
+// Returns a pointer to the delta_QI data
+extern "C" float* get_delta_QI_extern(ContrailManager* CMptr) {
+    return CMptr->domain->delta_QI.get_data();
 }
 
 // Returns a pointer to the QI_tend data
@@ -136,9 +136,9 @@ extern "C" float* get_QI_tend_extern(ContrailManager* CMptr) {
     return CMptr->domain->QI_tend.get_data();
 }
 
-// Returns a pointer to the deltaNI data
-extern "C" float* get_deltaNI_extern(ContrailManager* CMptr) {
-    return CMptr->domain->deltaNI.get_data();
+// Returns a pointer to the delta_NI data
+extern "C" float* get_delta_NI_extern(ContrailManager* CMptr) {
+    return CMptr->domain->delta_NI.get_data();
 }
 
 // Returns a pointer to the NI_tend data

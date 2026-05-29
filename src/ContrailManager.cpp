@@ -86,13 +86,13 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
 
     if (domain->twoWayCoupling) {
         // Set all delta and contrail fields to their default value (zero)
-        domain->deltaT_POT.default_all();
+        domain->delta_T_POT.default_all();
         domain->T_POT_tend.default_all();
-        domain->deltaQV.default_all();
+        domain->delta_QV.default_all();
         domain->QV_tend.default_all();
-        domain->deltaQI.default_all();
+        domain->delta_QI.default_all();
         domain->QI_tend.default_all();
-        domain->deltaNI.default_all();
+        domain->delta_NI.default_all();
         domain->NI_tend.default_all();
         domain->QIcontrail.default_all();
         domain->REIcontrail.default_all();
@@ -133,7 +133,7 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     }
 
     if (domain->twoWayCoupling) {
-        domain->construct_deltaT_POT();
+        domain->construct_delta_T_POT();
         domain->construct_tendencies(startTime, stopTime);
         // Construct contrail fields from the live contrail segments
         std::visit([](auto& s) {
@@ -146,13 +146,13 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     else {
         // Set all delta and contrail fields to their default value (zero) just in case they have
         // been modified
-        domain->deltaT_POT.default_all();
+        domain->delta_T_POT.default_all();
         domain->T_POT_tend.default_all();
-        domain->deltaQV.default_all();
+        domain->delta_QV.default_all();
         domain->QV_tend.default_all();
-        domain->deltaQI.default_all();
+        domain->delta_QI.default_all();
         domain->QI_tend.default_all();
-        domain->deltaNI.default_all();
+        domain->delta_NI.default_all();
         domain->NI_tend.default_all();
         domain->QIcontrail.default_all();
         domain->REIcontrail.default_all();

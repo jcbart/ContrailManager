@@ -47,8 +47,8 @@ public:
     // Potential temperature (K)
     Variable<3, float> T_POT;
     // Change in potential temperature (K)
-    Variable<3, float> deltaT_POT;
-    // Tendency of potential temperature derived from deltaT_POT (K s-1)
+    Variable<3, float> delta_T_POT;
+    // Tendency of potential temperature derived from delta_T_POT (K s-1)
     Variable<3, float> T_POT_tend;
     // Total air pressure (Pa)
     Variable<3, float> P;
@@ -67,20 +67,20 @@ public:
     // Water vapour mass mixing ratio saved at start of coupling interval (kg (kg dry air-1))
     //Variable<3, float> QVsave;
     // Change in water vapour mass mixing ratio over coupling interval (kg (kg dry air-1))
-    Variable<3, float> deltaQV;
-    // Tendency of water vapour mass mixing ratio derived from deltaQV (kg (kg dry air-1) s-1)
+    Variable<3, float> delta_QV;
+    // Tendency of water vapour mass mixing ratio derived from delta_QV (kg (kg dry air-1) s-1)
     Variable<3, float> QV_tend;
     // Ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
     Variable<3, float> QI;
     // Change in ice mass mixing ratio excl. live contrails (kg (kg dry air-1))
-    Variable<3, float> deltaQI;
-    // Tendency of ice mass mixing ratio derived from deltaQI (kg (kg dry air-1) s-1)
+    Variable<3, float> delta_QI;
+    // Tendency of ice mass mixing ratio derived from delta_QI (kg (kg dry air-1) s-1)
     Variable<3, float> QI_tend;
     // Ice number mixing ratio excl. live contrails (# (kg dry air-1))
     //Variable<3, float> NI;
     // Change in ice number mixing ratio excl. live contrails (# (kg dry air-1))
-    Variable<3, float> deltaNI;
-    // Tendency of ice number mixing ratio derived from deltaQI (# (kg dry air-1) s-1)
+    Variable<3, float> delta_NI;
+    // Tendency of ice number mixing ratio derived from delta_QI (# (kg dry air-1) s-1)
     Variable<3, float> NI_tend;
     // Contrail ice mass mixing ratio (kg (kg dry air-1))
     Variable<3, float> QIcontrail;
@@ -104,32 +104,14 @@ public:
     // Destructor
     ~Domain() = default;
 
-    /*
-    // Copy contents of QV to QVsave
-    void save_QV() {
-        for (size_t i = 0; i < QV.get_num_elements(); i++) {
-            QVsave.get_data()[i] = QV.get_data()[i];
-        }
-    }
-    */
-
-    /*
-    // Update deltaQV with deltaQV = QV - QVsave
-    void find_deltaQV() {
-        for (size_t i = 0; i < deltaQV.get_num_elements(); i++) {
-            deltaQV.get_data()[i] = QV.get_data()[i] - QVsave.get_data()[i];
-        }
-    }
-    */
-
-    // Calculate deltaT_POT due to deltaQI (sublimation/deposition)
-    void construct_deltaT_POT() {
-        for (size_t i = 0; i < deltaT_POT.grid.get_num_elements(); i++) {
+    // Calculate delta_T_POT due to delta_QI (sublimation/deposition)
+    void construct_delta_T_POT() {
+        for (size_t i = 0; i < delta_T_POT.grid.get_num_elements(); i++) {
             const double slhs = thermo::slh_sublimation_ice(
                 thermo::theta_to_T(T_POT.get_data()[i], P.get_data()[i])
             );
-            const double delta_T = slhs * deltaQI.get_data()[i] / constants::c_pd;
-            deltaT_POT.get_data()[i] = thermo::T_to_theta(delta_T, P.get_data()[i]);
+            const double delta_T = slhs * delta_QI.get_data()[i] / constants::c_pd;
+            delta_T_POT.get_data()[i] = thermo::T_to_theta(delta_T, P.get_data()[i]);
         }
     }
 

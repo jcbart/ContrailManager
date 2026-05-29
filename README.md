@@ -76,9 +76,9 @@ If `--prefix` is not passed, the **Contrail Manager** will be installed in the b
 
 The **Contrail Manager** is designed to be incorporated as a component in an ESMF coupled model. For a coupling with WRF, see [WRFContrail](https://github.com/jcbart/WRFContrail).
 
-Coupling the **Contrail Manager** with a model requires calling the functions in `src/extern.cpp`. For fields that are updated independently by both the **Contrail Manager** and a NWP, the **Contrail Manager** writes changes to a delta field (e.g. `deltaQV`) so at the end of the coupling interval, the NWP's internal field can be updated with e.g.
+Coupling the **Contrail Manager** with a model requires calling the functions in `src/extern.cpp`. For fields that are updated independently by both the **Contrail Manager** and a NWP, the **Contrail Manager** writes changes to a delta field (e.g. `delta_QV`) so at the end of the coupling interval, the NWP's internal field can be updated with e.g.
 ```
-QV = QV + deltaQV
+QV = QV + delta_QV
 ```
 which allows the models to run simultaneously.
 
