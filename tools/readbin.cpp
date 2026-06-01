@@ -159,14 +159,21 @@ arrow::Result<std::shared_ptr<arrow::Table>> CoCiP_to_table(const std::vector<Se
 }
 #endif
 
-arrow::Result<std::shared_ptr<arrow::Table>> bin_to_table(const std::string& filename) {
+arrow::Result<std::shared_ptr<arrow::Table>> bin_to_table(const std::filesystem::path& filepath) {
+    std::cout << "Processing " << filepath.string() << std::endl;
+    
+    if (filepath.extension() != ".bin") {
+        std::cerr << "Error: file extension is not `.bin`." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
     arrow::Result<std::shared_ptr<arrow::Table>> result;
 
     int loadedPlumeModelID;
     {
-        std::ifstream is(filename, std::ios::binary);
+        std::ifstream is(filepath, std::ios::binary);
         if (!is) {
-            std::cerr << "Cannot open file for reading: " + filename << std::endl;
+            std::cerr << "Error: cannot open file for reading: " + filepath.string() << std::endl;
             exit(EXIT_FAILURE);
         }
         cereal::BinaryInputArchive archive(is);

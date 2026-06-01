@@ -117,7 +117,7 @@ Only Parquet file reading has been implemented so far.
 
 Unless configured with `-DBUILD_TOOLS=OFF`, CMake will compile and install additional tools for the **Contrail Manager**.
 
-| Name       | Description                                         | Usage                                              |
-| ---------- | --------------------------------------------------- | -------------------------------------------------- |
-| `bintocsv` | Converts a binary output file to a CSV summary.     | `./bintocsv output.bin` will produce `output.csv`. |
-| `bintopq`  | Converts a binary output file to a Parquet summary. | `./bintopq output.bin` will produce `output.pq`.   |
+| Name       | Description                                        | Usage                                              |
+| ---------- | -------------------------------------------------- | -------------------------------------------------- |
+| `bintocsv` | Converts binary output files to CSV summaries.     | `./bintocsv output.bin` will produce `output.csv`. |
+| `bintopq`  | Converts binary output files to Parquet summaries. | `./bintopq output.bin` will produce `output.pq`.   |

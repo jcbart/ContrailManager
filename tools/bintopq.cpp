@@ -1,5 +1,4 @@
 #include <iostream>
-#include <filesystem>
 #include <arrow/api.h>
 #include <arrow/io/api.h>
 #include <parquet/arrow/writer.h>
@@ -7,11 +6,12 @@
 
 // Write Arrow table to Parquet file; replaces the file extension on filename with ".pq"
 arrow::Status table_to_pq(const std::shared_ptr<arrow::Table>& table,
-    const std::string& filename) {
+    const std::filesystem::path& filepath) {
 
-    std::string outfilename = std::filesystem::path(filename).replace_extension(".pq").string();
+    std::filesystem::path outfilepath = filepath;
+    outfilepath.replace_extension(".pq");
 
-    std::cout << "Saving to " << outfilename << std::endl;
+    std::cout << "Saving to " << outfilepath << std::endl;
 
     std::shared_ptr<parquet::WriterProperties> props = 
         parquet::WriterProperties::Builder().compression(arrow::Compression::SNAPPY)->build();
@@ -19,7 +19,7 @@ arrow::Status table_to_pq(const std::shared_ptr<arrow::Table>& table,
     std::shared_ptr<parquet::ArrowWriterProperties> arrow_props = 
         parquet::ArrowWriterProperties::Builder().store_schema()->build();
     
-    ARROW_ASSIGN_OR_RAISE(auto outstream, arrow::io::FileOutputStream::Open(outfilename));
+    ARROW_ASSIGN_OR_RAISE(auto outstream, arrow::io::FileOutputStream::Open(outfilepath.string()));
 
     constexpr int64_t chunk_size = 64 * 1024;
 
