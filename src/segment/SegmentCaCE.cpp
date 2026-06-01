@@ -556,7 +556,7 @@ void SegmentCaCE::formation() {
 
     // Check resulting variables are valid
     if (!std::isfinite(iwc) || !std::isfinite(n_ice_per_m) || !std::isfinite(M_v_inside)
-        || (M_v_inside > 1e30)) {
+        || (M_v_inside > 1e20)) {
         
         badSimulation = true;
         return;
