@@ -20,7 +20,7 @@ void ContrailManager::init() {
     
     config.read();
 
-    CM_LogWrite("Online coupling: " + std::string(config.twoWayCoupling ? "true" : "false"));
+    CM_LogWrite(std::format("Two-way coupling: {}", (config.twoWayCoupling ? "true" : "false")));
 
     // Determine plume model
     // Sets variant to specific segment container
