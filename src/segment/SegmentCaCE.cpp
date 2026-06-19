@@ -586,6 +586,6 @@ void SegmentCaCE::dump() {
     domain->delta_QI.add(ijk, M_ice / gridDryMass);
 
     // Ice number
-    double N_ice = n_ice_per_m * length;
+    double N_ice = totalIceNumber();
     domain->delta_NI.add(ijk, N_ice / gridDryMass);
 }

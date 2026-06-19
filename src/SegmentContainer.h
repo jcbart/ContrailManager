@@ -105,6 +105,14 @@ public:
         }
     }
 
+    // Construct NIcontrail using live segment data (parallelised)
+    void constructNIcontrail() {
+        #pragma omp parallel for
+        for (SegmentType& seg : vec) {
+            seg.addToNIcontrail();
+        }
+    }
+
     // Construct REIcontrail using live segment data (not parallelised)
     void constructREIcontrail();
 

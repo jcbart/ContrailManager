@@ -39,6 +39,10 @@ struct SegmentCoCiP : public Segment {
         return thermo::q_to_r(cocip.iwc) * cocip.plume_mass_per_m * length;
     }
 
+    double totalIceNumber() const override {
+        return cocip.n_ice_per_m * length;
+    }
+
     double effectiveRadius() const override {
         // Ratio between the volume mean radius and the effective radius used in CoCiP
         constexpr double c_r = 0.9;
@@ -52,6 +56,8 @@ struct SegmentCoCiP : public Segment {
     void dump() override;
 
     void addToQIcontrail() override;
+
+    void addToNIcontrail() override;
 
 private:
     // Update CoCiP's internal local meteorology; return false if interpolation requirement

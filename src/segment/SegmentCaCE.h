@@ -64,6 +64,10 @@ struct SegmentCaCE : public Segment {
         return iwc * rho_air * area_eff * length;
     }
 
+    double totalIceNumber() const override {
+        return n_ice_per_m * length;
+    }
+
     double effectiveRadius() const override {
         return 0; // N/A
     }
@@ -77,7 +81,11 @@ struct SegmentCaCE : public Segment {
     void dump() override;
 
     void addToQIcontrail() override {
-        // Should not have live contrail ice
+        // Should not have live contrail ice at end of coupling interval
+    }
+
+    void addToNIcontrail() override {
+        // Should not have live contrail ice at end of coupling interval
     }
 
 private:

@@ -36,6 +36,7 @@ Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
       delta_NI("delta_NI", grid3D, 0),
       NI_tend("NI_tend", grid3D, 0),
       QIcontrail("QIcontrail", grid3D, 0),
+      NIcontrail("NIcontrail", grid3D, 0),
       REIcontrail("REIcontrail", grid3D, 0),
       proj(std::move(p)) {
 
@@ -84,6 +85,8 @@ void Domain::check_valid_exports() const {
     NI_tend.check_condition(isFinite);
     QIcontrail.check_condition(isFinite);
     QIcontrail.check_condition(isNotNegative);
+    NIcontrail.check_condition(isFinite);
+    NIcontrail.check_condition(isNotNegative);
     REIcontrail.check_condition(isFinite);
     REIcontrail.check_condition(isNotNegative);
 }

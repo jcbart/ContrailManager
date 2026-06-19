@@ -68,6 +68,9 @@ struct Segment {
     // Virtual method to return total contrail ice mass (kg)
     virtual double totalIceMass() const = 0;
 
+    // Virtual method to return total contrail ice number (#)
+    virtual double totalIceNumber() const = 0;
+
     // Virtual method to return contrail ice effective radius (m)
     virtual double effectiveRadius() const = 0;
 
@@ -83,6 +86,9 @@ struct Segment {
 
     // Virtual method to add the contrail ice mass in the segment to the QIcontrail field
     virtual void addToQIcontrail() = 0;
+
+    // Virtual method to add the contrail ice number in the segment to the NIcontrail field
+    virtual void addToNIcontrail() = 0;
 
     // Calculate segment centre and heading
     void findDependentLocs() {

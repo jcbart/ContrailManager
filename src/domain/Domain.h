@@ -84,6 +84,8 @@ public:
     Variable<3, float> NI_tend;
     // Contrail ice mass mixing ratio (kg (kg dry air-1))
     Variable<3, float> QIcontrail;
+    // Contrail ice number mixing ratio (# (kg dry air-1))
+    Variable<3, float> NIcontrail;
     // Contrail ice effective radius (m) (zero if no contrail in cell)
     Variable<3, float> REIcontrail;
 

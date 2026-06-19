@@ -138,6 +138,7 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
         // Construct contrail fields from the live contrail segments
         std::visit([](auto& s) {
             s.constructQIcontrail();
+            s.constructNIcontrail();
             s.constructREIcontrail();
         }, segments);
         // Check exported fields are valid
@@ -155,6 +156,7 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
         domain->delta_NI.default_all();
         domain->NI_tend.default_all();
         domain->QIcontrail.default_all();
+        domain->NIcontrail.default_all();
         domain->REIcontrail.default_all();
     }
 

@@ -137,7 +137,7 @@ void SegmentCoCiP::evolve(const CMTime& timeStepStart, const CMTime& timeStepEnd
     // Check resulting variables are valid
     // Should really check all variables, but these will likely capture all bad simulations
     if (!std::isfinite(cocip.altitude) || !std::isfinite(cocip.iwc) || !std::isfinite(cocip.width)
-        || (cocip.width > 1e6) || !std::isfinite(cocip.depth) || (cocip.depth > 1e4)
+        || (cocip.width > 1e7) || !std::isfinite(cocip.depth) || (cocip.depth > 1e4)
         || !std::isfinite(cocip.n_ice_per_vol) || !std::isfinite(cocip.plume_mass_per_m)
         || (cocip.plume_mass_per_m > 1e20) || !std::isfinite(cocip.diffuse_v)) {
         
@@ -189,7 +189,7 @@ void SegmentCoCiP::dump() {
     domain->delta_QI.add(ijk, M_ice / gridDryMass);
 
     // Ice number
-    double N_ice = cocip.n_ice_per_m * length;
+    double N_ice = totalIceNumber();
     domain->delta_NI.add(ijk, N_ice / gridDryMass);
 }
 
@@ -199,6 +199,14 @@ void SegmentCoCiP::addToQIcontrail() {
     double M_ice = totalIceMass();
     const double gridDryMass = domain->DRYMASS.get(ijk);
     domain->QIcontrail.add(ijk, M_ice / gridDryMass);
+}
+
+void SegmentCoCiP::addToNIcontrail() {
+    IDX<3, int> ijk = domain->loc_to_ijk(centre);
+
+    double N_ice = totalIceNumber();
+    const double gridDryMass = domain->DRYMASS.get(ijk);
+    domain->NIcontrail.add(ijk, N_ice / gridDryMass);
 }
 
 #endif
