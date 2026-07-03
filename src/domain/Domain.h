@@ -126,7 +126,7 @@ public:
     // Finds the index k such that loc.alt is inside grid cell ijk
     // Updates k in argument
     // Returns false if no valid k found
-    inline bool find_k_inside(const Geo3D& loc, const IDX<2, int>& ij, int& k) const {
+    bool find_k_inside(const Geo3D& loc, const IDX<2, int>& ij, int& k) const {
         // Check if below first or above last boundary
         if (loc.alt < Z_AT_W.get({ij[0], ij[1], kds}) ||
             loc.alt >= Z_AT_W.get({ij[0], ij[1], kde + 1})) {
@@ -156,7 +156,7 @@ public:
     // altitude at k+1 is greater than loc.alt
     // Updates k in argument
     // Returns false if no valid k found
-    inline bool find_k_below(const Geo3D& loc, const IDX<2, int>& ij, int& k) const {
+    bool find_k_below(const Geo3D& loc, const IDX<2, int>& ij, int& k) const {
         // Check if below first or above last centre
         if (loc.alt < Z.get({ij[0], ij[1], kds}) ||
             loc.alt >= Z.get({ij[0], ij[1], kde})) {
@@ -182,22 +182,26 @@ public:
         return false;
     }
 
+    // Checks if indices ij are in the domain range
+    template <typename T>
+    bool ij_in_range(IDX<2, T>& ij) const {
+        return (ij[0] >= (ids - 0.5) && ij[0] < (ide + 0.5)
+            && ij[1] >= (jds - 0.5) && ij[1] < (jde + 0.5));
+    }
+
     // Updates ij with the lon/lat grid cell indices loc lies within
-    // ij may include fractions depending on its type
+    // where cell ij covers the ranges [i-0.5, i+0.5) and [j-0.5, j+0.5)
     // Calls the method in Domain::proj and removes ids = jds = 0 assumption
     // Returns false if loc is not in grid
     template <typename T>
-    inline bool loc_to_ij(const Geo2D& loc, IDX<2, T>& ij) const {
+    bool loc_to_ij(const Geo2D& loc, IDX<2, T>& ij) const {
         std::visit([&](auto const& p) {
             ij = p.loc_to_ij(loc);
         }, proj);
         // Correct assumption that i and j start at 0
         ij[0] += ids;
         ij[1] += jds;
-        if (ij[0] < ids || ij[0] > ide || ij[1] < jds || ij[1] > jde) {
-            return false;
-        }
-        return true;
+        return ij_in_range(ij);
     }
 
     // Returns the lon/lat grid cell indices which loc lies within
@@ -206,7 +210,7 @@ public:
     // Exits if loc is not in grid
     // If exiting is not desired, use alternative loc_to_ij method
     template <typename T>
-    inline IDX<2, T> loc_to_ij(const Geo2D& loc) const {
+    IDX<2, T> loc_to_ij(const Geo2D& loc) const {
         IDX<2, T> ij;
         if (!loc_to_ij(loc, ij)) [[unlikely]] {
             CM_RaiseUnexpectedOutOfBounds(loc, __FILE__, __LINE__);
@@ -216,7 +220,7 @@ public:
 
     // Updates ijk with the lon/lat/alt grid cell indices which loc lies within
     // Returns false if loc is not in grid
-    inline bool loc_to_ijk(const Geo3D& loc, IDX<3, int>& ijk) const {
+    bool loc_to_ijk(const Geo3D& loc, IDX<3, int>& ijk) const {
         // Get ij
         IDX<2, int> ij;
         if (!loc_to_ij(loc, ij)) {
@@ -231,7 +235,7 @@ public:
     // Returns the lon/lat/alt grid cell indices which loc lies within
     // Exits if loc is not in grid
     // If exiting is not desired, use alternative loc_to_ijk method
-    inline IDX<3, int> loc_to_ijk(const Geo3D& loc) const {
+    IDX<3, int> loc_to_ijk(const Geo3D& loc) const {
         IDX<3, int> ijk;
         if (!loc_to_ijk(loc, ijk)) [[unlikely]] {
             CM_RaiseUnexpectedOutOfBounds(loc, __FILE__, __LINE__);
@@ -243,7 +247,7 @@ public:
     // their common adjacent grid cells, bound loc (used in interpolation)
     // Updates ij and ijDiag
     // Returns false if either ij or ijDiag are not in the grid
-    inline bool loc_to_ij_and_diag(const Geo3D& loc, IDX<2, int>& ij, IDX<2, int>& ijDiag) const {
+    bool loc_to_ij_and_diag(const Geo3D& loc, IDX<2, int>& ij, IDX<2, int>& ijDiag) const {
         IDX<2, double> ijD; // ij as a double
         if (!loc_to_ij(loc, ijD)) {
             return false;
@@ -251,17 +255,13 @@ public:
 
         ij = ijD; // Convert to IDX<2, int>
 
-        ijDiag[0] = (ijD[0] - floor(ijD[0]) < 0.5) ? (ij[0] - 1) : (ij[0] + 1);
-        ijDiag[1] = (ijD[1] - floor(ijD[1]) < 0.5) ? (ij[1] - 1) : (ij[1] + 1);
-        if (ijDiag[0] < ids || ijDiag[0] > ide || ijDiag[1] < jds || ijDiag[1] > jde) {
-            // Diag grid cell not in grid
-            return false;
-        }
-        return true;
+        ijDiag[0] = (ijD[0] - ij[0] < 0) ? (ij[0] - 1) : (ij[0] + 1);
+        ijDiag[1] = (ijD[1] - ij[1] < 0) ? (ij[1] - 1) : (ij[1] + 1);
+        return ij_in_range(ijDiag);
     }
 
     // Returns the lon/lat grid values at indices ij
-    inline Geo2D ij_to_loc(const IDX<2, int>& ij) const {
+    Geo2D ij_to_loc(const IDX<2, int>& ij) const {
         Geo2D loc;
         loc.lon = XLONG.get(ij);
         loc.lat = XLAT.get(ij);
@@ -269,7 +269,7 @@ public:
     }
 
     // Returns the lat/lon/alt grid values at indices ijk
-    inline Geo3D ijk_to_loc(const IDX<3, int>& ijk) const {
+    Geo3D ijk_to_loc(const IDX<3, int>& ijk) const {
         Geo3D loc;
         loc.lon = XLONG.get(ijk);
         loc.lat = XLAT.get(ijk);
@@ -279,9 +279,9 @@ public:
 
     // Returns true if it is possible to do grid interpolation for loc
     // Currently, this means that loc is not outside the outermost layer of grid cell centres
-    inline bool can_do_interp(const Geo3D& loc) const {
-        std::vector<IDX<3, int>> interPoints;
-        return (find_interp_points(loc, interPoints));
+    bool can_do_interp(const Geo3D& loc) const {
+        std::vector<IDX<3, int>> interpPoints;
+        return find_interp_points(loc, interpPoints);
     }
 
     // Finds interpolation points for a location and resizes and updates interpPoints

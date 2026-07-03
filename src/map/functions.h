@@ -102,10 +102,10 @@ constexpr double great_circle_dist(const Geo3D& pointA, const Geo3D& pointB) {
     );
 }
 
-// Wraps longitude to be in range (-180, 180]
+// Wraps longitude to be in range [-180, 180)
 inline void wrap_WE(double& lon) {
-    if (lon > 180) { lon -= 360; }
-    else if (lon <= -180) { lon += 360; }
+    while (lon >= 180) { lon -= 360; }
+    while (lon < -180) { lon += 360; }
 }
 
 // Wraps longitude and latitude if latitude is outside range [-90, 90]

@@ -77,10 +77,14 @@ public:
 
     // Add segment to vector of new segments; assumes segment has been checked to be inside domain
     void addNewSegment(const FlightInputs& flightInputs) {
-        // Add to vector
-        #pragma omp critical
-        {
-            newSegments.push_back(newSegmentInstance(flightInputs));
+        SegmentType newSeg = newSegmentInstance(flightInputs);
+        // Only add if find_dependent_locs succeeded
+        if (!newSeg.outOfBounds) {
+            // Add to vector
+            #pragma omp critical
+            {
+                newSegments.push_back(std::move(newSeg));
+            }
         }
     }
 

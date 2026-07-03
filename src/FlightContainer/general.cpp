@@ -131,6 +131,9 @@ void FlightContainer::readAircraftDatasets(const std::vector<std::string>& filep
             CM_LogWrite(std::format("Found {} files matching prefix \"{}\"",
                 matchedFilepaths.size(), prefixPath.string()));
 
+            // Sort by name since this is likely to result in quicker flight sorting later
+            std::ranges::sort(matchedFilepaths);
+
             for (const std::string& match : matchedFilepaths) {
                 readAircraftFile(match);
             }

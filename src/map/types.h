@@ -1,6 +1,7 @@
 #ifndef MAPTYPES_H
 #define MAPTYPES_H
 
+#include <cmath>
 #include <array>
 #include <string>
 #include <format>
@@ -121,6 +122,7 @@ struct Cart3D {
 
 // A template structure to store N indices of type T
 template <size_t N, typename T>
+requires std::same_as<T, int> || std::same_as<T, float> || std::same_as<T, double>
 struct IDX {
     std::array<T, N> vals{};
 
@@ -154,6 +156,24 @@ struct IDX {
 
     bool operator==(const IDX& other) const {
         return vals == other.vals;
+    }
+
+    // Return an IDX object with a different number of indices and/or different data type
+    // Converting from a float type to int uses rounding
+    // If the target number of indices is more than that of this object, the remainder are
+    // defaulted
+    // If the target number of indices is fewer than that of this object, the excess are cut off
+    template <size_t targetN, typename targetT>
+    requires std::floating_point<T> && std::same_as<targetT, int>
+    operator IDX<targetN, targetT>() const {
+        IDX<targetN, targetT> target;
+        for (size_t i = 0; i < std::min(N, targetN); i++) {
+            target.vals[i] = static_cast<targetT>(std::floor(vals[i] + 0.5));
+        }
+        for (size_t i = std::min(N, targetN); i < targetN; i++) {
+            target.vals[i] = targetT{};
+        }
+        return target;
     }
 
     // Return an IDX object with a different number of indices and/or different data type

@@ -24,11 +24,21 @@ extern "C" void ContrailManager_run_extern(ContrailManager* CMptr, CMTime_F star
 }
 
 // Domain with Lambert-Conformal projection initialisation
-extern "C" void init_domainlc_extern(ContrailManager* CMptr, int ids, int ide, int jds,
-    int jde, int kds, int kde, float lat1, float lon1, float knowni, float knownj, float dx,
-    float stdlon, float truelat1, float truelat2) {
+extern "C" void init_lambertconformal_domain_extern(ContrailManager* CMptr,
+    int ids, int ide, int jds, int jde, int kds, int kde, float lat1, float lon1,
+    float dx, float stdlon, float truelat1, float truelat2) {
 
-    ProjectionLC proj(lat1, lon1, knowni, knownj, dx, stdlon, truelat1, truelat2);
+    LambertConformal proj(lat1, lon1, dx, stdlon, truelat1, truelat2);
+
+    CMptr->domain = std::make_unique<Domain>(ids, ide, jds, jde, kds, kde, proj);
+}
+
+// Domain with Lambert-Conformal projection initialisation
+extern "C" void init_latlon_domain_extern(ContrailManager* CMptr,
+    int ids, int ide, int jds, int jde, int kds, int kde, float lat1, float lon1,
+    float dx, float stdlon, float truelat1, float truelat2) {
+
+    LatLon proj(lat1, lon1, dx, stdlon, truelat1, truelat2);
 
     CMptr->domain = std::make_unique<Domain>(ids, ide, jds, jde, kds, kde, proj);
 }

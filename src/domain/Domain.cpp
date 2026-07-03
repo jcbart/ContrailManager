@@ -48,7 +48,8 @@ Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjType p)
 }
 
 // Methods to compile
-template Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, ProjectionLC p);
+template Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, LambertConformal p);
+template Domain::Domain(int ids, int ide, int jds, int jde, int kds, int kde, LatLon p);
 
 void Domain::construct_tendencies(const CMTime& startTime, const CMTime& stopTime) {
     const double dt_s = (stopTime - startTime).to_s();

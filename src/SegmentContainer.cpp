@@ -24,9 +24,7 @@ void SegmentContainer<SegmentType>::runFormation() {
     // to evolve
     #pragma omp parallel for schedule(guided)
     for (SegmentType& seg : newSegments) {
-        if (!seg.outOfBounds) {
-            seg.formation();
-        }
+        seg.formation();
     }
 
     size_t numCreated = newSegments.size();
