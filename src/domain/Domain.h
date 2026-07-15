@@ -122,6 +122,21 @@ public:
 
     // Checks the export fields have valid values; raises an error if not
     void check_valid_exports() const;
+
+    // Set all exported (delta, tendency, and contrail) fields to their default value
+    void default_exports() {
+        delta_T_POT.default_all();
+        T_POT_tend.default_all();
+        delta_QV.default_all();
+        QV_tend.default_all();
+        delta_QI.default_all();
+        QI_tend.default_all();
+        delta_NI.default_all();
+        NI_tend.default_all();
+        QIcontrail.default_all();
+        NIcontrail.default_all();
+        REIcontrail.default_all();
+    }
     
     // Finds the index k such that loc.alt is inside grid cell ijk
     // Updates k in argument

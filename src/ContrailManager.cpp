@@ -85,18 +85,7 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
     CM_LogWrite("Running between " + startTime.asString() + " and " + stopTime.asString());
 
     if (domain->twoWayCoupling) {
-        // Set all delta and contrail fields to their default value (zero)
-        domain->delta_T_POT.default_all();
-        domain->T_POT_tend.default_all();
-        domain->delta_QV.default_all();
-        domain->QV_tend.default_all();
-        domain->delta_QI.default_all();
-        domain->QI_tend.default_all();
-        domain->delta_NI.default_all();
-        domain->NI_tend.default_all();
-        domain->QIcontrail.default_all();
-        domain->NIcontrail.default_all();
-        domain->REIcontrail.default_all();
+        domain->default_exports();
     }
 
     flights.updateActive(startTime, stopTime);
@@ -146,19 +135,8 @@ void ContrailManager::run(const CMTime& startTime, const CMTime& stopTime) {
         domain->check_valid_exports();
     }
     else {
-        // Set all delta and contrail fields to their default value (zero) just in case they have
-        // been modified
-        domain->delta_T_POT.default_all();
-        domain->T_POT_tend.default_all();
-        domain->delta_QV.default_all();
-        domain->QV_tend.default_all();
-        domain->delta_QI.default_all();
-        domain->QI_tend.default_all();
-        domain->delta_NI.default_all();
-        domain->NI_tend.default_all();
-        domain->QIcontrail.default_all();
-        domain->NIcontrail.default_all();
-        domain->REIcontrail.default_all();
+        // Just in case they have been modified
+        domain->default_exports();
     }
 
     // Current time at end of run
