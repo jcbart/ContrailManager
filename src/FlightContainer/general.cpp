@@ -218,16 +218,23 @@ void FlightContainer::updateActive(const CMTime& startTime, const CMTime& stopTi
 
     // Add flights whose first waypoint is between startTime and stopTime
     while (nextFlightToCheck < loaded.size()) {
-        // If flight starts before startTime, skip it
-        // (this path should only be taken the first time the method is called to skip past
-        // flights which start before startTime)
-        if (loaded[nextFlightToCheck].waypoints.front().time < startTime) {
+        const Flight& flight = loaded[nextFlightToCheck];
+
+        // For flights which start before startTime
+        // (this path should only be taken the first time the method is called)
+        if (flight.waypoints.front().time < startTime) {
+            // If it ends after startTime, it is mid-journey; add it
+            if (flight.waypoints.back().time >= startTime) {
+                active.push_back(flight);
+            }
+            // Whether it is added or not, move onto next flight
             nextFlightToCheck++;
             continue;
         }
+
         // If flight starts at or after startTime, but before stopTime, add it
-        if (loaded[nextFlightToCheck].waypoints.front().time < stopTime) {
-            active.push_back(loaded[nextFlightToCheck]);
+        if (flight.waypoints.front().time < stopTime) {
+            active.push_back(flight);
             nextFlightToCheck++;
         }
         // Else, flight starts after window and thus so do all after; end search

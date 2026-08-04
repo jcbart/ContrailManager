@@ -13,8 +13,8 @@ struct Geo3D;
 
 // A structure to define a location in geographic (lon, lat) coordinates
 struct Geo2D {
-    double lon; // degrees, West is negative
-    double lat; // degrees, South is negative
+    double lon; // (degrees), West is negative
+    double lat; // (degrees), South is negative
 
     // Constructor without values
     Geo2D() {}
@@ -39,9 +39,12 @@ struct Geo2D {
 
 // A structure to define a location in geodetic (lon, lat, alt) coordinates
 struct Geo3D {
-    double lon; // degrees, West is negative
-    double lat; // degrees, South is negative
-    double alt; // metres above mean sea level
+    double lon; // (degrees), West is negative
+    double lat; // (degrees), South is negative
+    // altitude (m) above mean sea level
+    // For Flight, this is pressure altitude
+    // For anything else, this is geopotential height
+    double alt;
 
     // Constructor without values
     Geo3D() {}

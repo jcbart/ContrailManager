@@ -8,19 +8,20 @@
 #include "domain/Grid.h"
 #include "domain/Variable.h"
 #include "domain/Projection.h"
+#include "ISA.h"
 #include "thermo.h"
 #include "CMLog.h"
 
 class Domain {
 private:
-    // CM does not use a staggered grid except for Z_AT_W
-    const int ids; // Grid starting index in dimension i
-    const int ide; // Grid ending index in dimension i
-    const int jds; // Grid starting index in dimension j
-    const int jde; // Grid ending index in dimension j
-    const int kds; // Grid starting index in dimension k
-    const int kde; // Grid ending index in dimension k
+    const int ids; // Grid starting index in longitude dimension
+    const int ide; // Grid ending index in longitude dimension
+    const int jds; // Grid starting index in latitude dimension
+    const int jde; // Grid ending index in latitude dimension
+    const int kds; // Grid starting index in vertical dimension
+    const int kde; // Grid ending index in vertical dimension
     const size_t iSize, jSize, kSize;
+    bool periodic_lon = false; // The domain is periodic in longitude
 
     // Projection (variant type defined in Projection.h)
     ProjVariant proj;
@@ -38,9 +39,9 @@ public:
     Variable<2, float> XLONG;
     // Latitude (degrees, South is negative)
     Variable<2, float> XLAT;
-    // Height above sea level at cell centre (m)
+    // Geopotential height above sea level at cell centre (m)
     Variable<3, float> Z;
-    // Height above sea level at cell interfaces (staggered in z-direction; m)
+    // Geopotential height above sea level at cell interfaces (staggered in z-direction; m)
     Variable<3, float> Z_AT_W;
     // Dry mass in grid cell (kg)
     Variable<3, float> DRYMASS;
@@ -98,6 +99,7 @@ public:
     size_t get_iSize() const { return iSize; };
     size_t get_jSize() const { return jSize; };
     size_t get_kSize() const { return kSize; };
+    bool get_periodic_lon() const { return periodic_lon; };
 
     // Constructor
     template <typename ProjType>
@@ -105,6 +107,13 @@ public:
 
     // Destructor
     ~Domain() = default;
+
+    // Determine if domain is periodic in longitude
+    void set_periodic_lon() {
+        std::visit([&](auto const& p) {
+            periodic_lon = p.is_periodic_lon(XLONG.get({ids, jds}), XLONG.get({ide, jds}));
+        }, proj);
+    }
 
     // Calculate delta_T_POT due to delta_QI (sublimation/deposition)
     void construct_delta_T_POT() {
@@ -148,7 +157,7 @@ public:
             return false;
         }
         // Binary search within range
-        int left = kds, right = kde + 1;
+        int left = kds, right = kde;
         while (left < right) {
             int mid = left + (right - left) / 2;
             if (loc.alt < Z_AT_W.get({ij[0], ij[1], mid + 1})) {
@@ -167,8 +176,8 @@ public:
         return false;
     }
 
-    // Finds the index k such that grid centre altitude at k is less than loc.alt and grid centre
-    // altitude at k+1 is greater than loc.alt
+    // Finds the index k such that grid centre altitude at k is less than or equal to loc.alt
+    // and grid centre altitude at k+1 is greater than loc.alt
     // Updates k in argument
     // Returns false if no valid k found
     bool find_k_below(const Geo3D& loc, const IDX<2, int>& ij, int& k) const {
@@ -178,10 +187,40 @@ public:
             return false;
         }
         // Binary search within range
-        int left = kds, right = kde;
+        int left = kds, right = kde - 1;
         while (left < right) {
             int mid = left + (right - left) / 2;
             if (loc.alt < Z.get({ij[0], ij[1], mid + 1})) {
+                right = mid;
+            }
+            else {
+                left = mid + 1;
+            }
+        }
+        // If valid k found, set and return
+        if (left < kde) {
+            k = left;
+            return true;
+        }
+        // Else, no valid k found
+        return false;
+    }
+
+    // Finds the index k such that grid centre pressure at k is greater than or equal to pres and
+    // grid centre pressure at k+1 is less than pres
+    // Updates k in argument
+    // Returns false if no valid k found
+    bool find_k_below_from_pres(const double pres, const IDX<2, int>& ij, int& k) const {
+        // Check if below first or above last centre
+        if (pres > P.get({ij[0], ij[1], kds}) ||
+            pres <= P.get({ij[0], ij[1], kde})) {
+            return false;
+        }
+        // Binary search within range
+        int left = kds, right = kde - 1;
+        while (left < right) {
+            int mid = left + (right - left) / 2;
+            if (pres > P.get({ij[0], ij[1], mid + 1})) {
                 right = mid;
             }
             else {
@@ -272,6 +311,16 @@ public:
 
         ijDiag[0] = (ijD[0] - ij[0] < 0) ? (ij[0] - 1) : (ij[0] + 1);
         ijDiag[1] = (ijD[1] - ij[1] < 0) ? (ij[1] - 1) : (ij[1] + 1);
+
+        // Wrap neighbour if periodic in longitude (and if needed)
+        if (periodic_lon) {
+            if (ijDiag[0] < ids) {
+                ijDiag[0] += iSize;
+            }
+            else if (ijDiag[0] > ide) {
+                ijDiag[0] -= iSize;
+            }
+        }
         return ij_in_range(ijDiag);
     }
 
@@ -290,6 +339,56 @@ public:
         loc.lat = XLAT.get(ijk);
         loc.alt = Z.get(ijk);
         return loc;
+    }
+
+    // Convert loc with pressure altitude (used for Flight) to loc with geopotential height
+    // Returns false if loc is not in grid
+    bool pres_alt_to_geopt_ht(Geo3D& loc) const {
+        IDX<2, int> ij;
+        if (!loc_to_ij(loc, ij)) {
+            return false;
+        }
+
+        double alt_before = loc.alt;
+
+        double pres = ISA::pres_alt_to_pres(loc.alt);
+
+        int k_below;
+        if (!find_k_below_from_pres(pres, ij, k_below)) {
+            return false;
+        }
+        double z_below = Z.get({ij[0], ij[1], k_below});
+        double z_above = Z.get({ij[0], ij[1], k_below + 1});
+        double p_below = P.get({ij[0], ij[1], k_below});
+        double p_above = P.get({ij[0], ij[1], k_below + 1});
+
+        loc.alt = z_below + (z_above - z_below)
+                            * std::log(p_below / pres) / std::log(p_below / p_above);
+        return true;
+    }
+
+    // Convert loc with pressure altitude (used for Flight) to loc with geopotential height
+    // Returns false if loc is not in grid
+    bool geopt_ht_to_pres_alt(Geo3D& loc) const {
+        IDX<2, int> ij;
+        if (!loc_to_ij(loc, ij)) {
+            return false;
+        }
+
+        int k_below;
+        if (!find_k_below(loc, ij, k_below)) {
+            return false;
+        }
+        double z_below = Z.get({ij[0], ij[1], k_below});
+        double z_above = Z.get({ij[0], ij[1], k_below + 1});
+        double p_below = P.get({ij[0], ij[1], k_below});
+        double p_above = P.get({ij[0], ij[1], k_below + 1});
+
+        double pres = p_below
+            * std::pow(p_above / p_below, (loc.alt - z_below) / (z_above - z_below));
+
+        loc.alt = ISA::pres_to_pres_alt(pres);
+        return true;
     }
 
     // Returns true if it is possible to do grid interpolation for loc

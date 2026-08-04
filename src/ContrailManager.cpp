@@ -160,6 +160,9 @@ void ContrailManager::setup_on_first_run(const CMTime& startTime) {
         s.domain = domain.get();
     }, segments);
 
+    domain->set_periodic_lon();
+    CM_LogWrite(std::format("Domain is periodic in longitude: {}", domain->get_periodic_lon()));
+
     currTime = startTime;
 
     nextOutputTime = startTime + outputInterval;

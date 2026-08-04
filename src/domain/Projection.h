@@ -9,7 +9,7 @@
 
 class Projection {
 protected:
-    // Set externally
+    // Set on initialisation
     double lon1; // Longitude of origin cell centre
     double lat1; // Latitude of origin cell centre
     double dx; // Grid spacing (m); unused in LatLon
@@ -26,8 +26,7 @@ public:
 
     Projection(double lat1, double lon1, double dx, double stdlon, double truelat1,
         double truelat2)
-        : lat1(lat1), lon1(lon1), dx(dx), stdlon(stdlon),
-          truelat1(truelat1), truelat2(truelat2) {
+        : lat1(lat1), lon1(lon1), dx(dx), stdlon(stdlon), truelat1(truelat1), truelat2(truelat2) {
 
         if (std::abs(lat1) > 90) {
             CM_RaiseError(
@@ -52,6 +51,10 @@ public:
 
         rebydx = constants::EARTH_RADIUS_M / dx;
     }
+
+    // Using a longitude from each side of the domain, determines if the domain is periodic in
+    // longitude
+    virtual bool is_periodic_lon(double lonFirst, double lonLast) const { return false; }
 
     // Returns the grid cell ij which loc lies within
     // Cell ij covers the ranges [i-0.5, i+0.5) and [j-0.5, j+0.5)
@@ -155,6 +158,15 @@ public:
         }
     }
 
+    bool is_periodic_lon(double lonFirst, double lonLast) const override {
+        double delta = lonLast + stdlon - lonFirst;
+        map::wrap_WE(delta);
+        if (std::abs(delta) < 1e-6) {
+            return true;
+        }
+        return false;
+    }
+
     IDX<2, double> loc_to_ij(const Geo2D& loc) const override {
         IDX<2, double> ij;
 
@@ -165,12 +177,12 @@ public:
         // Wrap deltalon to [0, 360) for eastward grids (stdlon > 0) or (-360, 0] for
         // westward grids (stdlon < 0)
         if (stdlon > 0) {
-            while (deltalon >= 360) { deltalon -= 360; }
-            while (deltalon < 0) { deltalon += 360; }
+            while (deltalon >= (360 + stdlon / 2)) { deltalon -= 360; }
+            while (deltalon < (0 - stdlon / 2)) { deltalon += 360; }
         }
         else {
-            while (deltalon > 0) { deltalon -= 360; }
-            while (deltalon <= -360) { deltalon += 360; }
+            while (deltalon > (0 + stdlon / 2)) { deltalon -= 360; }
+            while (deltalon <= (-360 - stdlon / 2)) { deltalon += 360; }
         }
 
         // Where lon/lat increments are stdlon/truelat1

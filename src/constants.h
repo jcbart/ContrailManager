@@ -17,7 +17,11 @@ constexpr double DRY_AIR_MOLAR_MASS = 28.97e-3; // Molar mass of dry air (kg mol
 constexpr double H2O_MOLAR_MASS = 18.02e-3; // Molar mass of H2O (kg mol-1)
 constexpr double H2O_MOLECULAR_MASS = 2.991506e-26; // Mass of an H2O molecule (kg)
 constexpr double ABS_ZERO = -273.15; // Absolute zero in Celcius
-constexpr double P0 = 1e5; // Reference pressure (Pa)
+constexpr double P0 = 1e5; // Reference pressure for potential temperature (Pa)
+constexpr double P_SURFACE = 101325; // ISA surface pressure (Pa)
+constexpr double T_MSL = 288.15; // ISA mean sea level temperature (K)
+constexpr double T_LAPSE_RATE = 0.0065; // ISA lapse rate (K m-1)
+constexpr double TROPOPAUSE_HEIGHT = 11e3; // ISA geopotential height (= pressure altitude) of tropopause (m)
 constexpr double EPS = H2O_MOLAR_MASS / DRY_AIR_MOLAR_MASS; // Ratio of water to dry air molar mass
 // Ratio of specific heat capacity at constant pressure to that at constant volume for a diatomic ideal gas
 constexpr double GAMMA = 1.4;

@@ -26,36 +26,35 @@ struct Flight {
         return waypoints.size();
     }
 
-    // Find the last waypoint passed by the flight at the given time (e.g. 0 for 0th waypoint)
-    // If before the 0th waypoint, lastWp = -1
-    size_t find_last_wp(const CMTime& time) const {
-        if (time < waypoints.front().time) {
-            // Flight is before first waypoint
-            return -1;
-        }
-        if (time >= waypoints.back().time) {
-            // Flight is after last waypoint
-            return numWaypoints() - 1;
-        }
-        // Else, flight is within waypoint route
+    // Find the next waypoint to be passed by the flight at the given time (e.g. 0 for 0th waypoint)
+    // If after the final waypoint (numWaypoints() - 1), returns numWaypoints()
+    size_t find_next_wp(const CMTime& time) const {
         // Iterator pointing to first waypoint after time
         auto it = std::ranges::upper_bound(waypoints, time, {}, &Waypoint::time);
-        // Return distance to iterator - 1 (last waypoint passed)
-        return std::distance(waypoints.begin(), it) - 1;
+        // Return distance to iterator
+        return std::distance(waypoints.begin(), it);
     }
 
     // Finds the flight location at the given time with a great circle interpolation between
     // neighbouring waypoints
-    // loc is given the location
-    // Returns false if flight is before first or after last waypoint at time
-    bool find_loc(const CMTime& time, Geo3D& loc) const {
-        size_t lastWp = find_last_wp(time);
-        if (lastWp == -1 || lastWp == numWaypoints() - 1) {
+    // loc is given the location (with geopotential height)
+    // Returns false if flight is before first or after last waypoint at time or if either the
+    // last or next waypoint is out of bounds
+    bool find_loc(const CMTime& time, const Domain& domain, Geo3D& loc) const {
+        size_t idx = find_next_wp(time);
+        if (idx == 0 || idx == numWaypoints()) {
             // Flight is before first or after last waypoint
             return false;
         }
-        // Flight is between lastWp and lastWp + 1
-        loc = map::great_circle_interp(time, waypoints[lastWp], waypoints[lastWp + 1]);
+        // Flight is between idx - 1 and idx
+        Waypoint lastWp = waypoints[idx - 1];
+        Waypoint nextWp = waypoints[idx];
+        // Convert waypoints to geopotential height
+        if (!(domain.pres_alt_to_geopt_ht(lastWp.loc)
+            && domain.pres_alt_to_geopt_ht(nextWp.loc))) {
+            return false;
+        }
+        loc = map::great_circle_interp(time, lastWp, nextWp);
         return true;
     }
 
@@ -65,51 +64,64 @@ struct Flight {
     void createSegments(const CMTime& startTime, const CMTime& stopTime, const Domain& domain,
         const float maxInitialSegLen, Emit&& emit
     ) const {
-        // Find last waypoint passed at start and end of time interval
-        size_t lastWpStart = find_last_wp(startTime);
-        size_t lastWpEnd = find_last_wp(stopTime);
+        // Find next waypoint at start and end of time interval
+        size_t nextWpStart = find_next_wp(startTime);
+        size_t nextWpEnd = find_next_wp(stopTime);
 
         // Iterate through each leg (sectioned by waypoints) between start and end locations
-        for (size_t n = lastWpStart; n <= lastWpEnd; n++) {
+        for (size_t n = nextWpStart; n <= nextWpEnd; n++) {
             // Find start and end locations and times of leg
             Geo3D legStartLoc, legEndLoc;
             CMTime legStartTime, legEndTime;
             // If leg is before first or after last waypoint, cannot find flight loc
-            if (n == -1 || n == numWaypoints() - 1) {
+            if (n == 0 || n == numWaypoints()) {
                 continue;
             }
             // If first leg, start from flight start loc (not wp)
-            if (n == lastWpStart) {
-                // Safe to ignore return value
-                bool startFound = find_loc(startTime, legStartLoc);
+            if (n == nextWpStart) {
+                // Continue to next leg if start not in bounds
+                if (!find_loc(startTime, domain, legStartLoc)) {
+                    continue;
+                }
                 legStartTime = startTime;
             }
             // Else, leg starts at wp
             else {
-                legStartLoc = waypoints[n].loc;
-                legStartTime = waypoints[n].time;
+                legStartLoc = waypoints[n - 1].loc;
+                // Continue to next leg if waypoint not in bounds
+                if (!domain.pres_alt_to_geopt_ht(legStartLoc)) {
+                    continue;
+                }
+                legStartTime = waypoints[n - 1].time;
             }
             // If last leg, end at flight end loc (not wp)
-            if (n == lastWpEnd) {
-                // Safe to ignore return value
-                bool endFound = find_loc(stopTime, legEndLoc);
+            if (n == nextWpEnd) {
+                // Continue to next leg if end not in bounds
+                if (!find_loc(stopTime, domain, legEndLoc)) {
+                    continue;
+                }
                 legEndTime = stopTime;
             }
             // Else, leg ends at wp
             else {
-                legEndLoc = waypoints[n + 1].loc;
-                legEndTime = waypoints[n + 1].time;
+                legEndLoc = waypoints[n].loc;
+                // Continue to next leg if waypoint not in bounds
+                if (!domain.pres_alt_to_geopt_ht(legEndLoc)) {
+                    continue;
+                }
+                legEndTime = waypoints[n].time;
             }
 
             // Create as many segments as needed between
             double distInLeg = map::great_circle_dist(legStartLoc, legEndLoc);
+            double airspeedInLeg = distInLeg / (legEndTime - legStartTime).to_s();
             int numNewSegments = ceil(distInLeg / maxInitialSegLen);
             Geo3D backLoc = legStartLoc;
             Geo3D frontLoc;
             for (int i = 0; i < numNewSegments; i++) {
                 // Find new front loc
                 // Fraction of the total distance where the front of the segment is
-                double f_leg_front = (i + 1.)/numNewSegments;
+                double f_leg_front = (i + 1.) / numNewSegments;
                 frontLoc = map::great_circle_interp(f_leg_front, legStartLoc, legEndLoc);
 
                 // Find if interpolation is possible
@@ -125,12 +137,12 @@ struct Flight {
 
                 // Fraction of duration between last and next waypoints passed at centre of segment
                 double f_waypoint = (
-                    (birthTime - waypoints[n].time)
-                    / (waypoints[n + 1].time - waypoints[n].time)
+                    (birthTime - waypoints[n - 1].time)
+                    / (waypoints[n].time - waypoints[n - 1].time)
                 );
 
                 FlightInputs inputs(ID, birthTime, backLoc, frontLoc);
-                inputs.emissions = createFlightEmissions(n, f_waypoint);
+                inputs.emissions = createFlightEmissions(n, f_waypoint, airspeedInLeg);
 
                 // Emit (add segment to container) with FlightInputs object
                 emit(inputs);
@@ -142,12 +154,14 @@ struct Flight {
     }
 
     // Returns a FlightEmissions object based on current flight attributes
-    // Current flight attributes are determined using the last waypoint index (lastWp) and
+    // Current flight attributes are determined using the next waypoint index (nextWp) and
     // the fraction of duration between last and next waypoints passed at centre of segment
     // (f_waypoint)
-    FlightEmissions createFlightEmissions(const size_t lastWp, const double f_waypoint) const {
-        const Waypoint& lastWaypoint = waypoints[lastWp];
-        const Waypoint& nextWaypoint = waypoints[lastWp + 1];
+    FlightEmissions createFlightEmissions(const size_t nextWp, const double f_waypoint,
+        const double true_airspeed
+    ) const {
+        const Waypoint& lastWaypoint = waypoints[nextWp - 1];
+        const Waypoint& nextWaypoint = waypoints[nextWp];
 
         FlightEmissions emissions;
 
@@ -173,11 +187,7 @@ struct Flight {
         emissions.ei_h2o = aircraft.ei_h2o;
         emissions.q_fuel = aircraft.q_fuel;
 
-        // Caluclate speed
-        emissions.true_airspeed = (
-            map::great_circle_dist(lastWaypoint.loc, nextWaypoint.loc)
-            / (nextWaypoint.time - lastWaypoint.time).to_s()
-        );
+        emissions.true_airspeed = true_airspeed;
 
         return emissions;
     }
