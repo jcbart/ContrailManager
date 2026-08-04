@@ -45,6 +45,10 @@ arrow::Result<std::shared_ptr<arrow::Table>> CoCiP_to_table(const std::vector<Se
     arrow::DoubleBuilder rf_net_builder;
     arrow::DoubleBuilder cumul_heat_builder;
     arrow::DoubleBuilder cumul_differential_heat_builder;
+    arrow::DoubleBuilder air_pressure_builder;
+    arrow::DoubleBuilder air_temperature_builder;
+    arrow::DoubleBuilder specific_humidity_builder;
+    arrow::DoubleBuilder rh_i_builder;
 
     for (const SegmentCoCiP& seg : vec) {
         ARROW_RETURN_NOT_OK(ID_builder.Append(seg.ID));
@@ -78,13 +82,17 @@ arrow::Result<std::shared_ptr<arrow::Table>> CoCiP_to_table(const std::vector<Se
         ARROW_RETURN_NOT_OK(rf_net_builder.Append(seg.cocip.rf_net));
         ARROW_RETURN_NOT_OK(cumul_heat_builder.Append(seg.cocip.cumul_heat));
         ARROW_RETURN_NOT_OK(cumul_differential_heat_builder.Append(seg.cocip.cumul_differential_heat));
+        ARROW_RETURN_NOT_OK(air_pressure_builder.Append(seg.cocip.met->air_pressure));
+        ARROW_RETURN_NOT_OK(air_temperature_builder.Append(seg.cocip.met->air_temperature));
+        ARROW_RETURN_NOT_OK(specific_humidity_builder.Append(seg.cocip.met->specific_humidity));
+        ARROW_RETURN_NOT_OK(rh_i_builder.Append(seg.cocip.met->rh_i));
     }
 
     std::shared_ptr<arrow::Array> ID, parentID, birthTime, centrelon, centrelat, centrealt,
         heading, length, width, depth, area_eff, sigma_yz, n_ice_per_m, n_ice_per_vol, iwc,
         plume_mass_per_m, r_ice_vol, tau_contrail, terminal_fall_speed, diffuse_h, diffuse_v,
         dn_dt_agg, dn_dt_turb, heat_rate, d_heat_rate, rf_sw, rf_lw, rf_net, cumul_heat,
-        cumul_differential_heat;
+        cumul_differential_heat, air_pressure, air_temperature, specific_humidity, rh_i;
 
     ARROW_RETURN_NOT_OK(ID_builder.Finish(&ID));
     ARROW_RETURN_NOT_OK(parentID_builder.Finish(&parentID));
@@ -116,6 +124,10 @@ arrow::Result<std::shared_ptr<arrow::Table>> CoCiP_to_table(const std::vector<Se
     ARROW_RETURN_NOT_OK(rf_net_builder.Finish(&rf_net));
     ARROW_RETURN_NOT_OK(cumul_heat_builder.Finish(&cumul_heat));
     ARROW_RETURN_NOT_OK(cumul_differential_heat_builder.Finish(&cumul_differential_heat));
+    ARROW_RETURN_NOT_OK(air_pressure_builder.Finish(&air_pressure));
+    ARROW_RETURN_NOT_OK(air_temperature_builder.Finish(&air_temperature));
+    ARROW_RETURN_NOT_OK(specific_humidity_builder.Finish(&specific_humidity));
+    ARROW_RETURN_NOT_OK(rh_i_builder.Finish(&rh_i));
 
     std::shared_ptr<arrow::Schema> schema = arrow::schema({
         arrow::field("ID", arrow::uint64()),
@@ -147,14 +159,19 @@ arrow::Result<std::shared_ptr<arrow::Table>> CoCiP_to_table(const std::vector<Se
         arrow::field("rf_lw", arrow::float64()),
         arrow::field("rf_net", arrow::float64()),
         arrow::field("cumul_heat", arrow::float64()),
-        arrow::field("cumul_differential_heat", arrow::float64())
+        arrow::field("cumul_differential_heat", arrow::float64()),
+        arrow::field("air_pressure", arrow::float64()),
+        arrow::field("air_temperature", arrow::float64()),
+        arrow::field("specific_humidity", arrow::float64()),
+        arrow::field("rh_i", arrow::float64())
     });
 
     return arrow::Table::Make(schema, {
         ID, parentID, birthTime, centrelon, centrelat, centrealt, heading, length, width, depth,
         area_eff, sigma_yz, n_ice_per_m, n_ice_per_vol, iwc, plume_mass_per_m, r_ice_vol,
         tau_contrail, terminal_fall_speed, diffuse_h, diffuse_v, dn_dt_agg, dn_dt_turb, heat_rate,
-        d_heat_rate, rf_sw, rf_lw, rf_net, cumul_heat, cumul_differential_heat
+        d_heat_rate, rf_sw, rf_lw, rf_net, cumul_heat, cumul_differential_heat, air_pressure,
+        air_temperature, specific_humidity, rh_i
     });
 }
 #endif
