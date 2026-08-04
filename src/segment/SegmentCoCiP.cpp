@@ -34,6 +34,7 @@ bool SegmentCoCiP::updateMet() {
 
     cocip.met->tnsr = domain->TNSR.get(ijk);
     cocip.met->olr = domain->OLR.get(ijk);
+
     return true;
 }
 
@@ -80,6 +81,12 @@ void SegmentCoCiP::formation() {
 
     cocip.simulate_wake_vortex_downwash();
     cocip.initial_properties();
+
+    // Get change in altitude after formation
+    double deltaAlt = cocip.altitude - centre.alt;
+    centre.alt += deltaAlt;
+    front.alt += deltaAlt;
+    back.alt += deltaAlt;
 
     if (!cocip.persistent) {
         noFormation = true;
